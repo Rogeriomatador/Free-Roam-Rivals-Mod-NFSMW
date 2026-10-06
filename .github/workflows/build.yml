@@ -1,0 +1,36 @@
+name: Build Win32 ASI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Win32
+        run: cmake -S . -B build -A Win32
+
+      - name: Build Release
+        run: cmake --build build --config Release
+
+      - name: Collect ASI
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force artifact | Out-Null
+          Get-ChildItem -Path build -Recurse -Filter *.asi | ForEach-Object {
+            Copy-Item $_.FullName artifact/
+          }
+          Get-ChildItem artifact
+
+      - name: Upload ASI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FreeRoamRivals-Win32
+          path: artifact/*.asi
+          if-no-files-found: error
