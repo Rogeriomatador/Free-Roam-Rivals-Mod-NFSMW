@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.1
+    VERSION 0.0.2
     LANGUAGES C CXX
 )
 
@@ -39,12 +39,18 @@ set(NFSMW_SDK_MINHOOK_DIR  "${nfsmw_sdk_SOURCE_DIR}/extern/minhook")
 nfsmw_add_plugin(FreeRoamRivals
     SOURCES
         src/main.cpp
+        src/core/Log.cpp
+        src/core/VersionGuard.cpp
 )
+
+target_include_directories(FreeRoamRivals PRIVATE src)
 
 target_compile_definitions(FreeRoamRivals PRIVATE
     WIN32_LEAN_AND_MEAN
     NOMINMAX
 )
+
+target_link_libraries(FreeRoamRivals PRIVATE advapi32)
 
 if(MSVC)
     target_compile_options(FreeRoamRivals PRIVATE /W4)

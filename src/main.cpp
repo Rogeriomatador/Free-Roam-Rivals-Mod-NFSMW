@@ -1,96 +1,55 @@
 #include <nfsmw_sdk/nfsmw_sdk.h>
 
-#include <windows.h>
+#include "core/Log.h"
+#include "core/VersionGuard.h"
 
-#include <cstdio>
-#include <filesystem>
-#include <fstream>
-#include <mutex>
+#include <sstream>
 #include <string>
 
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.1";
+constexpr const char* kVersion = "0.0.2-dev";
 
-class Log {
-public:
-    static Log& instance() {
-        static Log log;
-        return log;
-    }
-
-    void write(const char* level, const std::string& message) {
-        std::lock_guard<std::mutex> lock(mutex_);
-
-        if (!stream_.is_open()) {
-            open();
-        }
-
-        if (!stream_.is_open()) {
-            return;
-        }
-
-        SYSTEMTIME st{};
-        GetLocalTime(&st);
-
-        char timestamp[64]{};
-        std::snprintf(
-            timestamp,
-            sizeof(timestamp),
-            "%04u-%02u-%02u %02u:%02u:%02u.%03u",
-            st.wYear,
-            st.wMonth,
-            st.wDay,
-            st.wHour,
-            st.wMinute,
-            st.wSecond,
-            st.wMilliseconds
-        );
-
-        stream_ << "[" << timestamp << "]"
-                << " [" << level << "] "
-                << message << "\n";
-        stream_.flush();
-    }
-
-private:
-    void open() {
-        std::error_code ec;
-        const auto dir = std::filesystem::path("scripts") / "FreeRoamRivals";
-        std::filesystem::create_directories(dir, ec);
-
-        stream_.open(
-            dir / "FreeRoamRivals.log",
-            std::ios::out | std::ios::app
-        );
-    }
-
-    std::ofstream stream_;
-    std::mutex mutex_;
-};
-
-void info(const std::string& msg) {
-    Log::instance().write("INFO", msg);
-}
-
-void warn(const std::string& msg) {
-    Log::instance().write("WARN", msg);
-}
-
-// v0.0.1 intentionally performs no gameplay mutation.
-// The next implementation step is a verified executable guard followed by
-// a safe per-frame hook and player-vehicle discovery.
 int bootstrap() {
-    info(std::string(kName) + " v" + kVersion + " loaded.");
-    info("Bootstrap-only build: gameplay hooks are not installed yet.");
-    info("High-risk systems (economy / garage / pink slips) are disabled.");
+    auto& log = Log::instance();
+
+    log.info(std::string(kName) + " v" + kVersion + " loaded.");
+    log.info("Running executable compatibility check.");
+
+    const VersionCheck check = VersionGuard::checkCurrentExecutable();
+
+    {
+        std::ostringstream line;
+        line << "Executable path: " << check.executable.path;
+        log.info(line.str());
+    }
+
+    {
+        std::ostringstream line;
+        line << "Executable size: " << check.executable.size;
+        log.info(line.str());
+    }
+
+    log.info(std::string("Executable MD5: ") + check.executable.md5);
+
+    if (!check.supported) {
+        log.warn(std::string("Unsupported executable: ") + check.reason);
+        log.warn("Fail-closed: no gameplay hooks or save/economy features will be enabled.");
+        return NFSMW_OK;
+    }
+
+    log.info(check.reason);
+    log.info("Executable guard passed.");
+    log.info("Gameplay hooks are still disabled in this development build.");
+    log.info("Economy / garage / pink-slip systems remain disabled.");
+
     return NFSMW_OK;
 }
 
 } // namespace frr
 
-NFSMW_PLUGIN_DECLARE("Free Roam Rivals", "0.0.1", "Rogeriomatador")
+NFSMW_PLUGIN_DECLARE("Free Roam Rivals", "0.0.2-dev", "Rogeriomatador")
 
 NFSMW_PLUGIN_MAIN() {
     return frr::bootstrap();
