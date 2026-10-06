@@ -53,16 +53,17 @@ jobs:
           Copy-Item "config/Rivals.ini" "$pkg/scripts/FreeRoamRivals/Rivals.ini"
 
           @"
-          NFSMW Free Roam Rivals v0.0.3-dev
+          NFSMW Free Roam Rivals v0.0.4-dev
 
           INSTALL:
           1. Extract this ZIP into the Need for Speed Most Wanted game folder.
           2. Confirm FreeRoamRivals.asi is inside the scripts folder.
-          3. Start the game.
-          4. Check scripts\FreeRoamRivals\FreeRoamRivals.log.
+          3. Start the game and enter Free Roam.
+          4. Drive for 20-30 seconds.
+          5. Check scripts\FreeRoamRivals\FreeRoamRivals.log.
 
-          This development build currently validates the executable and contains
-          domain/progression/stake logic. It does not spawn rivals yet.
+          This build adds the first read-only runtime hook.
+          It probes live vehicle state but does NOT spawn or control vehicles.
 
           Supported development target:
           speed.exe size: 6029312 bytes
@@ -70,23 +71,23 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.3-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.4-dev.zip" -Force
 
-      - name: Publish v0.0.3-dev GitHub Release
+      - name: Publish v0.0.4-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.3-dev"
+          $tag = "v0.0.4-dev"
 
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
             Write-Host "Release $tag already exists; keeping existing release."
           } else {
-            gh release create $tag "release/FreeRoamRivals-v0.0.3-dev.zip" `
+            gh release create $tag "release/FreeRoamRivals-v0.0.4-dev.zip" `
               --target "${{ github.sha }}" `
-              --title "Free Roam Rivals v0.0.3-dev" `
+              --title "Free Roam Rivals v0.0.4-dev" `
               --prerelease `
-              --notes "Primeiro pacote instalável pelo GitHub. Inclui o ASI, configurações e estrutura de instalação. Esta versão ainda é de fundação: valida o speed.exe e contém as regras de progressão/apostas, mas ainda não cria rivais no mapa."
+              --notes "Primeiro runtime probe real. Esta versão instala um hook somente-leitura por frame, detecta o PVehicle do jogador e registra estados do mundo para validarmos o Free Roam antes de criar o primeiro rival. Não há spawn, IA, dinheiro ou alteração de save."
           }
