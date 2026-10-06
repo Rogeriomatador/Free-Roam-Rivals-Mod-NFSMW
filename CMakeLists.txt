@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.3
+    VERSION 0.0.4
     LANGUAGES C CXX
 )
 
@@ -34,6 +34,7 @@ set(NFSMW_SDK_ENTRY_SOURCE "${nfsmw_sdk_SOURCE_DIR}/src/entry.c")
 set(NFSMW_SDK_MINHOOK_DIR  "${nfsmw_sdk_SOURCE_DIR}/extern/minhook")
 
 set(FRR_DOMAIN_SOURCES
+    src/domain/EncounterStateMachine.cpp
     src/domain/Progression.cpp
     src/domain/StakeRules.cpp
 )
@@ -41,8 +42,11 @@ set(FRR_DOMAIN_SOURCES
 nfsmw_add_plugin(FreeRoamRivals
     SOURCES
         src/main.cpp
+        src/core/Config.cpp
         src/core/Log.cpp
         src/core/VersionGuard.cpp
+        src/game/GameBridge.cpp
+        src/game/RuntimeProbe.cpp
         ${FRR_DOMAIN_SOURCES}
 )
 
