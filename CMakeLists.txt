@@ -32,6 +32,7 @@ FetchContent_MakeAvailable(nfsmw_sdk)
 set(NFSMW_SDK_INCLUDE_DIR  "${nfsmw_sdk_SOURCE_DIR}/include")
 set(NFSMW_SDK_ENTRY_SOURCE "${nfsmw_sdk_SOURCE_DIR}/src/entry.c")
 set(NFSMW_SDK_MINHOOK_DIR  "${nfsmw_sdk_SOURCE_DIR}/extern/minhook")
+set(NFSMW_HOOKS_BACKEND "minhook")
 
 set(FRR_DOMAIN_SOURCES
     src/domain/EncounterStateMachine.cpp
