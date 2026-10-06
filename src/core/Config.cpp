@@ -27,6 +27,19 @@ std::filesystem::path executableDirectory() {
     ).parent_path();
 }
 
+int iniInt(
+    const std::string& file,
+    const char* key,
+    int fallback
+) {
+    return GetPrivateProfileIntA(
+        "Diagnostics",
+        key,
+        fallback,
+        file.c_str()
+    );
+}
+
 } // namespace
 
 Config Config::load() {
@@ -40,25 +53,28 @@ Config Config::load() {
 
     const std::string ini = path.string();
 
-    cfg.runtimeProbeEnabled =
-        GetPrivateProfileIntA(
-            "Diagnostics",
-            "RuntimeProbeEnabled",
-            1,
-            ini.c_str()
-        ) != 0;
+    cfg.renderProbeEnabled =
+        iniInt(ini, "RenderProbeEnabled", 1) != 0;
 
-    const int heartbeat =
-        GetPrivateProfileIntA(
-            "Diagnostics",
-            "RuntimeProbeHeartbeatFrames",
-            600,
-            ini.c_str()
+    cfg.inputProbeEnabled =
+        iniInt(ini, "InputProbeEnabled", 1) != 0;
+
+    cfg.runtimeSampleEveryFrames =
+        static_cast<unsigned>(
+            std::clamp(
+                iniInt(ini, "RuntimeSampleEveryFrames", 30),
+                1,
+                600
+            )
         );
 
     cfg.runtimeProbeHeartbeatFrames =
         static_cast<unsigned>(
-            std::clamp(heartbeat, 60, 36000)
+            std::clamp(
+                iniInt(ini, "RuntimeProbeHeartbeatFrames", 600),
+                60,
+                36000
+            )
         );
 
     return cfg;
