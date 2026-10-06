@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -37,3 +40,53 @@ jobs:
           name: FreeRoamRivals-Win32
           path: artifact/*.asi
           if-no-files-found: error
+
+      - name: Create install package
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: pwsh
+        run: |
+          $pkg = "release/package"
+          New-Item -ItemType Directory -Force "$pkg/scripts/FreeRoamRivals" | Out-Null
+
+          Copy-Item "artifact/FreeRoamRivals.asi" "$pkg/scripts/FreeRoamRivals.asi"
+          Copy-Item "config/FreeRoamRivals.ini" "$pkg/scripts/FreeRoamRivals/FreeRoamRivals.ini"
+          Copy-Item "config/Rivals.ini" "$pkg/scripts/FreeRoamRivals/Rivals.ini"
+
+          @"
+          NFSMW Free Roam Rivals v0.0.3-dev
+
+          INSTALL:
+          1. Extract this ZIP into the Need for Speed Most Wanted game folder.
+          2. Confirm FreeRoamRivals.asi is inside the scripts folder.
+          3. Start the game.
+          4. Check scripts\FreeRoamRivals\FreeRoamRivals.log.
+
+          This development build currently validates the executable and contains
+          domain/progression/stake logic. It does not spawn rivals yet.
+
+          Supported development target:
+          speed.exe size: 6029312 bytes
+          MD5: C0516B485065FABDD69579816B5DF763
+          "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
+
+          New-Item -ItemType Directory -Force "release" | Out-Null
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.3-dev.zip" -Force
+
+      - name: Publish v0.0.3-dev GitHub Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "v0.0.3-dev"
+
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Release $tag already exists; keeping existing release."
+          } else {
+            gh release create $tag "release/FreeRoamRivals-v0.0.3-dev.zip" `
+              --target "${{ github.sha }}" `
+              --title "Free Roam Rivals v0.0.3-dev" `
+              --prerelease `
+              --notes "Primeiro pacote instalável pelo GitHub. Inclui o ASI, configurações e estrutura de instalação. Esta versão ainda é de fundação: valida o speed.exe e contém as regras de progressão/apostas, mas ainda não cria rivais no mapa."
+          }
