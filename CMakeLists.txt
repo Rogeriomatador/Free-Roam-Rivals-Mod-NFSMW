@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.4
+    VERSION 0.0.5
     LANGUAGES C CXX
 )
 
@@ -13,21 +13,44 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     message(FATAL_ERROR "NFSMW is 32-bit. Configure with -A Win32.")
 endif()
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(FetchContent)
 
+# Pin every external reverse-engineering dependency. We do not follow moving
+# main/master branches in reproducible release builds.
 set(NFSMW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 
 FetchContent_Declare(
     nfsmw_sdk
     GIT_REPOSITORY https://github.com/s-b-repo/nfsmw-2005-sdk.git
-    GIT_TAG main
-    GIT_SHALLOW TRUE
+    GIT_TAG 3b3d05b9194844883aa42d75dd7aae66838092ff
+    GIT_SHALLOW FALSE
 )
-
 FetchContent_MakeAvailable(nfsmw_sdk)
+
+FetchContent_Declare(
+    mwsdk
+    GIT_REPOSITORY https://github.com/TsyVM/MWSDK.git
+    GIT_TAG 6db158647fe05a3d1cbbfee38f0f5d1e91b2f473
+    GIT_SHALLOW FALSE
+)
+FetchContent_GetProperties(mwsdk)
+if(NOT mwsdk_POPULATED)
+    FetchContent_Populate(mwsdk)
+endif()
+
+FetchContent_Declare(
+    nfsplugin_sdk
+    GIT_REPOSITORY https://github.com/berkayylmao/NFSPluginSDK.git
+    GIT_TAG d238bdffc648498840d17133edb256fa0310d355
+    GIT_SHALLOW FALSE
+)
+FetchContent_GetProperties(nfsplugin_sdk)
+if(NOT nfsplugin_sdk_POPULATED)
+    FetchContent_Populate(nfsplugin_sdk)
+endif()
 
 set(NFSMW_SDK_INCLUDE_DIR  "${nfsmw_sdk_SOURCE_DIR}/include")
 set(NFSMW_SDK_ENTRY_SOURCE "${nfsmw_sdk_SOURCE_DIR}/src/entry.c")
@@ -58,7 +81,11 @@ nfsmw_add_plugin(FreeRoamRivals
         ${FRR_DOMAIN_SOURCES}
 )
 
-target_include_directories(FreeRoamRivals PRIVATE src)
+target_include_directories(FreeRoamRivals PRIVATE
+    src
+    "${mwsdk_SOURCE_DIR}/include"
+    "${nfsplugin_sdk_SOURCE_DIR}"
+)
 
 target_compile_definitions(FreeRoamRivals PRIVATE
     WIN32_LEAN_AND_MEAN
