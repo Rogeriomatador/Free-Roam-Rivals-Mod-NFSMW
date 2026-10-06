@@ -7,17 +7,17 @@
 - [x] Minimal ASI scaffold
 - [x] Configuration templates
 - [x] CI build scaffold
-- [ ] Confirm ASI build on Win32
-- [ ] Confirm plugin loads on target executable
-- [ ] Create runtime log in game folder
+- [x] Confirm ASI build on Win32
+- [x] Confirm plugin loads on target executable
+- [x] Create runtime log in game folder
 
 Exit criterion: loading the ASI does not alter gameplay and creates a diagnostic log.
 
 ## v0.1 — One living rival
 
-- [ ] Detect free-roam gameplay state
-- [ ] Resolve player vehicle safely
-- [ ] Obtain stable per-frame tick
+- [x] Detect free-roam gameplay state (runtime validation pending on v0.0.5 log)
+- [x] Resolve player IVehicle safely + independent PVehicle cross-check (runtime validation pending)
+- [x] Obtain read-only render/input observation callbacks (runtime validation pending)
 - [ ] Identify/spawn one rival vehicle
 - [ ] Keep stable rival handle/pointer validation
 - [ ] Rival roaming state
@@ -43,7 +43,7 @@ Exit criterion: complete repeatable 1v1 Outrun without loading a stock race.
 
 ## v0.3 — Staging + cinematic
 
-- [ ] Read road network
+- [x] Read road-network singleton (runtime validation pending)
 - [ ] Find safe staging segment
 - [ ] Reserve two poses
 - [ ] Rival approach
