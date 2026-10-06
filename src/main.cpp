@@ -1,7 +1,9 @@
 #include <nfsmw_sdk/nfsmw_sdk.h>
 
+#include "core/Config.h"
 #include "core/Log.h"
 #include "core/VersionGuard.h"
+#include "game/RuntimeProbe.h"
 
 #include <sstream>
 #include <string>
@@ -9,7 +11,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.2-dev";
+constexpr const char* kVersion = "0.0.4-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -35,21 +37,35 @@ int bootstrap() {
 
     if (!check.supported) {
         log.warn(std::string("Unsupported executable: ") + check.reason);
-        log.warn("Fail-closed: no gameplay hooks or save/economy features will be enabled.");
+        log.warn("Fail-closed: no runtime hooks or save/economy features will be enabled.");
         return NFSMW_OK;
     }
 
     log.info(check.reason);
     log.info("Executable guard passed.");
-    log.info("Gameplay hooks are still disabled in this development build.");
-    log.info("Economy / garage / pink-slip systems remain disabled.");
+
+    const Config config = Config::load();
+
+    if (config.runtimeProbeEnabled) {
+        game::RuntimeProbeConfig probeConfig{};
+        probeConfig.heartbeatFrames =
+            config.runtimeProbeHeartbeatFrames;
+
+        if (!game::RuntimeProbe::install(probeConfig)) {
+            log.error("Runtime probe could not be installed; continuing with all gameplay features disabled.");
+        }
+    } else {
+        log.info("Runtime probe disabled by configuration.");
+    }
+
+    log.info("v0.0.4-dev is read-only: no vehicle spawning, AI control, economy, garage, or pink-slip mutation is enabled.");
 
     return NFSMW_OK;
 }
 
 } // namespace frr
 
-NFSMW_PLUGIN_DECLARE("Free Roam Rivals", "0.0.2-dev", "Rogeriomatador")
+NFSMW_PLUGIN_DECLARE("Free Roam Rivals", "0.0.4-dev", "Rogeriomatador")
 
 NFSMW_PLUGIN_MAIN() {
     return frr::bootstrap();
