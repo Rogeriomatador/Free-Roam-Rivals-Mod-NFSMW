@@ -48,13 +48,13 @@ Support for additional 1.3 executables will be added only after their addresses/
 
 ## Current status
 
-**Pre-alpha / architecture bootstrap.**
+**Pre-alpha / validated read-only runtime bridge (v0.0.5-dev).**
 
-The repository now contains the project design, feasibility notes, architecture, roadmap, initial configuration schema, and a minimal ASI plugin scaffold.
+The ASI now validates the supported executable, installs observation hooks, separates Free Roam from stock races, enumerates live IVehicle driver classes, independently cross-checks the player PVehicle, observes the road network, and reads career cash/car-count/completion without mutating the game. External SDK revisions are pinned for reproducible builds.
 
 The first engineering milestone is intentionally narrow:
 
-> Spawn or identify one rival in free roam, have it detect the player, expose a challenge state, start an Outrun, and declare a winner.
+> Prove the complete Racer construction/AI/cleanup lifecycle, then spawn one native rival in Free Roam without save writes.
 
 Pink slips and save mutation come later, after the runtime foundation is proven stable.
 
@@ -71,12 +71,15 @@ docs/
   ROADMAP.md
   SAVE_SAFETY.md
   RESEARCH_NOTES.md
+  ENGINE_INTEGRATION_MAP.md
+  SPAWN_AND_AI_PLAN.md
+  PINK_SLIP_ENGINE_RESEARCH.md
 .github/workflows/     CI build
 ```
 
 ## Building
 
-The project uses the clean-room `nfsmw-2005-sdk` as its initial runtime layer.
+The project uses pinned versions of `nfsmw-2005-sdk`, `MWSDK`, and `NFSPluginSDK`; each serves a different validated layer described in `docs/ENGINE_INTEGRATION_MAP.md`.
 
 Requirements:
 
