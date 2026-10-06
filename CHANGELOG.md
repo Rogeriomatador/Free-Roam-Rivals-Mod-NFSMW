@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.0.3-dev
+
+- Added formal post-career progression model.
+- Added Rockport Legend endgame design.
+- Added Street Rep rank model.
+- Added pure domain logic for career-aware rival tiers.
+- Added pure stake-eligibility rules.
+- Enforced last-car protection at the domain-rule level.
+- Added safe pink-slip gating requirements.
+- Added mixed car + cash stake feasibility logic.
+- Added dedicated cinematic-staging design.
+- Expanded runtime configuration for progression, world director and wager safety.
+- Added Win32 domain tests to CI.
+- Gameplay hooks and save mutation remain disabled.
+
 ## 0.0.2-dev
 
 - Added executable identity guard.

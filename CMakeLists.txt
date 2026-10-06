@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.2
+    VERSION 0.0.3
     LANGUAGES C CXX
 )
 
@@ -29,18 +29,21 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(nfsmw_sdk)
 
-# nfsmw_sdk's helper is defined inside the fetched subdirectory. The helper
-# resolves these variables in the caller scope, so expose the fetched paths
-# explicitly before creating our plugin target.
 set(NFSMW_SDK_INCLUDE_DIR  "${nfsmw_sdk_SOURCE_DIR}/include")
 set(NFSMW_SDK_ENTRY_SOURCE "${nfsmw_sdk_SOURCE_DIR}/src/entry.c")
 set(NFSMW_SDK_MINHOOK_DIR  "${nfsmw_sdk_SOURCE_DIR}/extern/minhook")
+
+set(FRR_DOMAIN_SOURCES
+    src/domain/Progression.cpp
+    src/domain/StakeRules.cpp
+)
 
 nfsmw_add_plugin(FreeRoamRivals
     SOURCES
         src/main.cpp
         src/core/Log.cpp
         src/core/VersionGuard.cpp
+        ${FRR_DOMAIN_SOURCES}
 )
 
 target_include_directories(FreeRoamRivals PRIVATE src)
@@ -57,3 +60,21 @@ if(MSVC)
 else()
     target_compile_options(FreeRoamRivals PRIVATE -Wall -Wextra -Wpedantic)
 endif()
+
+enable_testing()
+
+add_executable(FreeRoamRivalsDomainTests
+    tests/domain_tests.cpp
+    ${FRR_DOMAIN_SOURCES}
+)
+
+target_include_directories(FreeRoamRivalsDomainTests PRIVATE src)
+
+if(MSVC)
+    target_compile_options(FreeRoamRivalsDomainTests PRIVATE /W4)
+endif()
+
+add_test(
+    NAME FreeRoamRivalsDomainTests
+    COMMAND FreeRoamRivalsDomainTests
+)

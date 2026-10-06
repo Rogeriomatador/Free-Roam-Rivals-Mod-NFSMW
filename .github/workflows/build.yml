@@ -19,6 +19,9 @@ jobs:
       - name: Build Release
         run: cmake --build build --config Release
 
+      - name: Run domain tests
+        run: ctest --test-dir build -C Release --output-on-failure
+
       - name: Collect ASI
         shell: pwsh
         run: |
