@@ -29,6 +29,13 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(nfsmw_sdk)
 
+# nfsmw_sdk's helper is defined inside the fetched subdirectory. The helper
+# resolves these variables in the caller scope, so expose the fetched paths
+# explicitly before creating our plugin target.
+set(NFSMW_SDK_INCLUDE_DIR  "${nfsmw_sdk_SOURCE_DIR}/include")
+set(NFSMW_SDK_ENTRY_SOURCE "${nfsmw_sdk_SOURCE_DIR}/src/entry.c")
+set(NFSMW_SDK_MINHOOK_DIR  "${nfsmw_sdk_SOURCE_DIR}/extern/minhook")
+
 nfsmw_add_plugin(FreeRoamRivals
     SOURCES
         src/main.cpp
