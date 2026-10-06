@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.0.4-dev
+
+- Added the first real runtime hook after executable validation.
+- Hook is read-only and runs after the game's per-frame action polling.
+- Added a guarded GameBridge probe for:
+  - live PVehicle instance count
+  - player-car PVehicle detection
+  - AI-car PVehicle count
+  - NIS state
+  - fade/transition state
+  - GRaceStatus pointer presence
+  - diagnostic-only raw game-flow value
+- Added state-change logging plus periodic heartbeat.
+- Added INI controls for the runtime probe.
+- Added a pure rival EncounterStateMachine:
+  - Roaming
+  - Interested
+  - ChallengeAvailable
+  - Accepted
+  - Cooldown
+- Added automated tests for the encounter flow.
+- Corrected the internal plugin version string.
+- Still no spawning, AI control, save writes, economy, garage mutation or pink-slip transfer.
+
 ## 0.0.3-dev
 
 - Added formal post-career progression model.
