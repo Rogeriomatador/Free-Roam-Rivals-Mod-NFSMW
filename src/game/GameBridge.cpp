@@ -4,6 +4,7 @@
 #include <mwsdk/game/mw05_research.hpp>
 
 #include <NFSPluginSDK/Game.MW05/MW05.h>
+#include <NFSPluginSDK/Game.MW05/Extensions.h>
 
 #include <windows.h>
 
@@ -15,9 +16,6 @@
 namespace frr::game {
 namespace {
 
-constexpr std::uintptr_t kIVehicleSubobjectOffset = 0xACu;
-constexpr std::uintptr_t kPlayerPVehicleVtable = 0x008AC06Cu;
-constexpr std::uintptr_t kAIPVehicleVtable = 0x008AC0FCu;
 constexpr std::uint32_t kVehicleCountHardLimit = 512u;
 
 bool isReadable(std::uintptr_t address, std::size_t size) {
@@ -66,6 +64,58 @@ bool readAbsolute(std::uintptr_t address, T& value) {
     );
 
     return true;
+}
+
+void probeNfsPluginPVehicleRegistry(VehicleProbe& out) {
+#if defined(_MSC_VER)
+    __try {
+#endif
+        using namespace NFSPluginSDK::MW05;
+
+        std::uint32_t count = 0;
+        PVehicle* player = nullptr;
+
+        for (; count < kVehicleCountHardLimit; ++count) {
+            auto* raw = PVehicle::g_mInstances[count].mInstance;
+            if (!raw) {
+                break;
+            }
+
+            auto* valid = raw | PVehicleEx::ValidatePVehicle;
+            if (!valid) {
+                continue;
+            }
+
+            if (!player &&
+                valid->IsPlayer() &&
+                valid->IsOwnedByPlayer()) {
+                player = valid;
+            }
+        }
+
+        // If the sentinel was not observed within the hard limit, do not
+        // trust this registry snapshot.
+        if (count >= kVehicleCountHardLimit) {
+            return;
+        }
+
+        out.pvehicleRegistryCount = count;
+
+        if (player) {
+            out.playerPVehicle =
+                reinterpret_cast<std::uintptr_t>(player);
+        }
+
+        out.independentPlayerCrossCheck =
+            out.playerIVehicle != 0 &&
+            out.playerPVehicle != 0;
+#if defined(_MSC_VER)
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        out.playerPVehicle = 0;
+        out.pvehicleRegistryCount = 0;
+        out.independentPlayerCrossCheck = false;
+    }
+#endif
 }
 
 VehicleProbe probeVehicles() {
@@ -127,25 +177,10 @@ VehicleProbe probeVehicles() {
             }
         }
 
-        if (out.playerIVehicle != 0 &&
-            out.playerIVehicle >= kIVehicleSubobjectOffset) {
-            const auto pvehicle =
-                out.playerIVehicle - kIVehicleSubobjectOffset;
-
-            std::uint32_t vtable = 0;
-            if (readAbsolute(pvehicle, vtable)) {
-                out.playerPVehicleCandidate = pvehicle;
-                out.playerPVehicleVtableVerified =
-                    vtable == kPlayerPVehicleVtable;
-
-                // If this ever reports the AI vtable for the Human vehicle,
-                // keep it visible in diagnostics rather than silently trusting
-                // the cross-SDK conversion.
-                if (vtable == kAIPVehicleVtable) {
-                    out.playerPVehicleVtableVerified = false;
-                }
-            }
-        }
+        // Resolve PVehicle independently. MWSDK explicitly documents that
+        // its live list contains IVehicle interface pointers and must NOT
+        // be converted to PVehicle by subtracting a guessed subobject offset.
+        probeNfsPluginPVehicleRegistry(out);
 #if defined(_MSC_VER)
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         out = VehicleProbe{};
@@ -230,6 +265,34 @@ CareerProbe probeCareer() {
     return out;
 }
 
+void deriveCapabilities(RuntimeSnapshot& out) {
+    auto& caps = out.capabilities;
+
+    caps.canObserveWorld =
+        out.inWorld &&
+        out.vehicles.registryReadable;
+
+    caps.canIdentifyPlayer =
+        out.vehicles.playerIVehicle != 0 &&
+        out.vehicles.independentPlayerCrossCheck;
+
+    caps.canClassifyFreeRoam =
+        out.mode == WorldProbeMode::FreeRoamCandidate &&
+        caps.canIdentifyPlayer;
+
+    caps.roadNetworkAvailable =
+        out.roadNetwork != 0;
+
+    caps.careerReadAvailable =
+        out.career.available;
+
+    // Deliberately false. These are promotion gates for later builds,
+    // not optimistic guesses based on addresses existing in an SDK.
+    caps.rivalSpawnExperimentVerified = false;
+    caps.economyWriteVerified = false;
+    caps.garageWriteVerified = false;
+}
+
 } // namespace
 
 RuntimeSnapshot GameBridge::sample() {
@@ -285,6 +348,7 @@ RuntimeSnapshot GameBridge::sample() {
         out.mode = WorldProbeMode::NoPlayerVehicle;
     }
 
+    deriveCapabilities(out);
     return out;
 }
 
