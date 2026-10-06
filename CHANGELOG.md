@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.0.5-dev
+
+- Integrated three pinned research/runtime layers:
+  - nfsmw-2005-sdk for hooks and diagnostics
+  - MWSDK for verified live IVehicle/world/road data
+  - NFSPluginSDK for typed MW05 race/career/PVehicle structures
+- Added Free Roam vs stock-race classification using GRaceStatus::mPlayMode.
+- Added world-state, road-network, NIS, loading and fade gating.
+- Added live IVehicle classification by Human/Traffic/Cop/Racer/NIS/Remote.
+- Added independent NFSPluginSDK PVehicle player cross-check.
+- Removed an unsafe IVehicle-to-PVehicle pointer-offset conversion after MWSDK
+  documentation explicitly warned that registry elements are interface pointers.
+- Added read-only career probe:
+  - cash
+  - current car handle
+  - career car count
+  - career-completed flag
+- Added runtime capability gates. Spawn/economy/garage writes remain false until
+  their full lifecycle and rollback paths are verified.
+- Added engine integration, spawn/AI and pink-slip research documents.
+- External SDK commits are pinned for reproducible builds.
+- No rival spawning, AI mutation, cash mutation or garage mutation is enabled.
+
 ## 0.0.4-dev
 
 - Added the first real runtime hook after executable validation.
