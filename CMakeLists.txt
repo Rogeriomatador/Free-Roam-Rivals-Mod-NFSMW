@@ -81,6 +81,11 @@ nfsmw_add_plugin(FreeRoamRivals
         ${FRR_DOMAIN_SOURCES}
 )
 
+set_target_properties(FreeRoamRivals PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED YES
+)
+
 target_include_directories(FreeRoamRivals PRIVATE
     src
     "${mwsdk_SOURCE_DIR}/include"
