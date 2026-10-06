@@ -22,9 +22,16 @@ enum class WorldProbeMode {
 struct VehicleProbe {
     bool registryReadable = false;
 
+    // MWSDK's verified live vehicle registry exposes IVehicle* entries.
+    // Never reinterpret these as PVehicle* or subtract a guessed subobject
+    // offset: MWSDK explicitly documents that as unsafe.
     std::uintptr_t playerIVehicle = 0;
-    std::uintptr_t playerPVehicleCandidate = 0;
-    bool playerPVehicleVtableVerified = false;
+
+    // Independent NFSPluginSDK cross-check. This is resolved through its
+    // validated PVehicle registry helper, not derived from playerIVehicle.
+    std::uintptr_t playerPVehicle = 0;
+    std::uint32_t pvehicleRegistryCount = 0;
+    bool independentPlayerCrossCheck = false;
 
     std::uint32_t totalVehicles = 0;
     std::uint32_t humanVehicles = 0;
@@ -45,6 +52,23 @@ struct CareerProbe {
     bool careerCompletedAtLeastOnce = false;
 };
 
+struct RuntimeCapabilities {
+    bool canObserveWorld = false;
+    bool canIdentifyPlayer = false;
+    bool canClassifyFreeRoam = false;
+    bool roadNetworkAvailable = false;
+    bool careerReadAvailable = false;
+
+    // Remains false until a dedicated experimental-spawn build proves the
+    // complete create -> attach AI -> goal -> cleanup lifecycle safely.
+    bool rivalSpawnExperimentVerified = false;
+
+    // Remains false until exact engine-backed ownership transfer + rollback
+    // are proven. Read access to cash/garage does NOT imply write safety.
+    bool economyWriteVerified = false;
+    bool garageWriteVerified = false;
+};
+
 struct RuntimeSnapshot {
     bool inWorld = false;
     bool inNIS = false;
@@ -60,6 +84,7 @@ struct RuntimeSnapshot {
 
     VehicleProbe vehicles{};
     CareerProbe career{};
+    RuntimeCapabilities capabilities{};
 
     WorldProbeMode mode = WorldProbeMode::NoWorld;
 };
