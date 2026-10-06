@@ -42,10 +42,12 @@ bool sameMeaningfulState(
             b.vehicles.registryReadable &&
         a.vehicles.playerIVehicle ==
             b.vehicles.playerIVehicle &&
-        a.vehicles.playerPVehicleCandidate ==
-            b.vehicles.playerPVehicleCandidate &&
-        a.vehicles.playerPVehicleVtableVerified ==
-            b.vehicles.playerPVehicleVtableVerified &&
+        a.vehicles.playerPVehicle ==
+            b.vehicles.playerPVehicle &&
+        a.vehicles.pvehicleRegistryCount ==
+            b.vehicles.pvehicleRegistryCount &&
+        a.vehicles.independentPlayerCrossCheck ==
+            b.vehicles.independentPlayerCrossCheck &&
         a.vehicles.totalVehicles ==
             b.vehicles.totalVehicles &&
         a.vehicles.humanVehicles ==
@@ -79,15 +81,17 @@ std::string describe(const RuntimeSnapshot& s) {
         << " IVehicle=0x"
         << std::hex << std::uppercase
         << s.vehicles.playerIVehicle
-        << " PVehicleCandidate=0x"
-        << s.vehicles.playerPVehicleCandidate
+        << " PVehicle=0x"
+        << s.vehicles.playerPVehicle
         << " raceStatus=0x"
         << s.raceStatus
         << " roadNetwork=0x"
         << s.roadNetwork
         << std::dec
-        << " pvehicleVerified="
-        << (s.vehicles.playerPVehicleVtableVerified ? 1 : 0)
+        << " pvehicleCount="
+        << s.vehicles.pvehicleRegistryCount
+        << " playerCrossCheck="
+        << (s.vehicles.independentPlayerCrossCheck ? 1 : 0)
         << " vehicles=" << s.vehicles.totalVehicles
         << " human=" << s.vehicles.humanVehicles
         << " traffic=" << s.vehicles.trafficVehicles
@@ -108,6 +112,24 @@ std::string describe(const RuntimeSnapshot& s) {
     } else {
         out << " career=unavailable";
     }
+
+    out << " caps=[world:"
+        << (s.capabilities.canObserveWorld ? 1 : 0)
+        << ",player:"
+        << (s.capabilities.canIdentifyPlayer ? 1 : 0)
+        << ",freeroam:"
+        << (s.capabilities.canClassifyFreeRoam ? 1 : 0)
+        << ",road:"
+        << (s.capabilities.roadNetworkAvailable ? 1 : 0)
+        << ",careerRead:"
+        << (s.capabilities.careerReadAvailable ? 1 : 0)
+        << ",spawnWrite:"
+        << (s.capabilities.rivalSpawnExperimentVerified ? 1 : 0)
+        << ",economyWrite:"
+        << (s.capabilities.economyWriteVerified ? 1 : 0)
+        << ",garageWrite:"
+        << (s.capabilities.garageWriteVerified ? 1 : 0)
+        << "]";
 
     return out.str();
 }
