@@ -11,7 +11,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.4-dev";
+constexpr const char* kVersion = "0.0.5-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -19,53 +19,81 @@ int bootstrap() {
     log.info(std::string(kName) + " v" + kVersion + " loaded.");
     log.info("Running executable compatibility check.");
 
-    const VersionCheck check = VersionGuard::checkCurrentExecutable();
+    const VersionCheck check =
+        VersionGuard::checkCurrentExecutable();
 
     {
         std::ostringstream line;
-        line << "Executable path: " << check.executable.path;
+        line << "Executable path: "
+             << check.executable.path;
         log.info(line.str());
     }
 
     {
         std::ostringstream line;
-        line << "Executable size: " << check.executable.size;
+        line << "Executable size: "
+             << check.executable.size;
         log.info(line.str());
     }
 
-    log.info(std::string("Executable MD5: ") + check.executable.md5);
+    log.info(
+        std::string("Executable MD5: ") +
+        check.executable.md5
+    );
 
     if (!check.supported) {
-        log.warn(std::string("Unsupported executable: ") + check.reason);
-        log.warn("Fail-closed: no runtime hooks or save/economy features will be enabled.");
+        log.warn(
+            std::string("Unsupported executable: ") +
+            check.reason
+        );
+        log.warn(
+            "Fail-closed: runtime hooks, spawning, AI, economy and garage systems remain disabled."
+        );
         return NFSMW_OK;
     }
 
     log.info(check.reason);
     log.info("Executable guard passed.");
+    log.info(
+        "Runtime stack: nfsmw-2005-sdk + MWSDK verified live registry + NFSPluginSDK typed gameplay structures."
+    );
 
     const Config config = Config::load();
 
-    if (config.runtimeProbeEnabled) {
-        game::RuntimeProbeConfig probeConfig{};
-        probeConfig.heartbeatFrames =
-            config.runtimeProbeHeartbeatFrames;
+    game::RuntimeProbeConfig probeConfig{};
+    probeConfig.renderProbeEnabled =
+        config.renderProbeEnabled;
+    probeConfig.inputProbeEnabled =
+        config.inputProbeEnabled;
+    probeConfig.sampleEveryFrames =
+        config.runtimeSampleEveryFrames;
+    probeConfig.heartbeatFrames =
+        config.runtimeProbeHeartbeatFrames;
 
-        if (!game::RuntimeProbe::install(probeConfig)) {
-            log.error("Runtime probe could not be installed; continuing with all gameplay features disabled.");
-        }
-    } else {
-        log.info("Runtime probe disabled by configuration.");
+    const auto installed =
+        game::RuntimeProbe::install(probeConfig);
+
+    if (!installed.renderProbeArmed &&
+        !installed.inputProbeInstalled) {
+        log.error(
+            "No runtime observation hook could be armed. All gameplay features remain disabled."
+        );
     }
 
-    log.info("v0.0.4-dev is read-only: no vehicle spawning, AI control, economy, garage, or pink-slip mutation is enabled.");
+    log.info(
+        "v0.0.5-dev remains mutation-safe: rival spawning, AI control, economy writes, garage writes and pink-slip transfers are disabled."
+    );
 
     return NFSMW_OK;
 }
 
 } // namespace frr
 
-NFSMW_PLUGIN_DECLARE("Free Roam Rivals", "0.0.4-dev", "Rogeriomatador")
+NFSMW_PLUGIN_DECLARE(
+    "Free Roam Rivals",
+    "0.0.5-dev",
+    "Rogeriomatador"
+)
 
 NFSMW_PLUGIN_MAIN() {
     return frr::bootstrap();
