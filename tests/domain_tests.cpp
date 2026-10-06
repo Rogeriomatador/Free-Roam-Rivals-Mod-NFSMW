@@ -1,3 +1,4 @@
+#include "domain/EncounterStateMachine.h"
 #include "domain/Progression.h"
 #include "domain/StakeRules.h"
 
@@ -71,6 +72,56 @@ int main() {
     require(stake.cash, "cash stake should be available");
     require(stake.pinkSlip, "pink slip should be available");
     require(stake.mixedCarAndCash, "rival can cover mixed-stake delta");
+
+    EncounterTuning tuning{};
+    tuning.interestDistanceMeters = 90.0f;
+    tuning.challengeDistanceMeters = 20.0f;
+    tuning.interestConfirmSeconds = 0.5f;
+    tuning.challengeTimeoutSeconds = 2.0f;
+    tuning.cooldownSeconds = 1.0f;
+
+    EncounterStateMachine encounter(tuning);
+
+    EncounterInput input{};
+    input.playerValid = true;
+    input.rivalValid = true;
+    input.distanceMeters = 50.0f;
+    input.deltaSeconds = 0.1f;
+
+    require(
+        encounter.tick(input) == EncounterState::Interested,
+        "nearby rival enters Interested"
+    );
+
+    input.distanceMeters = 15.0f;
+    input.deltaSeconds = 0.6f;
+
+    require(
+        encounter.tick(input) == EncounterState::ChallengeAvailable,
+        "close confirmed rival becomes challengeable"
+    );
+
+    input.acceptPressed = true;
+    input.deltaSeconds = 0.01f;
+
+    require(
+        encounter.tick(input) == EncounterState::Accepted,
+        "accept input starts encounter"
+    );
+
+    encounter.markRaceFinished();
+    require(
+        encounter.state() == EncounterState::Cooldown,
+        "race result starts cooldown"
+    );
+
+    input.acceptPressed = false;
+    input.deltaSeconds = 1.1f;
+
+    require(
+        encounter.tick(input) == EncounterState::Roaming,
+        "cooldown returns to roaming"
+    );
 
     std::cout << "Free Roam Rivals domain tests passed.\n";
     return 0;
