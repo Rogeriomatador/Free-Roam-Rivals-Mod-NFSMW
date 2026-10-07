@@ -153,6 +153,14 @@ Config Config::load() {
             0
         ) != 0;
 
+    cfg.worldCollisionDiagnosticsEnabled =
+        iniInt(
+            ini,
+            "Diagnostics",
+            "WorldCollisionDiagnosticsEnabled",
+            0
+        ) != 0;
+
     cfg.runtimeSampleEveryFrames =
         static_cast<unsigned>(
             std::clamp(
