@@ -8,6 +8,7 @@
 #include "domain/SpawnSafety.h"
 #include "domain/StagingPlanner.h"
 #include "domain/StagingStateMachine.h"
+#include "domain/VehicleFootprintLearning.h"
 #include "domain/VehicleSpatialEvidence.h"
 #include "domain/WorldMetricCalibration.h"
 #include "game/RoadCandidateProbe.h"
@@ -33,6 +34,7 @@ int main() {
     VehicleOrientedBox parked{};
     parked.valid = true;
     parked.identity = 0x1111;
+    parked.vehicleKey = 0xAABBCCDDu;
     parked.center = {0.0f, 0.0f, 0.0f};
     parked.right = {1.0f, 0.0f, 0.0f};
     parked.up = {0.0f, 1.0f, 0.0f};
@@ -164,6 +166,124 @@ int main() {
         !incompleteEvidence.verified &&
         incompleteEvidence.invalidVehicles == 1,
         "one unreadable live vehicle fails overlap evidence closed"
+    );
+
+    VehicleFootprintTuning footprintTuning{};
+    footprintTuning.minimumSamples = 4;
+    footprintTuning.maximumRelativeSpread = 0.03f;
+
+    VehicleFootprintLearner footprintLearner(
+        footprintTuning
+    );
+
+    for (int i = 0; i < 3; ++i) {
+        VehicleOrientedBox sample = parked;
+        sample.halfExtents = {
+            1.0f + 0.005f * static_cast<float>(i),
+            0.75f,
+            2.1f
+        };
+        footprintLearner.observe(sample);
+    }
+
+    auto learnedFootprint =
+        footprintLearner.estimate(
+            parked.vehicleKey
+        );
+
+    require(
+        learnedFootprint.found &&
+        !learnedFootprint.verified &&
+        learnedFootprint.sampleCount == 3,
+        "footprint model exists but remains unverified before minimum samples"
+    );
+
+    VehicleOrientedBox fourthSample = parked;
+    fourthSample.halfExtents = {
+        1.01f,
+        0.75f,
+        2.1f
+    };
+    footprintLearner.observe(fourthSample);
+
+    learnedFootprint =
+        footprintLearner.estimate(
+            parked.vehicleKey
+        );
+
+    require(
+        learnedFootprint.verified &&
+        learnedFootprint.sampleCount == 4 &&
+        learnedFootprint.maximumObservedRelativeSpread < 0.03f,
+        "four consistent rigid-body samples verify a learned model footprint"
+    );
+
+    require(
+        footprintLearner.verifiedModelCount() == 1,
+        "learner reports verified model coverage"
+    );
+
+    const auto roadAlignedFootprint =
+        makeRoadAlignedVehicleFootprint(
+            parked.vehicleKey,
+            {10.0f, 0.0f, 20.0f},
+            {0.0f, 0.0f, 5.0f},
+            learnedFootprint.meanHalfExtents
+        );
+
+    require(
+        roadAlignedFootprint.valid &&
+        roadAlignedFootprint.vehicleKey ==
+            parked.vehicleKey &&
+        roadAlignedFootprint.center.x == 10.0f &&
+        roadAlignedFootprint.right.x > 0.99f &&
+        roadAlignedFootprint.up.y > 0.99f &&
+        roadAlignedFootprint.forward.z > 0.99f,
+        "verified footprint becomes a road-aligned pre-construction OBB"
+    );
+
+    std::vector<VehicleOrientedBox> distantFleet = {
+        parked
+    };
+
+    const auto learnedOverlap =
+        evaluateFootprintAgainstFleet(
+            roadAlignedFootprint,
+            distantFleet,
+            true
+        );
+
+    require(
+        learnedOverlap.verified &&
+        !learnedOverlap.overlaps,
+        "learned pre-construction footprint can prove a clear live-vehicle area"
+    );
+
+    VehicleFootprintLearner unstableFootprint(
+        footprintTuning
+    );
+
+    for (int i = 0; i < 4; ++i) {
+        VehicleOrientedBox sample = parked;
+        sample.vehicleKey = 0x12345678u;
+        sample.halfExtents = {
+            i == 3 ? 1.5f : 1.0f,
+            0.75f,
+            2.1f
+        };
+        unstableFootprint.observe(sample);
+    }
+
+    const auto unstableEstimate =
+        unstableFootprint.estimate(
+            0x12345678u
+        );
+
+    require(
+        unstableEstimate.found &&
+        !unstableEstimate.verified &&
+        unstableEstimate.maximumObservedRelativeSpread > 0.03f,
+        "inconsistent dimensions fail learned footprint verification closed"
     );
 
     MotionScaleTuning motionTuning{};
