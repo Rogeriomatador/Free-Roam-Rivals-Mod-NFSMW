@@ -206,3 +206,19 @@ Release goals:
 - safe rollback
 - compatibility documentation
 
+
+
+## Status note (2026-10-07)
+
+v0.0.29 validated on target: metric scale, ground and fleet occupancy closed; selected
+GTI footprint verified when the GTI is driven. Remaining spawn-candidate proofs:
+remote road association (SeekAhead/FarFuture), streaming, full-view invisibility.
+Claude reported static factory ABI findings for 0x689820
+(docs/EXE_DUMP_V2_FINDINGS.md); original executable bytes and target logs were
+not supplied for independent reproduction. Racer constructor behaviour and
+cleanup order (UnSpawn/Kill) still require exact-executable verification.
+
+v0.0.30 adds an optional read-only post-race observation probe and pinned public
+research (docs/POST_RACE_RACER_RESEARCH.md). This probe has portable regression
+coverage but no target-game validation yet. It does not establish ownership,
+uninterrupted object lifetime or permission to alter native race vehicles.

@@ -11,7 +11,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.29-dev";
+constexpr const char* kVersion = "0.0.30-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -83,6 +83,7 @@ int bootstrap() {
         config.worldCollisionDiagnosticsEnabled;
     probeConfig.cameraFrustumDiagnosticsEnabled = config.cameraFrustumDiagnosticsEnabled;
     probeConfig.motionCaptureEnabled = config.motionCaptureEnabled;
+    probeConfig.postRaceRacerDiagnosticsEnabled = config.postRaceRacerDiagnosticsEnabled;
     probeConfig.sampleEveryFrames =
         config.runtimeSampleEveryFrames;
     probeConfig.heartbeatFrames =
@@ -115,7 +116,7 @@ int bootstrap() {
     }
 
     log.info(
-        "v0.0.29-dev canonicalizes NFSPluginSDK vectors to MW X/Y-up/Z, repairs vertical collision/OBB semantics, and can promote a source-backed target metric scale. Construction remains disabled pending full candidate proof."
+        "v0.0.30-dev adds opt-in post-race racer identity observations on the completed gameplay loop. Correlation does not prove lifetime; construction and AI mutation remain disabled."
     );
 
     return NFSMW_OK;
@@ -125,7 +126,7 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.29-dev",
+    "0.0.30-dev",
     "Rogeriomatador"
 )
 

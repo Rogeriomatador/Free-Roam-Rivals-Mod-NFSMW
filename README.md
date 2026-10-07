@@ -50,7 +50,9 @@ Support for additional 1.3 executables will be added only after their addresses/
 
 ## Current status
 
-**Pre-alpha / read-only runtime + gameplay-thread world-collision evidence + road/spawn-readiness foundations (v0.0.26-dev).**
+**Pre-alpha / read-only runtime + road/spawn-readiness foundations (v0.0.30-dev).**
+
+v0.0.30 adds an optional `Diagnostics.PostRaceRacerDiagnosticsEnabled=1` observation of native racers across stock-race/free-roam transitions. It correlates live vehicle identities, AI interface identities and movement without changing race goals or constructing cars. Loading, incomplete reads and context changes discard correlations; no matches are inconclusive. Target-game validation is pending. See [post-race research and test procedure](docs/POST_RACE_RACER_RESEARCH.md) for pinned public sources, evidence limits and the separate existing Native Free Roam Racers implementation.
 
 The ASI validates the supported executable, installs observation hooks, separates Free Roam from stock races, enumerates live IVehicle driver classes, independently cross-checks the player PVehicle, observes the road network, reads career cash/car-count/completion, and validates the configured rival-car catalog without mutating the game.
 

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.29
+    VERSION 0.0.30
     LANGUAGES C CXX
 )
 
@@ -71,6 +71,7 @@ set(FRR_DOMAIN_SOURCES
     src/domain/MutationReadiness.cpp
     src/domain/RenderObservation.cpp
     src/domain/OutrunRace.cpp
+    src/domain/PostRaceObservation.cpp
     src/domain/Progression.cpp
     src/domain/RoadCandidatePlanner.cpp
     src/domain/RivalGarage.cpp
@@ -104,6 +105,7 @@ nfsmw_add_plugin(FreeRoamRivals
         src/game/GameplayLoopHook.cpp
         src/game/GameBridge.cpp
         src/game/PlayerMotionProbe.cpp
+        src/game/PostRaceRacerProbe.cpp
         src/game/RoadCandidateProbe.cpp
         src/game/RoadNavProbe.cpp
         src/game/RuntimeProbe.cpp
@@ -265,3 +267,7 @@ add_test(NAME FreeRoamRivalsGameplayHookTests COMMAND FreeRoamRivalsGameplayHook
 add_executable(FreeRoamRivalsSpatialFactoryTests tests/vehicle_spatial_factory_tests.cpp src/domain/VehicleSpatialEvidence.cpp)
 target_include_directories(FreeRoamRivalsSpatialFactoryTests PRIVATE src)
 add_test(NAME FreeRoamRivalsSpatialFactoryTests COMMAND FreeRoamRivalsSpatialFactoryTests)
+
+add_executable(FreeRoamRivalsPostRaceTests tests/post_race_tests.cpp src/domain/PostRaceObservation.cpp)
+target_include_directories(FreeRoamRivalsPostRaceTests PRIVATE src)
+add_test(NAME FreeRoamRivalsPostRaceTests COMMAND FreeRoamRivalsPostRaceTests)

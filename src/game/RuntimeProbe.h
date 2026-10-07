@@ -10,6 +10,7 @@ struct RuntimeProbeConfig {
     bool worldCollisionDiagnosticsEnabled = false;
     bool cameraFrustumDiagnosticsEnabled = false;
     bool motionCaptureEnabled = false;
+    bool postRaceRacerDiagnosticsEnabled = false;
     unsigned sampleEveryFrames = 30;
     unsigned heartbeatFrames = 600;
 

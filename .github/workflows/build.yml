@@ -28,6 +28,9 @@ jobs:
       - name: Audit motion capture tests
         run: python -m unittest discover -s tests -p test_motion_capture.py
 
+      - name: Exe function dump tool tests
+        run: python -m unittest discover -s tests -p test_dump_exe_functions.py
+
       - name: Collect ASI
         shell: pwsh
         run: |
@@ -58,6 +61,7 @@ jobs:
           Copy-Item "config/UndergroundBlacklist.ini" "$pkg/scripts/FreeRoamRivals/UndergroundBlacklist.ini"
           New-Item -ItemType Directory -Force "$pkg/tools" | Out-Null
           Copy-Item "tools/analyze_motion_capture.py" "$pkg/tools/"
+          Copy-Item "tools/dump_exe_functions.py" "$pkg/tools/"
           Copy-Item "docs/MOTION_CAPTURE.md" "$pkg/MOTION_CAPTURE.md"
           Copy-Item "docs/RENDER_HOOK_RECOVERY.md" "$pkg/RENDER_HOOK_RECOVERY.md"
           Copy-Item "docs/GAMEPLAY_LOOP_RECOVERY.md" "$pkg/GAMEPLAY_LOOP_RECOVERY.md"
@@ -66,30 +70,29 @@ jobs:
           Copy-Item "docs/TARGET_CAPTURE_V27_ALL_DIAGNOSTICS_2026-10-07.md" "$pkg/TARGET_CAPTURE_V27_ALL_DIAGNOSTICS_2026-10-07.md"
           Copy-Item "docs/TARGET_CAPTURE_V28_ALL_DIAGNOSTICS_2026-10-07.md" "$pkg/TARGET_CAPTURE_V28_ALL_DIAGNOSTICS_2026-10-07.md"
           Copy-Item "docs/COORDINATE_CONVENTIONS.md" "$pkg/COORDINATE_CONVENTIONS.md"
+          Copy-Item "docs/TARGET_CAPTURE_V29_ALL_DIAGNOSTICS_2026-10-07.md" "$pkg/TARGET_CAPTURE_V29_ALL_DIAGNOSTICS_2026-10-07.md"
+          Copy-Item "docs/EXE_DUMP_V2_FINDINGS.md" "$pkg/EXE_DUMP_V2_FINDINGS.md"
+          Copy-Item "docs/POST_RACE_RACER_RESEARCH.md" "$pkg/POST_RACE_RACER_RESEARCH.md"
 
           @"
-          NFSMW Free Roam Rivals v0.0.29-dev
+          NFSMW Free Roam Rivals v0.0.30-dev
 
           INSTALL:
-          1. Extract this ZIP into the Need for Speed Most Wanted game folder.
-          2. Confirm FreeRoamRivals.asi is inside the scripts folder.
-          3. When updating, replace only the ASI and keep your edited INI.
-          4. Keep your existing INI when updating.
-          5. For the v0.0.29 validation, leave FrameTick, world collision and
-             motion capture enabled. Camera/Input may stay enabled too.
-          6. Enter Free Roam and drive normally for about 90-120 seconds.
-          7. Prefer the Golf GTI for this run if it is available in the garage;
-             this also lets the exact selected rival model footprint be observed.
-          8. Send scripts\FreeRoamRivals\FreeRoamRivals.log.
+          1. Extract this ZIP into the game folder.
+          2. Replace scripts\FreeRoamRivals.asi and keep your edited INIs.
+          3. Optional post-race test: add PostRaceRacerDiagnosticsEnabled=1
+             under [Diagnostics] in your existing INI.
+          4. Complete a normal career race, return to Free Roam and follow
+             an opponent if one remains visible for 30-60 seconds.
+          5. Send scripts\FreeRoamRivals\FreeRoamRivals.log.
+             See POST_RACE_RACER_RESEARCH.md for evidence limits.
 
-          v0.0.29 canonicalizes NFSPluginSDK vector reads to MW X/Y-up/Z,
-          preserves the verified live-IVehicle occupancy fix, repairs vertical
-          ground semantics and can promote a source-backed metric scale.
-          Construction and all mutation systems remain disabled.
-
-          Runtime vehicle creation and AI control are still disabled by default.
-          ExperimentalSpawnEnabled=1 only enables read-only preflight diagnostics
-          in this build; it does not spawn a car.
+          v0.0.30 adds opt-in, read-only post-race identity observations.
+          It does not create rivals or take ownership of native race cars.
+          PostRace diagnostics do not require FrameTickProbeEnabled;
+          the verified completed main-loop hook supplies their thread guard.
+          WorldCollisionDiagnostics still requires FrameTickProbeEnabled.
+          ExperimentalSpawnEnabled still enables preflight only.
 
           Supported development target:
           speed.exe size: 6029312 bytes
@@ -97,15 +100,15 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.29-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.30-dev.zip" -Force
 
-      - name: Publish v0.0.29-dev GitHub Release
+      - name: Publish v0.0.30-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.29-dev"
+          $tag = "v0.0.30-dev"
 
           $published = $false
           for ($attempt = 1; $attempt -le 3; $attempt++) {
@@ -115,17 +118,17 @@ jobs:
               if ($info.targetCommitish -ne "${{ github.sha }}") {
                 throw "Existing release target does not match this source commit."
               }
-              if ($info.assets.name -contains "FreeRoamRivals-v0.0.29-dev.zip") {
+              if ($info.assets.name -contains "FreeRoamRivals-v0.0.30-dev.zip") {
                 $published = $true
                 break
               }
-              gh release upload $tag "release/FreeRoamRivals-v0.0.29-dev.zip"
+              gh release upload $tag "release/FreeRoamRivals-v0.0.30-dev.zip"
             } else {
-              gh release create $tag "release/FreeRoamRivals-v0.0.29-dev.zip" `
+              gh release create $tag "release/FreeRoamRivals-v0.0.30-dev.zip" `
                 --target "${{ github.sha }}" `
-                --title "Free Roam Rivals v0.0.29-dev" `
+                --title "Free Roam Rivals v0.0.30-dev" `
                 --prerelease `
-                --notes "v0.0.29-dev: canonicaliza vetores NFSPluginSDK para X/Y-up/Z, corrige semântica vertical de colisão/OBB e adiciona calibração métrica fail-closed com velocidade m/s respaldada por fonte. Criação de rivais continua desativada."
+                --notes "v0.0.30-dev: diagnóstico opcional de corredores nativos após corrida, pesquisa pública de QuitRace/IA e ferramenta de dumps protegida contra sobrescrita. Criação de rivais ainda desativada; validação dentro do jogo pendente."
             }
             if ($LASTEXITCODE -eq 0) { $published = $true; break }
             if ($attempt -lt 3) { Start-Sleep -Seconds 5 }

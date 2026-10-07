@@ -60,7 +60,7 @@ Vehicle selection
        mAI -> IVehicleAI
   -> Racer host / goal
        CreateAIVehicleRacerInstance @ 0x43EF70
-       CreateAIGoalRacerInstance    @ 0x43D388
+       CreateAIGoalRacerInstance    @ 0x43D330 (0x43D388 is interior; see EXE_DUMP_V1_FINDINGS.md)
        SetAIRacerGoal / PushAIGoalByHash
   -> WRoadNav
   -> native AI tick
