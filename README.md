@@ -50,7 +50,7 @@ Support for additional 1.3 executables will be added only after their addresses/
 
 ## Current status
 
-**Pre-alpha / read-only runtime + gameplay-thread world-collision evidence + road/spawn-readiness foundations (v0.0.22-dev).**
+**Pre-alpha / read-only runtime + gameplay-thread world-collision evidence + road/spawn-readiness foundations (v0.0.23-dev).**
 
 The ASI validates the supported executable, installs observation hooks, separates Free Roam from stock races, enumerates live IVehicle driver classes, independently cross-checks the player PVehicle, observes the road network, reads career cash/car-count/completion, and validates the configured rival-car catalog without mutating the game.
 
@@ -101,6 +101,8 @@ The next hard runtime milestone remains intentionally narrow:
 The render callback remains observation-only. Pink slips and save mutation come later, after the runtime foundation is proven stable.
 
 v0.0.22 retains one deterministic pending rival per profile and uses only its selected vehicle key for footprint learning and overlap promotion. Missing evidence never changes that selection. Collision requests/results carry a 500 ms session lease and are revalidated against the live gameplay state before querying the world. See `docs/SELECTED_RIVAL_EVIDENCE.md`.
+
+v0.0.23 adds opt-in guarded primary-camera/view matrix reads and tests the entire selected collision footprint against the real primary frustum. It validates coordinate mapping, matrix coherence and box-plane separation; primary-camera evidence stays separate from final spawn visibility until mirrors and visual bounds are established. See `docs/CAMERA_FRUSTUM_EVIDENCE.md`.
 
 ## Repository map
 

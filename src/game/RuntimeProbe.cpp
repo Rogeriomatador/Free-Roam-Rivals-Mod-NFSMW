@@ -1,6 +1,7 @@
 #include "RuntimeProbe.h"
 
 #include "ChallengeInputProbe.h"
+#include "CameraFrustumProbe.h"
 #include "GameBridge.h"
 #include "RoadCandidateProbe.h"
 #include "VehicleCatalogProbe.h"
@@ -992,6 +993,8 @@ void sampleAndLog(
 
     g_exactRoadCandidateObserved.store(safeNow && exactRoadCandidateThisSample, std::memory_order_relaxed);
     queueWorldCollisionRequest(roadCandidates, current);
+    const auto primaryCamera = safeNow && g_config.cameraFrustumDiagnosticsEnabled
+        ? CameraFrustumProbe::sample() : frr::domain::PrimaryCameraSample{};
     const auto freshCollision = latestWorldCollisionResult();
     g_groundEvidenceObserved.store(
         freshCollision.available && freshCollision.ground.groundVerified && freshCollision.ground.groundValid,
@@ -1088,6 +1091,14 @@ void sampleAndLog(
         Log::instance().info(line.str());
     }
 
+    if (heartbeat && g_config.cameraFrustumDiagnosticsEnabled) {
+        std::ostringstream line;
+        line << "Primary-camera observation: coherent=" << (primaryCamera.available ? 1 : 0)
+             << " viewId=" << primaryCamera.viewId
+             << " coordinateMapping=sim(z,-x,y)_to_render"
+             << " fullPlayerViewCoverageVerified=0 renderEnvelopeVerified=0 spawnVisibilityVerified=0";
+        Log::instance().info(line.str());
+    }
     if (heartbeat && !roadCandidates.empty()) {
         std::ostringstream line;
         line << "Road-candidate observations: count="
@@ -1160,6 +1171,12 @@ void sampleAndLog(
                          ? (selectedOverlap.evidence.overlapsLiveVehicle ? "occupied" : "clear") : "unverified")
                      << ",overlapVerified=" << (selectedOverlap.evidence.overlapVerified ? 1 : 0)
                      << ",promotion=" << frr::domain::roadCandidateBlockerName(promotion.blocker);
+                if (g_config.cameraFrustumDiagnosticsEnabled) {
+                    const auto cameraReport = frr::domain::classifyPrimaryCameraFootprint(primaryCamera, selectedOverlap.footprint);
+                    line << ",primaryCamera=" << frr::domain::cameraBoxVisibilityName(cameraReport.visibility)
+                         << ",separatingPlane=" << cameraReport.separatingPlane
+                         << ",completeSpawnVisibilityVerified=0";
+                }
 
             }
 
@@ -1372,10 +1389,9 @@ DWORD WINAPI healthThread(LPVOID) {
         g_vehicleFootprintVerified.load(
             std::memory_order_relaxed
         );
-    readiness.groundEvidenceVerified =
-        g_groundEvidenceObserved.load(
-            std::memory_order_relaxed
-        );
+    const auto healthCollision = latestWorldCollisionResult();
+    readiness.groundEvidenceVerified = healthCollision.available &&
+        healthCollision.ground.groundVerified && healthCollision.ground.groundValid;
 
     // Intentionally false until target-machine calibration/candidate
     // promotion work completes. This keeps construction fail-closed.

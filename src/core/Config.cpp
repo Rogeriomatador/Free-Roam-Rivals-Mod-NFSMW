@@ -161,6 +161,9 @@ Config Config::load() {
             0
         ) != 0;
 
+    cfg.cameraFrustumDiagnosticsEnabled =
+        iniInt(ini, "Diagnostics", "CameraFrustumDiagnosticsEnabled", 0) != 0;
+
     cfg.runtimeSampleEveryFrames =
         static_cast<unsigned>(
             std::clamp(
@@ -422,3 +425,4 @@ Config Config::load() {
 }
 
 } // namespace frr
+

@@ -43,7 +43,9 @@ Exit criterion: loading the ASI does not alter gameplay and creates a diagnostic
 - [x] Execute world-collision queries only on confirmed gameplay/input thread
 - [x] Implement live world-face ground + road-grade evidence
 - [x] Implement player-to-candidate world/barrier occlusion diagnostics
-- [ ] Resolve real camera/frustum visibility evidence
+- [x] Capture primary camera matrices with guarded SDK reads and coherent-matrix checks
+- [x] Establish simulation/render mapping and whole-collision-OBB primary-frustum classification
+- [ ] Verify complete camera visibility: mirrors, visual bounds and target-machine validation
 - [ ] Resolve world streaming/spooling evidence
 - [ ] Extract and promote one verified road-safe/off-screen spawn candidate in-game
 - [ ] Validate dedicated gameplay-thread mutation callback in-game
