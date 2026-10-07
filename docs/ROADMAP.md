@@ -36,7 +36,10 @@ Exit criterion: loading the ASI does not alter gameplay and creates a diagnostic
 - [x] Progression-aware vanilla vehicle catalog and deterministic selector
 - [x] Persistent-vs-procedural vehicle ownership policy
 - [x] Interest/challenge distance state machine (runtime adapter pending)
-- [ ] Detect horn or configured fallback input
+- [x] Parse configurable fallback challenge key
+- [x] Detect edge-triggered fallback challenge input from the game input-poll callback
+- [ ] Identify a genuine native horn/honk source (current verified action table has none)
+- [ ] Wire queued challenge presses into runtime EncounterDirector
 - [ ] Wire accepted challenge into runtime encounter director
 - [x] No save writes
 
