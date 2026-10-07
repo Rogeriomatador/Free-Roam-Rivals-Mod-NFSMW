@@ -5,8 +5,10 @@ namespace frr::game {
 struct RuntimeProbeConfig {
     bool renderProbeEnabled = true;
     bool inputProbeEnabled = true;
+    bool roadNavProbeEnabled = true;
     unsigned sampleEveryFrames = 30;
     unsigned heartbeatFrames = 600;
+    unsigned roadNavLogEverySamples = 20;
 
     bool experimentalSpawnEnabled = false;
     unsigned stableFreeRoamSamplesBeforeSpawn = 6;

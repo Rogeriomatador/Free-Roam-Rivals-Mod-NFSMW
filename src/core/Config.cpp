@@ -99,6 +99,14 @@ Config Config::load() {
             1
         ) != 0;
 
+    cfg.roadNavProbeEnabled =
+        iniInt(
+            ini,
+            "Diagnostics",
+            "RoadNavProbeEnabled",
+            1
+        ) != 0;
+
     cfg.runtimeSampleEveryFrames =
         static_cast<unsigned>(
             std::clamp(
@@ -124,6 +132,20 @@ Config Config::load() {
                 ),
                 60,
                 36000
+            )
+        );
+
+    cfg.roadNavLogEverySamples =
+        static_cast<unsigned>(
+            std::clamp(
+                iniInt(
+                    ini,
+                    "Diagnostics",
+                    "RoadNavLogEverySamples",
+                    20
+                ),
+                1,
+                3600
             )
         );
 

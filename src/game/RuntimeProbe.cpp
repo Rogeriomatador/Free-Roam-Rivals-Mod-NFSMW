@@ -27,12 +27,19 @@ bool g_haveLast = false;
 std::atomic<std::uint64_t> g_renderFrames{0};
 std::atomic<std::uint64_t> g_inputPolls{0};
 std::atomic<std::uint64_t> g_samples{0};
+std::atomic<std::uint32_t> g_renderThreadId{0};
+std::atomic<std::uint32_t> g_inputThreadId{0};
 bool g_vehicleCatalogValidated = false;
 
 frr::domain::RuntimeSessionTracker g_runtimeSession{};
 bool g_haveSpawnPreflight = false;
 frr::domain::SpawnRejectReason g_lastSpawnPreflightReason =
     frr::domain::SpawnRejectReason::ExperimentalFeatureDisabled;
+
+bool g_haveRoadNavLog = false;
+bool g_lastRoadNavAvailable = false;
+std::uint64_t g_lastRoadNavLogSample = 0;
+std::uint64_t g_lastRoadNavGeneration = 0;
 
 bool sameMeaningfulState(
     const RuntimeSnapshot& a,
@@ -47,6 +54,7 @@ bool sameMeaningfulState(
         a.raceStatusLoading == b.raceStatusLoading &&
         a.racePlayMode == b.racePlayMode &&
         a.roadNetwork == b.roadNetwork &&
+        a.roadNav.available == b.roadNav.available &&
         a.vehicles.registryReadable ==
             b.vehicles.registryReadable &&
         a.vehicles.playerIVehicle ==
@@ -77,6 +85,50 @@ bool sameMeaningfulState(
         a.mode == b.mode;
 }
 
+void appendVector(
+    std::ostringstream& out,
+    const Vector3Probe& value
+) {
+    out << "("
+        << value.x << ","
+        << value.y << ","
+        << value.z << ")";
+}
+
+void appendRoad(
+    std::ostringstream& out,
+    const char* label,
+    const RoadGeometryProbe& road
+) {
+    out << " " << label << "=[";
+
+    if (!road.available) {
+        out << "unavailable]";
+        return;
+    }
+
+    out << "valid=" << (road.valid ? 1 : 0)
+        << ",seg=" << road.segmentIndex
+        << ",lane=" << road.laneIndex
+        << ",t=" << road.segmentTime
+        << ",width=" << road.widthWorldUnits
+        << ",curve=" << road.curvature
+        << ",dead=" << (road.deadEnd ? 1 : 0)
+        << ",occ=" << road.roadOcclusion
+        << ",avoidOcc=" << road.avoidableOcclusion
+        << ",behindOcc="
+        << (road.occludedFromBehind ? 1 : 0)
+        << ",pos=";
+    appendVector(out, road.position);
+    out << ",fwd=";
+    appendVector(out, road.forward);
+    out << ",start=";
+    appendVector(out, road.startPosition);
+    out << ",end=";
+    appendVector(out, road.endPosition);
+    out << "]";
+}
+
 std::string describe(const RuntimeSnapshot& s) {
     std::ostringstream out;
 
@@ -92,6 +144,8 @@ std::string describe(const RuntimeSnapshot& s) {
         << s.vehicles.playerIVehicle
         << " PVehicle=0x"
         << s.vehicles.playerPVehicle
+        << " roadAI=0x"
+        << s.roadNav.vehicleAI
         << " raceStatus=0x"
         << s.raceStatus
         << " roadNetwork=0x"
@@ -130,6 +184,8 @@ std::string describe(const RuntimeSnapshot& s) {
         << (s.capabilities.canClassifyFreeRoam ? 1 : 0)
         << ",road:"
         << (s.capabilities.roadNetworkAvailable ? 1 : 0)
+        << ",playerRoadNav:"
+        << (s.capabilities.playerRoadNavigationReadable ? 1 : 0)
         << ",careerRead:"
         << (s.capabilities.careerReadAvailable ? 1 : 0)
         << ",spawnWrite:"
@@ -225,6 +281,89 @@ void updateRuntimeSessionAndSpawnPreflight(
     }
 }
 
+void maybeLogRoadNavigation(
+    const RuntimeSnapshot& current
+) {
+    if (!g_config.roadNavProbeEnabled ||
+        current.mode != WorldProbeMode::FreeRoamCandidate) {
+        return;
+    }
+
+    const std::uint64_t sample = g_samples.load();
+    const auto session = g_runtimeSession.snapshot();
+
+    const bool generationChanged =
+        session.active &&
+        session.generation != g_lastRoadNavGeneration;
+
+    const bool availabilityChanged =
+        g_haveRoadNavLog &&
+        current.roadNav.available != g_lastRoadNavAvailable;
+
+    const bool periodic =
+        !g_haveRoadNavLog ||
+        sample - g_lastRoadNavLogSample >=
+            g_config.roadNavLogEverySamples;
+
+    if (!generationChanged &&
+        !availabilityChanged &&
+        !periodic) {
+        return;
+    }
+
+    g_haveRoadNavLog = true;
+    g_lastRoadNavAvailable =
+        current.roadNav.available;
+    g_lastRoadNavLogSample = sample;
+    g_lastRoadNavGeneration =
+        session.generation;
+
+    if (!current.roadNav.available) {
+        std::ostringstream line;
+        line << "Player road-nav probe unavailable"
+             << " generation=" << session.generation
+             << " sample=" << sample
+             << ". PVehicle is valid, but IVehicleAI/WRoadNav could not be read safely.";
+        Log::instance().warn(line.str());
+        return;
+    }
+
+    const auto& nav = current.roadNav;
+
+    std::ostringstream line;
+    line << std::fixed << std::setprecision(2)
+         << "Player road-nav"
+         << " generation=" << session.generation
+         << " sample=" << sample
+         << " ai=0x"
+         << std::hex << std::uppercase
+         << nav.vehicleAI
+         << std::dec
+         << " player=";
+    appendVector(line, nav.playerPosition);
+
+    appendRoad(line, "current", nav.current);
+    appendRoad(line, "future", nav.future);
+
+    line << " seekAhead=";
+    appendVector(line, nav.seekAheadPosition);
+    line << " seekDist="
+         << nav.seekAheadDistanceWorldUnits
+         << " seekProj="
+         << nav.seekAheadProjectionWorldUnits
+         << " farFuture=";
+    appendVector(line, nav.farFuturePosition);
+    line << " farDist="
+         << nav.farFutureDistanceWorldUnits
+         << " farProj="
+         << nav.farFutureProjectionWorldUnits
+         << " farDir=";
+    appendVector(line, nav.farFutureDirection);
+    line << " units=world";
+
+    Log::instance().info(line.str());
+}
+
 void sampleAndLog(
     std::uint64_t renderFrame
 ) {
@@ -232,6 +371,7 @@ void sampleAndLog(
     ++g_samples;
 
     updateRuntimeSessionAndSpawnPreflight(current);
+    maybeLogRoadNavigation(current);
 
     if (!g_vehicleCatalogValidated &&
         current.mode == WorldProbeMode::FreeRoamCandidate &&
@@ -289,6 +429,14 @@ void sampleAndLog(
 }
 
 void onRenderFrame(void*) {
+    const std::uint32_t threadId =
+        static_cast<std::uint32_t>(GetCurrentThreadId());
+    std::uint32_t expectedRenderThread = 0;
+    g_renderThreadId.compare_exchange_strong(
+        expectedRenderThread,
+        threadId
+    );
+
     const std::uint64_t frame = ++g_renderFrames;
 
     if (g_config.sampleEveryFrames == 0 ||
@@ -299,6 +447,14 @@ void onRenderFrame(void*) {
 }
 
 void onInputPoll() {
+    const std::uint32_t threadId =
+        static_cast<std::uint32_t>(GetCurrentThreadId());
+    std::uint32_t expectedInputThread = 0;
+    g_inputThreadId.compare_exchange_strong(
+        expectedInputThread,
+        threadId
+    );
+
     ++g_inputPolls;
 }
 
@@ -311,7 +467,14 @@ DWORD WINAPI healthThread(LPVOID) {
     out << "Runtime hook health after 8s:"
         << " renderFrames=" << g_renderFrames.load()
         << " inputPolls=" << g_inputPolls.load()
-        << " samples=" << g_samples.load();
+        << " samples=" << g_samples.load()
+        << " renderThread=" << g_renderThreadId.load()
+        << " inputThread=" << g_inputThreadId.load()
+        << " sameThread="
+        << ((g_renderThreadId.load() != 0 &&
+             g_renderThreadId.load() == g_inputThreadId.load())
+                ? 1
+                : 0);
 
     Log::instance().info(out.str());
 
@@ -363,6 +526,12 @@ RuntimeProbeInstallResult RuntimeProbe::install(
                 "Input-poll diagnostic hook failed to install."
             );
         }
+    }
+
+    if (config.roadNavProbeEnabled) {
+        Log::instance().info(
+            "Player road-navigation diagnostic enabled (read-only CurrentRoad/FutureRoad/SeekAhead/FarFuture sampling)."
+        );
     }
 
     HANDLE thread = CreateThread(

@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.0.9-dev
+
+- Added a guarded read-only player road-navigation probe through the validated
+  PVehicle -> IVehicleAI path.
+- Free Roam diagnostics now sample:
+  - player position
+  - IVehicleAI runtime address
+  - CurrentRoad and FutureRoad availability/validity
+  - segment index, lane index and segment time
+  - road width, curvature and dead-end state
+  - road/avoidable occlusion and behind-occlusion flag
+  - road position, forward vector, start and end positions
+  - SeekAheadPosition
+  - FarFuturePosition and FarFutureDirection
+  - straight-line distance and forward projection to seek/far-future points
+- Added a dedicated player-road-navigation runtime capability flag.
+- Added configurable RoadNavProbeEnabled and RoadNavLogEverySamples diagnostics.
+- Runtime hook health now records render-thread and input-poll-thread IDs plus whether both callbacks are observed on the same thread; this is evidence for choosing the future gameplay mutation callback.
+- Road distances are deliberately logged as engine world units until in-game
+  captures establish the exact practical mapping for spawn/staging tuning.
+- Vehicle construction and AI mutation remain disabled; the purpose of this
+  build is to identify real road-relative coordinates without inventing XYZ
+  positions.
+
 ## 0.0.8-dev
 
 - Added explicit world-generation tracking for Free Roam runtime sessions.

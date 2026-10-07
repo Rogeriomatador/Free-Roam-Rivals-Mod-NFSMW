@@ -22,7 +22,8 @@ Exit criterion: loading the ASI does not alter gameplay and creates a diagnostic
 - [x] Track world generations and invalidate stale runtime handles
 - [x] Add generation-scoped rival runtime-handle model
 - [x] Add read-only spawn preflight diagnostics
-- [ ] Extract a verified road-safe/off-screen spawn candidate from the live road system
+- [x] Read player CurrentRoad/FutureRoad/SeekAhead/FarFuture geometry safely
+- [ ] Validate road-nav captures across Rockport and extract a verified road-safe/off-screen spawn candidate
 - [ ] Install a dedicated gameplay-thread mutation callback
 - [ ] Construct/verify/clean up one experimental rival vehicle
 - [ ] Attach/verify native roaming AI
@@ -43,7 +44,7 @@ Exit criterion: one rival can exist in free roam and naturally enter a challenge
 - [x] Timeout/draw/abort recovery rules
 - [x] Race result model
 - [x] HUD-ready hold progress
-- [ ] Derive signed lead from live road progress
+- [ ] Derive signed lead from live road progress (road-nav probe now available)
 - [ ] Basic D3D9 HUD
 - [ ] Wire result into rival cooldown/history
 
@@ -52,8 +53,9 @@ Exit criterion: complete repeatable 1v1 Outrun without loading a stock race.
 ## v0.3 — Staging + cinematic
 
 - [x] Read road-network singleton
+- [x] Read live player road geometry/forward/width/curvature diagnostics
 - [x] Implement safe staging-candidate scoring/selection rules
-- [ ] Populate staging candidates from the live road network
+- [ ] Populate staging candidates from validated live road-nav geometry
 - [x] Implement Search -> Reserve -> Approach -> Align state flow
 - [ ] Rival approach runtime control
 - [ ] Temporary player control suppression bridge

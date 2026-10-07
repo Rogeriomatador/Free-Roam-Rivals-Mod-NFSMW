@@ -11,7 +11,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.8-dev";
+constexpr const char* kVersion = "0.0.9-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -65,10 +65,14 @@ int bootstrap() {
         config.renderProbeEnabled;
     probeConfig.inputProbeEnabled =
         config.inputProbeEnabled;
+    probeConfig.roadNavProbeEnabled =
+        config.roadNavProbeEnabled;
     probeConfig.sampleEveryFrames =
         config.runtimeSampleEveryFrames;
     probeConfig.heartbeatFrames =
         config.runtimeProbeHeartbeatFrames;
+    probeConfig.roadNavLogEverySamples =
+        config.roadNavLogEverySamples;
     probeConfig.experimentalSpawnEnabled =
         config.experimentalSpawnEnabled;
     probeConfig.stableFreeRoamSamplesBeforeSpawn =
@@ -87,7 +91,7 @@ int bootstrap() {
     }
 
     log.info(
-        "v0.0.8-dev adds executable spawn-safety gates, world-generation tracking, runtime rival-handle rules, Outrun race logic and cinematic-staging state/planner foundations. Vehicle creation and AI mutation remain disabled until a road-safe spawn candidate and gameplay-thread lifecycle are proven."
+        "v0.0.9-dev adds a read-only player road-navigation probe for CurrentRoad/FutureRoad/SeekAhead/FarFuture geometry. This is intended to identify a real road-relative spawn/staging candidate before any vehicle construction is enabled."
     );
 
     return NFSMW_OK;
@@ -97,7 +101,7 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.8-dev",
+    "0.0.9-dev",
     "Rogeriomatador"
 )
 
