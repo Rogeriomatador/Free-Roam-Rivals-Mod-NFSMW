@@ -436,9 +436,15 @@ int main() {
     roadEvidence.twoCarGeometryVerified = true;
     roadEvidence.supportsTwoCars = true;
 
+    RoadCandidateObservation stagingObservation =
+        futureObservation;
+    stagingObservation.distanceWorldUnits = 240.0f;
+    stagingObservation.forwardProjectionWorldUnits = 240.0f;
+    stagingObservation.position.x = 240.0f;
+
     const auto roadStaging =
         promoteRoadCandidateForStaging(
-            futureObservation,
+            stagingObservation,
             roadEvidence,
             verifiedScale
         );
@@ -446,12 +452,13 @@ int main() {
     require(
         roadStaging.promotable &&
         roadStaging.transform.available &&
-        roadStaging.transform.position.x == 800.0f &&
+        roadStaging.transform.position.x == 240.0f &&
         roadStaging.candidate.metricGeometryVerified &&
+        roadStaging.candidate.distanceAheadMeters == 120.0f &&
         scoreStagingCandidate(
             roadStaging.candidate
         ).eligible,
-        "visible but otherwise safe road candidate keeps transform and enters staging scorer"
+        "visible but otherwise safe 120 m road candidate keeps transform and enters staging scorer"
     );
 
     RuntimeSessionTracker sessions;
