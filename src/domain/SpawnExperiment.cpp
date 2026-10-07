@@ -219,7 +219,7 @@ SpawnExperimentUpdate SpawnExperiment::tick(
             }
             break;
 
-        case SpawnExperimentState::VerifyRemoval:
+        case SpawnExperimentState::VerifyRemoval: {
             const unsigned requiredRemovalSamples =
                 std::max(
                     tuning_.removalConfirmSamples,
@@ -249,6 +249,7 @@ SpawnExperimentUpdate SpawnExperiment::tick(
                 );
             }
             break;
+        }
 
         case SpawnExperimentState::Idle:
         case SpawnExperimentState::Succeeded:
