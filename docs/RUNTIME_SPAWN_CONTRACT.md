@@ -92,6 +92,24 @@ AND current live rival count < population budget
 
 Any failed gate means: do nothing.
 
+## Raw world units versus metres
+
+WRoadNav and IVehicleAI lookahead vectors are engine/world coordinates. The current public SDK evidence proves field/function identity but does not by itself prove a physical metre scale for the supported executable.
+
+v0.0.14 therefore treats these values as `world units` and adds an explicit calibration gate.
+
+A raw coordinate delta may not populate `distanceFromPlayerMeters` unless:
+
+```text
+WorldMetricCalibration.verified == true
+AND worldUnitsPerMeter is finite
+AND worldUnitsPerMeter > 0
+```
+
+SpawnSafety returns `DistanceScaleUnverified` otherwise. Staging candidates likewise require `metricGeometryVerified`.
+
+This prevents a seemingly plausible raw distance from silently crossing the 300-850 m spawn policy or the 35-220 m staging policy.
+
 ## Spawn point contract
 
 Initial spawn candidates must be road-relative, not arbitrary XYZ points.
