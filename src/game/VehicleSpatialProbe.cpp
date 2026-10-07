@@ -32,123 +32,166 @@ bool finiteVector(
         std::isfinite(value.z);
 }
 
-} // namespace
+enum class SlotReadKind : std::uint8_t {
+    End,
+    Ignored,
+    Valid,
+    Invalid,
+    Fault
+};
 
-VehicleSpatialSnapshot VehicleSpatialProbe::sample() {
-    VehicleSpatialSnapshot out{};
+struct SlotReadResult {
+    SlotReadKind kind = SlotReadKind::Fault;
+    frr::domain::VehicleOrientedBox box{};
+};
+
+// Keep SEH in a POD-only helper. MSVC rejects __try in functions that need
+// C++ object unwinding (VehicleSpatialSnapshot owns a std::vector).
+SlotReadResult readVehicleSlot(
+    std::uint32_t index
+) {
+    SlotReadResult out{};
 
 #if defined(_MSC_VER)
     __try {
 #endif
         using namespace NFSPluginSDK::MW05;
 
-        out.boxes.reserve(32);
+        const auto& slot =
+            PVehicle::g_mInstances[index];
 
-        std::uint32_t count = 0;
+        PVehicle* raw = slot.mInstance;
 
-        for (; count < kVehicleCountHardLimit; ++count) {
-            const auto& slot =
-                PVehicle::g_mInstances[count];
-
-            PVehicle* raw = slot.mInstance;
-            if (!raw) {
-                out.registryComplete = true;
-                break;
-            }
-
-            if (!slot.mIsEnabled) {
-                ++out.ignoredInactiveVehicles;
-                continue;
-            }
-
-            auto* vehicle =
-                raw | PVehicleEx::ValidatePVehicle;
-
-            if (!vehicle) {
-                ++out.failedSpatialReads;
-
-                frr::domain::VehicleOrientedBox invalid{};
-                invalid.identity =
-                    reinterpret_cast<std::uintptr_t>(raw);
-                out.boxes.push_back(invalid);
-                continue;
-            }
-
-            if (!vehicle->IsActive() ||
-                vehicle->IsDestroyed()) {
-                ++out.ignoredInactiveVehicles;
-                continue;
-            }
-
-            ++out.enabledActiveVehicles;
-
-            frr::domain::VehicleOrientedBox box{};
-            box.identity =
-                reinterpret_cast<std::uintptr_t>(vehicle);
-
-            IRigidBody* rigidBody =
-                vehicle->GetRigidBody();
-
-            if (!rigidBody ||
-                vehicle->IsLoading()) {
-                ++out.failedSpatialReads;
-                out.boxes.push_back(box);
-                continue;
-            }
-
-            const UMath::Vector3& position =
-                rigidBody->GetPosition();
-
-            UMath::Vector3 right{};
-            UMath::Vector3 up{};
-            UMath::Vector3 forward{};
-            UMath::Vector3 dimension{};
-
-            rigidBody->GetRightVector(right);
-            rigidBody->GetUpVector(up);
-            rigidBody->GetForwardVector(forward);
-            rigidBody->GetDimension(dimension);
-
-            if (!finiteVector(position) ||
-                !finiteVector(right) ||
-                !finiteVector(up) ||
-                !finiteVector(forward) ||
-                !finiteVector(dimension) ||
-                dimension.x <= 0.0f ||
-                dimension.y <= 0.0f ||
-                dimension.z <= 0.0f) {
-                ++out.failedSpatialReads;
-                out.boxes.push_back(box);
-                continue;
-            }
-
-            box.center = copyVector(position);
-            box.right = copyVector(right);
-            box.up = copyVector(up);
-            box.forward = copyVector(forward);
-            box.halfExtents = copyVector(dimension);
-            box.valid =
-                frr::domain::validVehicleOrientedBox(
-                    box
-                );
-
-            if (!box.valid) {
-                ++out.failedSpatialReads;
-            }
-
-            out.boxes.push_back(box);
+        if (!raw) {
+            out.kind = SlotReadKind::End;
+            return out;
         }
 
-        out.registryCount = count;
-
-        if (count >= kVehicleCountHardLimit) {
-            out.registryComplete = false;
+        if (!slot.mIsEnabled) {
+            out.kind = SlotReadKind::Ignored;
+            return out;
         }
+
+        auto* vehicle =
+            raw | PVehicleEx::ValidatePVehicle;
+
+        if (!vehicle) {
+            out.kind = SlotReadKind::Invalid;
+            out.box.identity =
+                reinterpret_cast<std::uintptr_t>(raw);
+            return out;
+        }
+
+        if (!vehicle->IsActive() ||
+            vehicle->IsDestroyed()) {
+            out.kind = SlotReadKind::Ignored;
+            return out;
+        }
+
+        out.box.identity =
+            reinterpret_cast<std::uintptr_t>(vehicle);
+
+        IRigidBody* rigidBody =
+            vehicle->GetRigidBody();
+
+        if (!rigidBody ||
+            vehicle->IsLoading()) {
+            out.kind = SlotReadKind::Invalid;
+            return out;
+        }
+
+        const UMath::Vector3& position =
+            rigidBody->GetPosition();
+
+        UMath::Vector3 right{};
+        UMath::Vector3 up{};
+        UMath::Vector3 forward{};
+        UMath::Vector3 dimension{};
+
+        rigidBody->GetRightVector(right);
+        rigidBody->GetUpVector(up);
+        rigidBody->GetForwardVector(forward);
+        rigidBody->GetDimension(dimension);
+
+        if (!finiteVector(position) ||
+            !finiteVector(right) ||
+            !finiteVector(up) ||
+            !finiteVector(forward) ||
+            !finiteVector(dimension) ||
+            dimension.x <= 0.0f ||
+            dimension.y <= 0.0f ||
+            dimension.z <= 0.0f) {
+            out.kind = SlotReadKind::Invalid;
+            return out;
+        }
+
+        out.box.center = copyVector(position);
+        out.box.right = copyVector(right);
+        out.box.up = copyVector(up);
+        out.box.forward = copyVector(forward);
+        out.box.halfExtents = copyVector(dimension);
+        out.box.valid =
+            frr::domain::validVehicleOrientedBox(
+                out.box
+            );
+
+        out.kind = out.box.valid
+            ? SlotReadKind::Valid
+            : SlotReadKind::Invalid;
+
+        return out;
 #if defined(_MSC_VER)
     } __except (EXCEPTION_EXECUTE_HANDLER) {
-        out = VehicleSpatialSnapshot{};
+        out.kind = SlotReadKind::Fault;
+        return out;
     }
 #endif
+}
+
+} // namespace
+
+VehicleSpatialSnapshot VehicleSpatialProbe::sample() {
+    VehicleSpatialSnapshot out{};
+    out.boxes.reserve(32);
+
+    for (std::uint32_t index = 0;
+         index < kVehicleCountHardLimit;
+         ++index) {
+        const SlotReadResult slot =
+            readVehicleSlot(index);
+
+        if (slot.kind == SlotReadKind::End) {
+            out.registryCount = index;
+            out.registryComplete = true;
+            break;
+        }
+
+        if (slot.kind == SlotReadKind::Ignored) {
+            ++out.ignoredInactiveVehicles;
+            continue;
+        }
+
+        ++out.enabledActiveVehicles;
+
+        if (slot.kind == SlotReadKind::Valid) {
+            out.boxes.push_back(slot.box);
+            continue;
+        }
+
+        ++out.failedSpatialReads;
+        out.boxes.push_back(slot.box);
+
+        if (slot.kind == SlotReadKind::Fault) {
+            // A fault means even the registry slot itself cannot be trusted.
+            // Keep scanning bounded, but never call the fleet complete.
+            out.registryComplete = false;
+        }
+    }
+
+    if (!out.registryComplete) {
+        out.registryCount =
+            kVehicleCountHardLimit;
+    }
 
     return out;
 }
