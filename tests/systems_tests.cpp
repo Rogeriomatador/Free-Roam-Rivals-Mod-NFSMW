@@ -2,12 +2,14 @@
 #include "domain/MotionScaleObserver.h"
 #include "domain/MutationReadiness.h"
 #include "domain/OutrunRace.h"
+#include "domain/RoadCandidatePlanner.h"
 #include "domain/RuntimeSession.h"
 #include "domain/RivalRuntimeHandle.h"
 #include "domain/SpawnSafety.h"
 #include "domain/StagingPlanner.h"
 #include "domain/StagingStateMachine.h"
 #include "domain/WorldMetricCalibration.h"
+#include "game/RoadCandidateProbe.h"
 
 #include <cstdlib>
 #include <iostream>
@@ -179,6 +181,14 @@ int main() {
     readinessReport = evaluateMutationReadiness(readiness);
     require(
         readinessReport.blocker ==
+            MutationReadinessBlocker::ExactRoadCandidateUnavailable,
+        "lookahead alone is insufficient without exact WRoadNav geometry"
+    );
+
+    readiness.exactRoadCandidateObserved = true;
+    readinessReport = evaluateMutationReadiness(readiness);
+    require(
+        readinessReport.blocker ==
             MutationReadinessBlocker::MetricCalibrationUnverified,
         "readiness requires verified metric scale"
     );
@@ -258,6 +268,197 @@ int main() {
         worldUnits.has_value() &&
         *worldUnits == 100.0f,
         "verified metric conversion round-trips"
+    );
+
+    frr::game::PlayerRoadNavigationProbe roadProbe{};
+    roadProbe.available = true;
+    roadProbe.playerPosition = {0.0f, 0.0f, 0.0f, true};
+
+    roadProbe.current.available = true;
+    roadProbe.current.valid = true;
+    roadProbe.current.segmentIndex = 10;
+    roadProbe.current.laneIndex = 1;
+    roadProbe.current.position = {0.0f, 0.0f, 0.0f, true};
+    roadProbe.current.forward = {1.0f, 0.0f, 0.0f, true};
+    roadProbe.current.roadWidthWorldUnits = 16.0f;
+    roadProbe.current.segmentSpanWorldUnits = 200.0f;
+    roadProbe.current.curvature = 0.005f;
+
+    roadProbe.future = roadProbe.current;
+    roadProbe.future.segmentIndex = 11;
+    roadProbe.future.position = {800.0f, 0.0f, 0.0f, true};
+
+    roadProbe.seekAheadPosition = {400.0f, 0.0f, 0.0f, true};
+    roadProbe.seekAheadDistanceWorldUnits = 400.0f;
+    roadProbe.seekAheadProjectionWorldUnits = 400.0f;
+
+    roadProbe.farFuturePosition = {900.0f, 0.0f, 0.0f, true};
+    roadProbe.farFutureDistanceWorldUnits = 900.0f;
+    roadProbe.farFutureProjectionWorldUnits = 900.0f;
+
+    const auto observedRoadCandidates =
+        frr::game::RoadCandidateProbe::build(roadProbe);
+
+    require(
+        observedRoadCandidates.size() == 4,
+        "road probe exposes current, future, seek-ahead and far-future observations"
+    );
+
+    const auto& currentObservation =
+        observedRoadCandidates[0];
+    const auto& futureObservation =
+        observedRoadCandidates[1];
+    const auto& seekObservation =
+        observedRoadCandidates[2];
+
+    require(
+        inspectRoadCandidate(currentObservation) ==
+            RoadCandidateBlocker::NotAhead,
+        "current road position is not promoted as an ahead candidate"
+    );
+
+    require(
+        inspectRoadCandidate(futureObservation) ==
+            RoadCandidateBlocker::None,
+        "future WRoadNav position carries exact promotable road geometry"
+    );
+
+    require(
+        inspectRoadCandidate(seekObservation) ==
+            RoadCandidateBlocker::RoadGeometryAssociationUnverified,
+        "SeekAhead stays observational until exact road association is proven"
+    );
+
+    RoadCandidateEvidence roadEvidence{};
+    auto roadSpawn =
+        promoteRoadCandidateForSpawn(
+            futureObservation,
+            roadEvidence,
+            rawScale,
+            true
+        );
+
+    require(
+        !roadSpawn.promotable &&
+        roadSpawn.blocker ==
+            RoadCandidateBlocker::MetricCalibrationUnverified,
+        "road candidate cannot promote through an unverified metric scale"
+    );
+
+    roadSpawn =
+        promoteRoadCandidateForSpawn(
+            futureObservation,
+            roadEvidence,
+            verifiedScale,
+            true
+        );
+
+    require(
+        !roadSpawn.promotable &&
+        roadSpawn.blocker ==
+            RoadCandidateBlocker::StreamingUnverified,
+        "metric geometry still requires streaming evidence"
+    );
+
+    roadEvidence.streamingVerified = true;
+    roadEvidence.groundVerified = true;
+    roadEvidence.groundValid = true;
+    roadEvidence.visibilityVerified = true;
+    roadEvidence.visibleToPlayer = false;
+    roadEvidence.overlapVerified = true;
+    roadEvidence.overlapsLiveVehicle = false;
+
+    roadSpawn =
+        promoteRoadCandidateForSpawn(
+            futureObservation,
+            roadEvidence,
+            verifiedScale,
+            true
+        );
+
+    require(
+        roadSpawn.promotable &&
+        roadSpawn.metric.available &&
+        roadSpawn.transform.available &&
+        roadSpawn.transform.position.x == 800.0f &&
+        roadSpawn.transform.forward.x == 1.0f &&
+        roadSpawn.metric.distanceMeters == 400.0f &&
+        roadSpawn.metric.roadWidthMeters == 8.0f,
+        "fully evidenced future road promotes with metric input and exact transform"
+    );
+
+    SpawnEnvironmentInput promotedSpawnEnv{};
+    promotedSpawnEnv.experimentalFeatureEnabled = true;
+    promotedSpawnEnv.supportedExecutable = true;
+    promotedSpawnEnv.freeRoamCandidate = true;
+    promotedSpawnEnv.playerAvailable = true;
+    promotedSpawnEnv.independentPlayerCrossCheck = true;
+    promotedSpawnEnv.roadNetworkAvailable = true;
+    promotedSpawnEnv.stableFreeRoamSamples = 6;
+    promotedSpawnEnv.liveRivals = 0;
+    promotedSpawnEnv.maxLiveRivals = 1;
+
+    const auto promotedSpawnDecision =
+        evaluateSpawnCandidate(
+            promotedSpawnEnv,
+            roadSpawn.candidate
+        );
+
+    require(
+        promotedSpawnDecision.allowed,
+        "promoted road candidate passes existing spawn safety thresholds"
+    );
+
+    roadEvidence.visibleToPlayer = true;
+    roadSpawn =
+        promoteRoadCandidateForSpawn(
+            futureObservation,
+            roadEvidence,
+            verifiedScale,
+            true
+        );
+
+    require(
+        !roadSpawn.promotable &&
+        roadSpawn.blocker ==
+            RoadCandidateBlocker::VisibleToPlayer,
+        "spawn promotion blocks a fully evidenced point that is on-screen"
+    );
+
+    // A staging destination may be visible because both cars can drive to it;
+    // hidden/off-screen is a spawn pop-in rule, not a cinematic-site rule.
+    roadEvidence.junctionVerified = true;
+    roadEvidence.junction = false;
+    roadEvidence.obstructionVerified = true;
+    roadEvidence.obstructed = false;
+    roadEvidence.gradeVerified = true;
+    roadEvidence.absoluteGrade = 0.02f;
+    roadEvidence.twoCarGeometryVerified = true;
+    roadEvidence.supportsTwoCars = true;
+
+    RoadCandidateObservation stagingObservation =
+        futureObservation;
+    stagingObservation.distanceWorldUnits = 240.0f;
+    stagingObservation.forwardProjectionWorldUnits = 240.0f;
+    stagingObservation.position.x = 240.0f;
+
+    const auto roadStaging =
+        promoteRoadCandidateForStaging(
+            stagingObservation,
+            roadEvidence,
+            verifiedScale
+        );
+
+    require(
+        roadStaging.promotable &&
+        roadStaging.transform.available &&
+        roadStaging.transform.position.x == 240.0f &&
+        roadStaging.candidate.metricGeometryVerified &&
+        roadStaging.candidate.distanceAheadMeters == 120.0f &&
+        scoreStagingCandidate(
+            roadStaging.candidate
+        ).eligible,
+        "visible but otherwise safe 120 m road candidate keeps transform and enters staging scorer"
     );
 
     RuntimeSessionTracker sessions;

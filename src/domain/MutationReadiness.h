@@ -13,6 +13,7 @@ enum class MutationReadinessBlocker {
     MainLoopThreadUnconfirmed,
     FreeRoamNotObserved,
     RoadLookaheadUnavailable,
+    ExactRoadCandidateUnavailable,
     MetricCalibrationUnverified,
     SpawnCandidateUnverified
 };
@@ -29,6 +30,7 @@ struct MutationReadinessInput {
 
     bool safeFreeRoamObserved = false;
     bool roadLookaheadObserved = false;
+    bool exactRoadCandidateObserved = false;
     bool metricCalibrationVerified = false;
     bool spawnCandidateVerified = false;
 };

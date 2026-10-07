@@ -55,7 +55,7 @@ jobs:
           Copy-Item "config/UndergroundBlacklist.ini" "$pkg/scripts/FreeRoamRivals/UndergroundBlacklist.ini"
 
           @"
-          NFSMW Free Roam Rivals v0.0.17-dev
+          NFSMW Free Roam Rivals v0.0.18-dev
 
           INSTALL:
           1. Extract this ZIP into the Need for Speed Most Wanted game folder.
@@ -64,9 +64,9 @@ jobs:
           4. Drive for 20-30 seconds.
           5. Check scripts\FreeRoamRivals\FreeRoamRivals.log.
 
-          v0.0.17 adds read-only player motion telemetry and a statistical
-          world-unit/speed-unit consistency observer. Metric calibration stays
-          fail-closed until physical unit semantics are proven in-game.
+          v0.0.18 adds typed road-candidate observation/promotion. CurrentRoad,
+          FutureRoad, SeekAhead and FarFuture are kept distinct; spawn/staging
+          promotion requires exact road association plus verified safety evidence.
 
           Runtime vehicle creation and AI control are still disabled by default.
           ExperimentalSpawnEnabled=1 only enables read-only preflight diagnostics
@@ -78,23 +78,23 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.17-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.18-dev.zip" -Force
 
-      - name: Publish v0.0.17-dev GitHub Release
+      - name: Publish v0.0.18-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.17-dev"
+          $tag = "v0.0.18-dev"
 
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
             Write-Host "Release $tag already exists; keeping existing release."
           } else {
-            gh release create $tag "release/FreeRoamRivals-v0.0.17-dev.zip" `
+            gh release create $tag "release/FreeRoamRivals-v0.0.18-dev.zip" `
               --target "${{ github.sha }}" `
-              --title "Free Roam Rivals v0.0.17-dev" `
+              --title "Free Roam Rivals v0.0.18-dev" `
               --prerelease `
-              --notes "v0.0.17-dev: adiciona telemetria read-only de GetSpeed/GetSpeedometer/GetAbsoluteSpeed/velocidades e um observador estatístico de world-units por speed-unit·s. A calibração métrica continua bloqueada até prova no jogo."
+              --notes "v0.0.18-dev: adiciona pipeline tipado de candidatos de estrada. Observações Current/Future/Seek/Far não viram spawn/staging sem geometria WRoadNav exata, escala métrica verificada, streaming/chão/overlap e visibilidade quando aplicável."
           }

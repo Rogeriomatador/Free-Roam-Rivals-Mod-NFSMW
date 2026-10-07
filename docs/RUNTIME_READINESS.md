@@ -1,6 +1,6 @@
 # Runtime Construction Readiness
 
-v0.0.16 consolidates the remaining first-spawn prerequisites into one
+v0.0.18 extends the remaining first-spawn prerequisites into one
 fail-closed readiness report.
 
 The report exists so target-machine testing can answer:
@@ -19,8 +19,9 @@ The evaluator checks, in order:
 5. FrameTick thread matches the input-poll thread
 6. safe Free Roam observed
 7. live road lookahead observed
-8. metric calibration verified
-9. final spawn candidate verified
+8. at least one ahead point with exact WRoadNav geometry observed
+9. metric calibration verified
+10. final spawn candidate verified
 
 Only when every item passes is:
 
@@ -52,6 +53,7 @@ Construction readiness after 8s:
   gameplayThreadConfirmed=1
   freeRoamObserved=1
   roadLookaheadObserved=1
+  exactRoadCandidateObserved=1
   metricCalibrationVerified=0
   spawnCandidateVerified=0
 ```
@@ -65,6 +67,7 @@ Possible blocker names:
 - `MainLoopThreadUnconfirmed`
 - `FreeRoamNotObserved`
 - `RoadLookaheadUnavailable`
+- `ExactRoadCandidateUnavailable`
 - `MetricCalibrationUnverified`
 - `SpawnCandidateUnverified`
 
@@ -93,7 +96,8 @@ The runtime adapter only feeds it:
 - atomic callback counters;
 - first-observed thread IDs;
 - whether safe Free Roam was observed;
-- whether road lookahead was observed.
+- whether road lookahead was observed;
+- whether at least one ahead candidate has exact WRoadNav geometry.
 
 It does not:
 

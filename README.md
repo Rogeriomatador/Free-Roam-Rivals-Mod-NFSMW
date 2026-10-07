@@ -50,7 +50,7 @@ Support for additional 1.3 executables will be added only after their addresses/
 
 ## Current status
 
-**Pre-alpha / read-only runtime + motion calibration research + road/challenge/spawn foundations (v0.0.17-dev).**
+**Pre-alpha / read-only runtime + typed road-candidate promotion + motion/readiness/challenge foundations (v0.0.18-dev).**
 
 The ASI validates the supported executable, installs observation hooks, separates Free Roam from stock races, enumerates live IVehicle driver classes, independently cross-checks the player PVehicle, observes the road network, reads career cash/car-count/completion, and validates the configured rival-car catalog without mutating the game.
 
@@ -72,6 +72,8 @@ v0.0.15 adds the first usable challenge input path: a configurable fallback virt
 v0.0.16 consolidates the remaining first-spawn prerequisites into a single fail-closed construction-readiness report. It identifies the first blocker among FrameTick enablement/install/observation, main-loop thread confirmation, safe Free Roam, road lookahead, metric calibration and final spawn-candidate promotion.
 
 v0.0.17 adds read-only player-motion cross-checks for `GetSpeed`, `GetSpeedometer`, `GetAbsoluteSpeed`, local/linear velocity and world-position displacement over elapsed time. A statistical observer can establish a stable `worldUnitsPerSpeedUnitSecond` relationship, but it deliberately does not promote that value to metres until the physical speed unit is proven on the target installation.
+
+v0.0.18 adds a typed road-candidate pipeline. `CurrentRoad`, `FutureRoad`, `SeekAhead` and `FarFuture` are represented as different evidence sources instead of interchangeable coordinates. Only a point carrying exact WRoadNav geometry can progress toward spawn/staging, and promotion still requires verified metric conversion plus independent streaming, ground and overlap evidence. Spawn additionally requires verified off-screen visibility; staging deliberately does not, because both cars can drive toward a visible cinematic site.
 
 v0.0.9 also adds a tested, independent **Underground Blacklist** domain that unlocks after the vanilla career is completed. It is not a relabel of the original Blacklist: the mod tracks its own ranks, discovery state, qualification requirements, world-hunt eligibility and future portrait/audio asset keys.
 
@@ -112,6 +114,7 @@ docs/
   CHALLENGE_INPUT.md
   RUNTIME_READINESS.md
   MOTION_SCALE_CALIBRATION.md
+  ROAD_CANDIDATE_PROMOTION.md
   PINK_SLIP_ENGINE_RESEARCH.md
   RIVAL_POPULATION_AND_VEHICLES.md
   UNDERGROUND_BLACKLIST.md
