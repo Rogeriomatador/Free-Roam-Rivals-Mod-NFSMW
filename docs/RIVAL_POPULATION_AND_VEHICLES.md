@@ -254,3 +254,90 @@ When full ownership transfer is safe:
   customization/performance snapshot
 
 This is why persistent garages are more important than pure random spawns.
+
+
+## v0.0.7 procedural identity model
+
+The procedural layer now has a pure deterministic generator in
+`RivalPopulation.cpp`.
+
+A new local is generated from one seed into a stable bundle:
+
+```text
+seed
+ -> rival id
+ -> display name
+ -> vehicle selection
+ -> visual archetype
+ -> personality
+ -> challenge style
+ -> starting cash
+ -> visual seed
+ -> performance seed
+```
+
+This matters because a random racer must not become a different person every
+time the world reloads.
+
+Before meaningful interaction, a local may remain ephemeral. When the player
+accepts a challenge or otherwise causes promotion, the whole generated bundle
+is stored as a persistent rival. From that point forward the rival keeps the
+same identity until an actual gameplay event changes it.
+
+### Population budget
+
+The city does not fill every road with tuned racers.
+
+Initial budget logic:
+
+```text
+early career:
+  up to 1 live rival
+
+mid/late career:
+  up to 2 live rivals
+
+Rockport Legend:
+  usually 2
+  up to 3 at high Street Rep
+```
+
+These slots are independent of vanilla civilian traffic.
+
+Later the World Director may reserve one slot for a revenge rival, legendary
+sighting or district event.
+
+### Personality is generated with the person
+
+A procedural rival receives persistent values for:
+
+- skill
+- aggression
+- confidence
+- risk tolerance
+- police fear
+- visual archetype
+- challenge style
+
+Those values are not re-rolled on every meeting.
+
+A high-aggression rival is more likely to use a Provoker approach. A confident
+rival may overtake and slow down. A lower-risk rival may prefer a clean invite
+and later be more willing to abandon a race when police pressure becomes high.
+
+### Car ownership rule
+
+The selected car is the rival's first owned vehicle, not a temporary skin.
+
+After promotion the intended model is:
+
+```text
+Rival
+  -> Garage
+       -> active car
+       -> optional additional cars
+       -> cars won by pink slip
+```
+
+Therefore a rival can later change cars for a reason, but never because the
+spawn code rolled a new model by accident.
