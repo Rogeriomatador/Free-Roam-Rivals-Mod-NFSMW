@@ -48,9 +48,9 @@ Support for additional 1.3 executables will be added only after their addresses/
 
 ## Current status
 
-**Pre-alpha / validated read-only runtime bridge (v0.0.5-dev).**
+**Pre-alpha / read-only runtime + population foundation (v0.0.6-dev).**
 
-The ASI now validates the supported executable, installs observation hooks, separates Free Roam from stock races, enumerates live IVehicle driver classes, independently cross-checks the player PVehicle, observes the road network, and reads career cash/car-count/completion without mutating the game. External SDK revisions are pinned for reproducible builds.
+The ASI validates the supported executable, installs observation hooks, separates Free Roam from stock races, enumerates live IVehicle driver classes, independently cross-checks the player PVehicle, observes the road network, reads career cash/car-count/completion, and validates the configured rival-car catalog without mutating the game. The population layer now distinguishes authored persistent rivals, progression-aware procedural locals, and untouched vanilla traffic.
 
 The first engineering milestone is intentionally narrow:
 
@@ -74,6 +74,7 @@ docs/
   ENGINE_INTEGRATION_MAP.md
   SPAWN_AND_AI_PLAN.md
   PINK_SLIP_ENGINE_RESEARCH.md
+  RIVAL_POPULATION_AND_VEHICLES.md
 .github/workflows/     CI build
 ```
 
