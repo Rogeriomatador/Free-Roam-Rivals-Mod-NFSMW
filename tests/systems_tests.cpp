@@ -3,6 +3,7 @@
 #include "domain/MutationReadiness.h"
 #include "domain/OutrunRace.h"
 #include "domain/RoadCandidatePlanner.h"
+#include "domain/RenderVisibilityEvidence.h"
 #include "domain/RuntimeSession.h"
 #include "domain/RivalRuntimeHandle.h"
 #include "domain/SpawnSafety.h"
@@ -519,6 +520,135 @@ int main() {
     require(
         !challengeEdge.previousDown(),
         "challenge input reset clears held state"
+    );
+
+    RenderFrustumSnapshot renderSnapshot{};
+    renderSnapshot.captureValid = true;
+    renderSnapshot.viewportWidth = 1920;
+    renderSnapshot.viewportHeight = 1080;
+
+    for (int axis = 0; axis < 4; ++axis) {
+        renderSnapshot.view.m[axis][axis] = 1.0f;
+    }
+
+    // Simple D3D-style left-handed perspective matrix with near=0.1/far=100.
+    renderSnapshot.projection.m[0][0] = 1.0f;
+    renderSnapshot.projection.m[1][1] = 1.0f;
+    renderSnapshot.projection.m[2][2] =
+        100.0f / 99.9f;
+    renderSnapshot.projection.m[2][3] = 1.0f;
+    renderSnapshot.projection.m[3][2] =
+        -10.0f / 99.9f;
+
+    require(
+        perspectiveProjectionLikely(
+            renderSnapshot.projection
+        ),
+        "D3D perspective matrix is recognized"
+    );
+
+    RenderCameraVerifier cameraVerifier{};
+
+    RenderCameraVerification cameraVerification{};
+    for (int i = 0; i < 3; ++i) {
+        cameraVerification =
+            cameraVerifier.push(
+                renderSnapshot,
+                {0.0f, 0.0f, 5.0f}
+            );
+    }
+
+    require(
+        cameraVerification.currentSnapshotPlausible &&
+        !cameraVerification.verified &&
+        cameraVerification.consecutivePlausibleSamples == 3,
+        "render camera requires repeated plausible player projections"
+    );
+
+    cameraVerification =
+        cameraVerifier.push(
+            renderSnapshot,
+            {0.0f, 0.0f, 5.0f}
+        );
+
+    require(
+        cameraVerification.verified &&
+        cameraVerification.consecutivePlausibleSamples == 4,
+        "four plausible render snapshots verify camera semantics"
+    );
+
+    VehicleOrientedBox onScreenBox{};
+    onScreenBox.valid = true;
+    onScreenBox.vehicleKey = 0xAA55AA55u;
+    onScreenBox.center = {0.0f, 0.0f, 5.0f};
+    onScreenBox.right = {1.0f, 0.0f, 0.0f};
+    onScreenBox.up = {0.0f, 1.0f, 0.0f};
+    onScreenBox.forward = {0.0f, 0.0f, 1.0f};
+    onScreenBox.halfExtents = {0.5f, 0.5f, 0.5f};
+
+    const auto onScreenVisibility =
+        classifyVehicleAgainstFrustum(
+            renderSnapshot,
+            onScreenBox,
+            cameraVerification.verified
+        );
+
+    require(
+        onScreenVisibility.visibilityVerified &&
+        onScreenVisibility.visibleToPlayer &&
+        !onScreenVisibility.entirelyOutsideFrustum &&
+        onScreenVisibility.transformedCorners == 8,
+        "candidate intersecting frustum is conservatively treated as visible"
+    );
+
+    VehicleOrientedBox offScreenBox =
+        onScreenBox;
+    offScreenBox.center = {10.0f, 0.0f, 5.0f};
+
+    const auto offScreenVisibility =
+        classifyVehicleAgainstFrustum(
+            renderSnapshot,
+            offScreenBox,
+            cameraVerification.verified
+        );
+
+    require(
+        offScreenVisibility.visibilityVerified &&
+        !offScreenVisibility.visibleToPlayer &&
+        offScreenVisibility.entirelyOutsideFrustum,
+        "OBB wholly outside one clip plane is verified off-screen"
+    );
+
+    const auto unverifiedVisibility =
+        classifyVehicleAgainstFrustum(
+            renderSnapshot,
+            offScreenBox,
+            false
+        );
+
+    require(
+        !unverifiedVisibility.visibilityVerified,
+        "frustum result cannot promote before camera semantics verification"
+    );
+
+    RenderFrustumSnapshot orthographic =
+        renderSnapshot;
+    orthographic.projection = {};
+    for (int axis = 0; axis < 4; ++axis) {
+        orthographic.projection.m[axis][axis] = 1.0f;
+    }
+
+    cameraVerification =
+        cameraVerifier.push(
+            orthographic,
+            {0.0f, 0.0f, 5.0f}
+        );
+
+    require(
+        !cameraVerification.currentSnapshotPlausible &&
+        !cameraVerification.verified &&
+        cameraVerification.consecutivePlausibleSamples == 0,
+        "non-perspective EndScene state resets render camera verification"
     );
 
     WorldCollisionSample flatGroundSample{};
