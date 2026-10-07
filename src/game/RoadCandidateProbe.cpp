@@ -16,6 +16,90 @@ frr::domain::RoadCandidateVector3 copyCandidateVector(
     return out;
 }
 
+bool normalize(
+    float x,
+    float y,
+    float z,
+    frr::domain::RoadCandidateVector3& out
+) {
+    const float magnitude =
+        std::sqrt(x * x + y * y + z * z);
+
+    if (!std::isfinite(magnitude) ||
+        magnitude <= 0.0001f) {
+        out = {};
+        return false;
+    }
+
+    out.x = x / magnitude;
+    out.y = y / magnitude;
+    out.z = z / magnitude;
+    out.finite =
+        std::isfinite(out.x) &&
+        std::isfinite(out.y) &&
+        std::isfinite(out.z);
+    return out.finite;
+}
+
+bool buildRoadBasis(
+    const RoadVectorProbe& forwardSource,
+    const RoadVectorProbe& leftPosition,
+    const RoadVectorProbe& rightPosition,
+    frr::domain::RoadCandidateVector3& right,
+    frr::domain::RoadCandidateVector3& up,
+    frr::domain::RoadCandidateVector3& forward
+) {
+    if (!forwardSource.finite ||
+        !leftPosition.finite ||
+        !rightPosition.finite) {
+        return false;
+    }
+
+    if (!normalize(
+            forwardSource.x,
+            forwardSource.y,
+            forwardSource.z,
+            forward)) {
+        return false;
+    }
+
+    float rx =
+        rightPosition.x - leftPosition.x;
+    float ry =
+        rightPosition.y - leftPosition.y;
+    float rz =
+        rightPosition.z - leftPosition.z;
+
+    // Remove any component parallel to forward so corrupted/skewed edge
+    // points cannot create a non-orthogonal vehicle basis.
+    const float parallel =
+        rx * forward.x +
+        ry * forward.y +
+        rz * forward.z;
+
+    rx -= parallel * forward.x;
+    ry -= parallel * forward.y;
+    rz -= parallel * forward.z;
+
+    if (!normalize(rx, ry, rz, right)) {
+        return false;
+    }
+
+    // Local convention used by MW05 vehicle dimensions:
+    // right (x), up (y), forward (z).  F x R yields U.
+    const float ux =
+        forward.y * right.z -
+        forward.z * right.y;
+    const float uy =
+        forward.z * right.x -
+        forward.x * right.z;
+    const float uz =
+        forward.x * right.y -
+        forward.y * right.x;
+
+    return normalize(ux, uy, uz, up);
+}
+
 float distance(
     const RoadVectorProbe& a,
     const RoadVectorProbe& b
@@ -115,8 +199,16 @@ frr::domain::RoadCandidateObservation fromRoad(
         std::abs(road.curvature);
     out.position =
         copyCandidateVector(road.position);
-    out.forward =
-        copyCandidateVector(road.forward);
+
+    buildRoadBasis(
+        road.forward,
+        road.leftPosition,
+        road.rightPosition,
+        out.right,
+        out.up,
+        out.forward
+    );
+
     return out;
 }
 
@@ -162,12 +254,23 @@ frr::domain::RoadCandidateObservation fromLookahead(
     out.position =
         copyCandidateVector(position);
 
-    if (explicitForward && explicitForward->finite) {
+    if (geometry) {
+        const RoadVectorProbe& basisForward =
+            explicitForward && explicitForward->finite
+            ? *explicitForward
+            : geometry->forward;
+
+        buildRoadBasis(
+            basisForward,
+            geometry->leftPosition,
+            geometry->rightPosition,
+            out.right,
+            out.up,
+            out.forward
+        );
+    } else if (explicitForward && explicitForward->finite) {
         out.forward =
             copyCandidateVector(*explicitForward);
-    } else if (geometry) {
-        out.forward =
-            copyCandidateVector(geometry->forward);
     }
 
     // The AI exposes these positions, but no verified API currently tells us

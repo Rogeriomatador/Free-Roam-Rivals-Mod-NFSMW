@@ -19,6 +19,7 @@ enum class RoadCandidateBlocker {
     None,
     PositionUnavailable,
     ForwardUnavailable,
+    BasisUnavailable,
     RoadGeometryUnavailable,
     RoadGeometryAssociationUnverified,
     RoadInvalid,
@@ -52,6 +53,8 @@ struct RoadCandidateVector3 {
 struct RoadCandidateTransform {
     bool available = false;
     RoadCandidateVector3 position{};
+    RoadCandidateVector3 right{};
+    RoadCandidateVector3 up{};
     RoadCandidateVector3 forward{};
 };
 
@@ -84,6 +87,8 @@ struct RoadCandidateObservation {
     float absoluteCurvature = 0.0f;
 
     RoadCandidateVector3 position{};
+    RoadCandidateVector3 right{};
+    RoadCandidateVector3 up{};
     RoadCandidateVector3 forward{};
 };
 

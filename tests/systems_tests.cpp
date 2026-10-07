@@ -425,6 +425,8 @@ int main() {
     roadProbe.current.laneIndex = 1;
     roadProbe.current.position = {0.0f, 0.0f, 0.0f, true};
     roadProbe.current.forward = {1.0f, 0.0f, 0.0f, true};
+    roadProbe.current.leftPosition = {0.0f, -8.0f, 0.0f, true};
+    roadProbe.current.rightPosition = {0.0f, 8.0f, 0.0f, true};
     roadProbe.current.roadWidthWorldUnits = 16.0f;
     roadProbe.current.segmentSpanWorldUnits = 200.0f;
     roadProbe.current.curvature = 0.005f;
@@ -432,6 +434,8 @@ int main() {
     roadProbe.future = roadProbe.current;
     roadProbe.future.segmentIndex = 11;
     roadProbe.future.position = {800.0f, 0.0f, 0.0f, true};
+    roadProbe.future.leftPosition = {800.0f, -8.0f, 0.0f, true};
+    roadProbe.future.rightPosition = {800.0f, 8.0f, 0.0f, true};
 
     roadProbe.seekAheadPosition = {400.0f, 0.0f, 0.0f, true};
     roadProbe.seekAheadDistanceWorldUnits = 400.0f;
@@ -464,8 +468,13 @@ int main() {
 
     require(
         inspectRoadCandidate(futureObservation) ==
-            RoadCandidateBlocker::None,
-        "future WRoadNav position carries exact promotable road geometry"
+            RoadCandidateBlocker::None &&
+        futureObservation.right.finite &&
+        futureObservation.up.finite &&
+        futureObservation.forward.finite &&
+        futureObservation.right.y > 0.99f &&
+        futureObservation.up.z > 0.99f,
+        "future WRoadNav position carries an exact orthonormal road basis"
     );
 
     require(
@@ -526,7 +535,9 @@ int main() {
         roadSpawn.metric.available &&
         roadSpawn.transform.available &&
         roadSpawn.transform.position.x == 800.0f &&
-        roadSpawn.transform.forward.x == 1.0f &&
+        roadSpawn.transform.right.y > 0.99f &&
+        roadSpawn.transform.up.z > 0.99f &&
+        roadSpawn.transform.forward.x > 0.99f &&
         roadSpawn.metric.distanceMeters == 400.0f &&
         roadSpawn.metric.roadWidthMeters == 8.0f,
         "fully evidenced future road promotes with metric input and exact transform"
