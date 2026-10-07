@@ -54,7 +54,7 @@ jobs:
           Copy-Item "config/VehiclePools.ini" "$pkg/scripts/FreeRoamRivals/VehiclePools.ini"
 
           @"
-          NFSMW Free Roam Rivals v0.0.6-dev
+          NFSMW Free Roam Rivals v0.0.7-dev
 
           INSTALL:
           1. Extract this ZIP into the Need for Speed Most Wanted game folder.
@@ -63,7 +63,7 @@ jobs:
           4. Drive for 20-30 seconds.
           5. Check scripts\FreeRoamRivals\FreeRoamRivals.log.
 
-          This build validates Free Roam/runtime state and the progression-aware rival vehicle catalog.
+          This build validates Free Roam/runtime state and includes deterministic procedural rival identity/population logic.
           It does NOT spawn or control vehicles yet.
 
           Supported development target:
@@ -72,23 +72,23 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.6-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.7-dev.zip" -Force
 
-      - name: Publish v0.0.6-dev GitHub Release
+      - name: Publish v0.0.7-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.6-dev"
+          $tag = "v0.0.7-dev"
 
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
             Write-Host "Release $tag already exists; keeping existing release."
           } else {
-            gh release create $tag "release/FreeRoamRivals-v0.0.6-dev.zip" `
+            gh release create $tag "release/FreeRoamRivals-v0.0.7-dev.zip" `
               --target "${{ github.sha }}" `
-              --title "Free Roam Rivals v0.0.6-dev" `
+              --title "Free Roam Rivals v0.0.7-dev" `
               --prerelease `
-              --notes "v0.0.6-dev: adiciona o sistema de população híbrida e seleção de carros por progressão/distrito, valida ao vivo os pvehicle keys configurados e mantém spawn/IA/dinheiro/garagem bloqueados até a próxima etapa experimental."
+              --notes "v0.0.7-dev: adiciona identidades procedurais determinísticas com nome, personalidade, estilo visual, carro persistível e orçamento de população por progressão. Spawn/IA/dinheiro/garagem continuam bloqueados até a validação completa do ciclo de vida."
           }
