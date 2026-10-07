@@ -326,6 +326,14 @@ int main() {
     readinessReport = evaluateMutationReadiness(readiness);
     require(
         readinessReport.blocker ==
+            MutationReadinessBlocker::VehicleSpatialEvidenceUnavailable,
+        "readiness requires complete live-vehicle spatial evidence"
+    );
+
+    readiness.vehicleSpatialEvidenceObserved = true;
+    readinessReport = evaluateMutationReadiness(readiness);
+    require(
+        readinessReport.blocker ==
             MutationReadinessBlocker::MetricCalibrationUnverified,
         "readiness requires verified metric scale"
     );
