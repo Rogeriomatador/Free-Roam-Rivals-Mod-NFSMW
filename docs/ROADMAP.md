@@ -124,6 +124,17 @@ Exit criterion: repeatable cash wagers that survive save/load without corruption
 
 ## v0.9 — Rockport systems
 
+- [x] Define separate post-career Underground Blacklist domain
+- [x] Career-completion unlock rule
+- [x] Ranked discovery / rumor / hunt / challenge / defeated states
+- [x] Asset-ready portrait and voice keys
+- [x] Native FNG frontend feasibility research
+- [ ] Persist Underground Blacklist progress per profile
+- [ ] World Director integration for current ranked target
+- [ ] Native FRR_UndergroundBlacklist.fng screen
+- [ ] Add safe menu entry after vanilla career completion
+- [ ] Portrait/vehicle presentation asset pipeline
+- [ ] Voice/theme audio bridge
 - [ ] Police personalities
 - [ ] Pursuit continuation
 - [ ] Rival may abort due to police
