@@ -112,9 +112,22 @@ int main() {
     spawnCandidate.roadValid = true;
     spawnCandidate.groundValid = true;
     spawnCandidate.visibleToPlayer = false;
+    spawnCandidate.metricDistanceVerified = false;
     spawnCandidate.distanceFromPlayerMeters = 500.0f;
 
     auto spawn =
+        evaluateSpawnCandidate(spawnEnv, spawnCandidate);
+
+    require(
+        !spawn.allowed &&
+        spawn.reason ==
+            SpawnRejectReason::DistanceScaleUnverified,
+        "raw world-unit distance cannot enter metric spawn thresholds"
+    );
+
+    spawnCandidate.metricDistanceVerified = true;
+
+    spawn =
         evaluateSpawnCandidate(spawnEnv, spawnCandidate);
 
     require(
@@ -192,6 +205,7 @@ int main() {
     );
 
     StagingCandidate bad{};
+    bad.metricGeometryVerified = true;
     bad.roadValid = true;
     bad.streamed = true;
     bad.groundValid = true;
@@ -211,6 +225,14 @@ int main() {
     acceptable.distanceAheadMeters = 190.0f;
     acceptable.roadWidthMeters = 7.2f;
     acceptable.absoluteCurvature = 0.015f;
+
+    StagingCandidate uncalibrated = good;
+    uncalibrated.metricGeometryVerified = false;
+
+    require(
+        !scoreStagingCandidate(uncalibrated).eligible,
+        "uncalibrated world geometry cannot enter metre-based staging score"
+    );
 
     const std::vector<StagingCandidate> candidates = {
         bad,
