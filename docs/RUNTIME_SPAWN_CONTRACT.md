@@ -239,3 +239,36 @@ until create/drive/cleanup tests pass.
 - no leaked Racer entries
 - no crash on game exit
 - compatibility test with the current ASI stack
+
+
+## v0.0.13 lifecycle controller
+
+The S1 create/verify/cleanup experiment is now represented by executable,
+engine-independent state rather than a loose sequence in runtime code.
+
+```text
+AwaitConstruction
+ -> VerifyRegistries
+ -> VerifyAI
+ -> ObserveMotion
+ -> Cleanup
+ -> VerifyRemoval
+ -> Succeeded
+```
+
+Every owned-vehicle failure diverts through cleanup before reaching `Failed`.
+A failure before ownership may fail immediately.
+
+The controller emits explicit one-shot requests:
+
+- `requestConstruct`
+- `requestCleanup`
+
+It never calls PVehicle/AI APIs itself. The future engine adapter must execute
+those requests only from a callback that has passed the target-machine
+GameFrameTick validation and only with a candidate that passed SpawnSafety.
+
+Success is intentionally strict: even after native AI movement is observed,
+the experiment still removes the car and requires consecutive samples showing
+it absent from both the PVehicle and live IVehicle registries. A cleanup
+timeout disables further spawn experimentation for the session.
