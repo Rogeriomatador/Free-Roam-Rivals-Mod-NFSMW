@@ -246,3 +246,40 @@ Rare condition-based racers may require combinations of:
 - wins against specific rivals
 
 Legendary rivals should be discoverable through play, not only UI lists.
+
+
+## Underground Blacklist — post-career ranked ladder
+
+Completing the vanilla Blacklist does not end Free Roam Rivals.
+
+It unlocks a separate mod-owned ladder called **Underground Blacklist**.
+
+This ladder is not implemented by rewriting the original game's 15 rivals. It
+has independent progression and uses persistent Free Roam Rivals opponents.
+
+Flow for each rank:
+
+```text
+future rank locked
+-> current rival becomes rumored
+-> meet Street Rep / qualifier requirements
+-> rival becomes eligible to appear in Rockport
+-> player must physically find the rival
+-> identity is revealed on first sighting
+-> later encounter + horn challenge
+-> staging / wager / showdown
+-> defeat persists
+-> next rank unlocks
+```
+
+The menu never teleports the player directly into the ranked race.
+
+The current ranked rival is still a real world participant and can use the same
+garage, personality, police behavior, wager and history systems as ordinary
+persistent rivals.
+
+The screen can initially show silhouettes for undiscovered opponents. Later
+photos, voice lines and themes attach to stable rival asset keys without
+changing progression data.
+
+See `UNDERGROUND_BLACKLIST.md`.
