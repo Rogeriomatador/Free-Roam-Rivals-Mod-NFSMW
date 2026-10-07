@@ -4,6 +4,7 @@
 #include "CameraFrustumProbe.h"
 #include "GameBridge.h"
 #include "RoadCandidateProbe.h"
+#include "RenderObservationHook.h"
 #include "VehicleCatalogProbe.h"
 #include "VehicleSpatialProbe.h"
 #include "WorldCollisionProbe.h"
@@ -23,7 +24,6 @@
 #include "../domain/WorldCollisionEvidence.h"
 #include "../persistence/UndergroundBlacklistStore.h"
 
-#include <nfsmw_sdk/d3d9_hooks.h>
 #include <nfsmw_sdk/functions.h>
 #include <nfsmw_sdk/input.h>
 #include <nfsmw_sdk/midhook.h>
@@ -1348,6 +1348,7 @@ void NFSMW_CDECL onFrameTickProbe(nfsmw_regs*) {
 void onRenderFrame(void*) {
     rememberThread(g_renderThreadId);
     const std::uint64_t frame = ++g_renderFrames;
+    if (frame == 1) Log::instance().info("First render observation reached RuntimeProbe; runtime sampling is active.");
 
     if (g_config.sampleEveryFrames == 0 ||
         frame == 1 ||
@@ -1369,149 +1370,161 @@ void onInputPoll() {
 DWORD WINAPI healthThread(LPVOID) {
     // We only inspect our own atomics here. No engine objects are
     // dereferenced from this background thread.
+    const auto startedAt = GetTickCount64();
     Sleep(8000);
+    for (;;) {
+        const auto elapsedSeconds = (GetTickCount64() - startedAt) / 1000;
+        const auto renderHook = RenderObservationHook::snapshot();
 
-    std::ostringstream out;
-    const DWORD renderThread = g_renderThreadId.load();
-    const DWORD inputThread = g_inputThreadId.load();
-    const DWORD frameThread = g_frameTickThreadId.load();
+        std::ostringstream out;
+        const DWORD renderThread = g_renderThreadId.load();
+        const DWORD inputThread = g_inputThreadId.load();
+        const DWORD frameThread = g_frameTickThreadId.load();
 
-    out << "Runtime hook health after 8s:"
-        << " renderFrames=" << g_renderFrames.load()
-        << " inputPolls=" << g_inputPolls.load()
-        << " frameTicks=" << g_frameTicks.load()
-        << " samples=" << g_samples.load()
-        << " challengeFallbackPresses="
-        << ChallengeInputProbe::totalPresses()
-        << " renderThread=" << renderThread
-        << " inputThread=" << inputThread
-        << " frameTickThread=" << frameThread;
+        out << "Runtime hook health after " << elapsedSeconds << "s:"
+            << " renderFrames=" << g_renderFrames.load()
+            << " inputPolls=" << g_inputPolls.load()
+            << " frameTicks=" << g_frameTicks.load()
+            << " samples=" << g_samples.load()
+            << " challengeFallbackPresses="
+            << ChallengeInputProbe::totalPresses()
+            << " renderThread=" << renderThread
+            << " inputThread=" << inputThread
+            << " frameTickThread=" << frameThread;
+        out << " renderWorkerStarted=" << (renderHook.workerStarted ? 1 : 0)
+            << " endSceneInstalled=" << (renderHook.endSceneInstalled ? 1 : 0)
+            << " presentInstalled=" << (renderHook.presentInstalled ? 1 : 0)
+            << " endSceneCalls=" << renderHook.endSceneCalls
+            << " presentCalls=" << renderHook.presentCalls
+            << " deviceGlobal=0x" << std::hex << renderHook.deviceGlobal
+            << " device=0x" << renderHook.device << " vtable=0x" << renderHook.vtable << std::dec;
 
-    if (frameThread != 0 && inputThread != 0) {
-        out << " frameTickEqualsInput="
-            << (frameThread == inputThread ? 1 : 0);
+        if (frameThread != 0 && inputThread != 0) {
+            out << " frameTickEqualsInput="
+                << (frameThread == inputThread ? 1 : 0);
+        }
+
+        if (frameThread != 0 && renderThread != 0) {
+            out << " frameTickEqualsRender="
+                << (frameThread == renderThread ? 1 : 0);
+        }
+
+        Log::instance().info(out.str());
+
+        frr::domain::MutationReadinessInput readiness{};
+        readiness.frameTickProbeEnabled =
+            g_config.frameTickProbeEnabled;
+        readiness.frameTickProbeInstalled =
+            g_frameTickProbeInstalled.load(
+                std::memory_order_relaxed
+            );
+        readiness.frameTickCount =
+            g_frameTicks.load(
+                std::memory_order_relaxed
+            );
+        readiness.inputPollCount =
+            g_inputPolls.load(
+                std::memory_order_relaxed
+            );
+        readiness.frameTickThreadId =
+            frameThread;
+        readiness.inputThreadId =
+            inputThread;
+        readiness.safeFreeRoamObserved =
+            g_safeFreeRoamObserved.load(
+                std::memory_order_relaxed
+            );
+        readiness.roadLookaheadObserved =
+            g_roadLookaheadObserved.load(
+                std::memory_order_relaxed
+            );
+        readiness.exactRoadCandidateObserved =
+            g_exactRoadCandidateObserved.load(
+                std::memory_order_relaxed
+            );
+        readiness.vehicleSpatialEvidenceObserved =
+            g_vehicleSpatialEvidenceObserved.load(
+                std::memory_order_relaxed
+            );
+        readiness.vehicleFootprintVerified =
+            g_vehicleFootprintVerified.load(
+                std::memory_order_relaxed
+            );
+        const auto healthCollision = latestWorldCollisionResult();
+        readiness.groundEvidenceVerified = healthCollision.available &&
+            healthCollision.ground.groundVerified && healthCollision.ground.groundValid;
+
+        // Intentionally false until target-machine calibration/candidate
+        // promotion work completes. This keeps construction fail-closed.
+        readiness.metricCalibrationVerified = false;
+        readiness.spawnCandidateVerified = false;
+
+        const auto readinessReport =
+            frr::domain::evaluateMutationReadiness(
+                readiness
+            );
+
+        {
+            std::ostringstream line;
+            line << "Construction readiness after " << elapsedSeconds << "s: "
+                 << (readinessReport.readyForConstructionExperiment
+                     ? "READY"
+                     : "BLOCKED")
+                 << " blocker="
+                 << frr::domain::mutationReadinessBlockerName(
+                        readinessReport.blocker
+                    )
+                 << " gameplayThreadConfirmed="
+                 << (readinessReport.gameplayThreadConfirmed ? 1 : 0)
+                 << " freeRoamObserved="
+                 << (readiness.safeFreeRoamObserved ? 1 : 0)
+                 << " roadLookaheadObserved="
+                 << (readiness.roadLookaheadObserved ? 1 : 0)
+                 << " exactRoadCandidateObserved="
+                 << (readiness.exactRoadCandidateObserved ? 1 : 0)
+                 << " vehicleSpatialEvidenceObserved="
+                 << (readiness.vehicleSpatialEvidenceObserved ? 1 : 0)
+                 << " vehicleFootprintVerified="
+                 << (readiness.vehicleFootprintVerified ? 1 : 0)
+                 << " verifiedFootprintVehicleKey=0x"
+                 << std::hex << std::uppercase
+                 << g_verifiedFootprintVehicleKey.load(
+                        std::memory_order_relaxed
+                    )
+                 << std::dec
+                 << " groundEvidenceVerified="
+                 << (readiness.groundEvidenceVerified ? 1 : 0)
+                 << " worldOcclusionEvidenceObserved="
+                 << (g_worldOcclusionEvidenceObserved.load(
+                        std::memory_order_relaxed
+                    ) ? 1 : 0)
+                 << " metricCalibrationVerified=0"
+                 << " spawnCandidateVerified=0";
+
+            Log::instance().info(line.str());
+        }
+
+        if (g_renderFrames.load() == 0) {
+            Log::instance().warn(
+                "No usable EndScene/Present render callback has reached the sampler yet. Motion capture is unavailable."
+            );
+        }
+
+        if (g_inputPolls.load() == 0) {
+            Log::instance().warn(
+                "Input-poll diagnostic hook has not fired yet."
+            );
+        }
+
+        if (g_config.frameTickProbeEnabled &&
+            g_frameTicks.load() == 0) {
+            Log::instance().warn(
+                "Opt-in FrameTick diagnostic probe has not fired yet."
+            );
+        }
+
+        Sleep(30000);
     }
-
-    if (frameThread != 0 && renderThread != 0) {
-        out << " frameTickEqualsRender="
-            << (frameThread == renderThread ? 1 : 0);
-    }
-
-    Log::instance().info(out.str());
-
-    frr::domain::MutationReadinessInput readiness{};
-    readiness.frameTickProbeEnabled =
-        g_config.frameTickProbeEnabled;
-    readiness.frameTickProbeInstalled =
-        g_frameTickProbeInstalled.load(
-            std::memory_order_relaxed
-        );
-    readiness.frameTickCount =
-        g_frameTicks.load(
-            std::memory_order_relaxed
-        );
-    readiness.inputPollCount =
-        g_inputPolls.load(
-            std::memory_order_relaxed
-        );
-    readiness.frameTickThreadId =
-        frameThread;
-    readiness.inputThreadId =
-        inputThread;
-    readiness.safeFreeRoamObserved =
-        g_safeFreeRoamObserved.load(
-            std::memory_order_relaxed
-        );
-    readiness.roadLookaheadObserved =
-        g_roadLookaheadObserved.load(
-            std::memory_order_relaxed
-        );
-    readiness.exactRoadCandidateObserved =
-        g_exactRoadCandidateObserved.load(
-            std::memory_order_relaxed
-        );
-    readiness.vehicleSpatialEvidenceObserved =
-        g_vehicleSpatialEvidenceObserved.load(
-            std::memory_order_relaxed
-        );
-    readiness.vehicleFootprintVerified =
-        g_vehicleFootprintVerified.load(
-            std::memory_order_relaxed
-        );
-    const auto healthCollision = latestWorldCollisionResult();
-    readiness.groundEvidenceVerified = healthCollision.available &&
-        healthCollision.ground.groundVerified && healthCollision.ground.groundValid;
-
-    // Intentionally false until target-machine calibration/candidate
-    // promotion work completes. This keeps construction fail-closed.
-    readiness.metricCalibrationVerified = false;
-    readiness.spawnCandidateVerified = false;
-
-    const auto readinessReport =
-        frr::domain::evaluateMutationReadiness(
-            readiness
-        );
-
-    {
-        std::ostringstream line;
-        line << "Construction readiness after 8s: "
-             << (readinessReport.readyForConstructionExperiment
-                 ? "READY"
-                 : "BLOCKED")
-             << " blocker="
-             << frr::domain::mutationReadinessBlockerName(
-                    readinessReport.blocker
-                )
-             << " gameplayThreadConfirmed="
-             << (readinessReport.gameplayThreadConfirmed ? 1 : 0)
-             << " freeRoamObserved="
-             << (readiness.safeFreeRoamObserved ? 1 : 0)
-             << " roadLookaheadObserved="
-             << (readiness.roadLookaheadObserved ? 1 : 0)
-             << " exactRoadCandidateObserved="
-             << (readiness.exactRoadCandidateObserved ? 1 : 0)
-             << " vehicleSpatialEvidenceObserved="
-             << (readiness.vehicleSpatialEvidenceObserved ? 1 : 0)
-             << " vehicleFootprintVerified="
-             << (readiness.vehicleFootprintVerified ? 1 : 0)
-             << " verifiedFootprintVehicleKey=0x"
-             << std::hex << std::uppercase
-             << g_verifiedFootprintVehicleKey.load(
-                    std::memory_order_relaxed
-                )
-             << std::dec
-             << " groundEvidenceVerified="
-             << (readiness.groundEvidenceVerified ? 1 : 0)
-             << " worldOcclusionEvidenceObserved="
-             << (g_worldOcclusionEvidenceObserved.load(
-                    std::memory_order_relaxed
-                ) ? 1 : 0)
-             << " metricCalibrationVerified=0"
-             << " spawnCandidateVerified=0";
-
-        Log::instance().info(line.str());
-    }
-
-    if (g_renderFrames.load() == 0) {
-        Log::instance().warn(
-            "D3D9 EndScene callback has not fired yet."
-        );
-    }
-
-    if (g_inputPolls.load() == 0) {
-        Log::instance().warn(
-            "Input-poll diagnostic hook has not fired yet."
-        );
-    }
-
-    if (g_config.frameTickProbeEnabled &&
-        g_frameTicks.load() == 0) {
-        Log::instance().warn(
-            "Opt-in FrameTick diagnostic probe has not fired yet."
-        );
-    }
-
-    return 0;
 }
 
 } // namespace
@@ -1564,15 +1577,6 @@ RuntimeProbeInstallResult RuntimeProbe::install(
         );
     }
 
-    if (config.renderProbeEnabled) {
-        nfsmw_d3d9_install(&onRenderFrame, nullptr);
-        result.renderProbeArmed = true;
-
-        Log::instance().info(
-            "D3D9 EndScene runtime probe armed (read-only)."
-        );
-    }
-
     if (config.inputProbeEnabled) {
         result.inputProbeInstalled =
             nfsmw::input::on_poll([]() {
@@ -1613,6 +1617,15 @@ RuntimeProbeInstallResult RuntimeProbe::install(
                 "GameFrameTick diagnostic probe failed to install; no gameplay mutation will use this path."
             );
         }
+    }
+
+    // SDK input/FrameTick initialize MinHook first; the render worker accepts
+    // the shared backend already initialized and never changes those gates.
+    if (config.renderProbeEnabled) {
+        result.renderProbeArmed = RenderObservationHook::install(&onRenderFrame);
+        Log::instance().info(result.renderProbeArmed ?
+            "Guarded D3D9 EndScene/Present observation worker armed; installation and callback delivery are logged separately." :
+            "Render observation worker failed to start; motion capture remains unavailable.");
     }
 
     HANDLE thread = CreateThread(

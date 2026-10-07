@@ -17,7 +17,9 @@ Exit criterion: loading the ASI does not alter gameplay and creates a diagnostic
 
 - [x] Detect free-roam gameplay state (runtime validation still collected in logs)
 - [x] Resolve player IVehicle safely + independent PVehicle cross-check
-- [x] Obtain read-only render/input observation callbacks
+- [x] Implement read-only render/input observation callbacks
+- [x] Recover render observation with guarded device tracking and Present fallback
+- [ ] Confirm callback delivery and motion capture on target installation (v0.0.24 supplied log has no series)
 - [x] Define executable fail-closed spawn gates
 - [x] Track world generations and invalidate stale runtime handles
 - [x] Add generation-scoped rival runtime-handle model

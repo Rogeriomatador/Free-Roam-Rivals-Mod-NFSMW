@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.24
+    VERSION 0.0.25
     LANGUAGES C CXX
 )
 
@@ -68,6 +68,7 @@ set(FRR_DOMAIN_SOURCES
     src/domain/EncounterStateMachine.cpp
     src/domain/MotionScaleObserver.cpp
     src/domain/MutationReadiness.cpp
+    src/domain/RenderObservation.cpp
     src/domain/OutrunRace.cpp
     src/domain/Progression.cpp
     src/domain/RoadCandidatePlanner.cpp
@@ -104,6 +105,7 @@ nfsmw_add_plugin(FreeRoamRivals
         src/game/RoadCandidateProbe.cpp
         src/game/RoadNavProbe.cpp
         src/game/RuntimeProbe.cpp
+        src/game/RenderObservationHook.cpp
         src/game/VehicleCatalogProbe.cpp
         src/game/VehicleSpatialProbe.cpp
         src/game/WorldCollisionProbe.cpp
@@ -239,3 +241,12 @@ add_test(NAME FreeRoamRivalsCameraTests COMMAND FreeRoamRivalsCameraTests)
 add_executable(FreeRoamRivalsMotionTests tests/motion_tests.cpp src/domain/MotionScaleObserver.cpp src/domain/RuntimeEvidence.cpp)
 target_include_directories(FreeRoamRivalsMotionTests PRIVATE src)
 add_test(NAME FreeRoamRivalsMotionTests COMMAND FreeRoamRivalsMotionTests)
+
+add_executable(FreeRoamRivalsRenderObservationTests tests/render_observation_tests.cpp src/domain/RenderObservation.cpp)
+target_include_directories(FreeRoamRivalsRenderObservationTests PRIVATE src)
+add_test(NAME FreeRoamRivalsRenderObservationTests COMMAND FreeRoamRivalsRenderObservationTests)
+
+add_executable(FreeRoamRivalsRenderHookTests tests/render_hook_tests.cpp src/game/RenderObservationHook.cpp src/domain/RenderObservation.cpp src/core/Log.cpp ${NFSMW__MINHOOK_SRCS})
+target_include_directories(FreeRoamRivalsRenderHookTests PRIVATE src "${NFSMW_SDK_MINHOOK_DIR}/include")
+target_compile_definitions(FreeRoamRivalsRenderHookTests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX FRR_RENDER_HOOK_TESTING)
+add_test(NAME FreeRoamRivalsRenderHookTests COMMAND FreeRoamRivalsRenderHookTests)

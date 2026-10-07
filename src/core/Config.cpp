@@ -1,4 +1,5 @@
 #include "Config.h"
+#include "Log.h"
 
 #include <windows.h>
 
@@ -120,6 +121,7 @@ Config Config::load() {
         "FreeRoamRivals.ini";
 
     const std::string ini = path.string();
+    Log::instance().info("Configuration file: " + ini);
 
     cfg.renderProbeEnabled =
         iniInt(

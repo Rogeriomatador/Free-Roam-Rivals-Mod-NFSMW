@@ -1,4 +1,4 @@
-# Target-machine motion capture — v0.0.24
+# Target-machine motion capture — v0.0.25
 
 This is a read-only measurement procedure. It does not authorize construction,
 change game physics or set `WorldMetricCalibration.verified`.
@@ -11,6 +11,7 @@ change game physics or set `WorldMetricCalibration.verified`.
    `MotionCaptureEnabled=1`. Keep `RenderProbeEnabled=1` and
    `RuntimeSampleEveryFrames=30` initially. No FrameTick or world-collision
    setting is required for this capture.
+   When updating from v0.0.24, replace the ASI and keep your already edited INI.
 3. Enter normal Free Roam. Drive straight at steady positive speed, on the
    ground, for 60–90 seconds. Note the car, district, HUD speed units and any
    collisions, jumps, pauses, Speedbreaker or other mods affecting simulation.
@@ -72,3 +73,13 @@ transient collision between samples.
 
 Send the complete logs together with the car/district/HUD/test notes for review.
 The audit JSON always contains `metricVerified: false`.
+
+## If capture does not start
+
+v0.0.25 logs the INI path and `Loaded diagnostics: ... motionCapture=1`, followed
+by device discovery and EndScene/Present installation results. Successful
+delivery reports `First render observation reached RuntimeProbe`; periodic
+health must show increasing `renderFrames` and `samples`.
+
+If these counters remain zero, send the complete log immediately rather than
+repeating car/district runs. See [RENDER_HOOK_RECOVERY.md](RENDER_HOOK_RECOVERY.md).
