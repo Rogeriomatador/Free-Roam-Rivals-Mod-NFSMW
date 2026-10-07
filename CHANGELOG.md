@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.0.6-dev
+
+- Added hybrid rival population design:
+  - authored persistent rivals keep a real garage/active car
+  - procedural local racers are progression-weighted
+  - vanilla civilian traffic remains untouched
+- Added deterministic weighted vehicle selection with:
+  - career/progression tier ceilings
+  - district affinity weighting
+  - soft immediate-model anti-repeat
+  - explicit legendary/special gating
+- Added a vanilla MW05 rival vehicle catalog using community-verified pvehicle keys.
+- Added editable VehiclePools.ini design.
+- Added one-time live Free Roam catalog validation against the loaded pvehicle database.
+- Added authored rival vehicle policies and persistent-garage fields.
+- Added automated tests for:
+  - early-career tier limits
+  - legendary exclusion
+  - deterministic seeds
+  - anti-repeat
+  - legendary opt-in
+- Runtime state mutation is still disabled by default while the create/AI/cleanup lifecycle is being proven.
+
 ## 0.0.5-dev
 
 - Integrated three pinned research/runtime layers:
