@@ -82,10 +82,15 @@ RoadCandidateBlocker inspectRoadCandidate(
     const RoadCandidateObservation& observation
 ) {
     if (!observation.positionAvailable ||
+        !observation.position.finite ||
         !std::isfinite(observation.distanceWorldUnits) ||
         !std::isfinite(
             observation.forwardProjectionWorldUnits)) {
         return RoadCandidateBlocker::PositionUnavailable;
+    }
+
+    if (!observation.forward.finite) {
+        return RoadCandidateBlocker::ForwardUnavailable;
     }
 
     if (!observation.roadGeometryAvailable) {
@@ -181,6 +186,10 @@ RoadSpawnPromotion promoteRoadCandidateForSpawn(
         return out;
     }
 
+    out.transform.available = true;
+    out.transform.position = observation.position;
+    out.transform.forward = observation.forward;
+
     out.candidate.available = true;
     out.candidate.vehicleAvailable =
         vehicleAvailable;
@@ -271,6 +280,10 @@ RoadStagingPromotion promoteRoadCandidateForStaging(
         return out;
     }
 
+    out.transform.available = true;
+    out.transform.position = observation.position;
+    out.transform.forward = observation.forward;
+
     out.candidate.metricGeometryVerified = true;
     out.candidate.distanceAheadMeters =
         out.metric.distanceMeters;
@@ -323,6 +336,8 @@ const char* roadCandidateBlockerName(
             return "None";
         case RoadCandidateBlocker::PositionUnavailable:
             return "PositionUnavailable";
+        case RoadCandidateBlocker::ForwardUnavailable:
+            return "ForwardUnavailable";
         case RoadCandidateBlocker::RoadGeometryUnavailable:
             return "RoadGeometryUnavailable";
         case RoadCandidateBlocker::RoadGeometryAssociationUnverified:
