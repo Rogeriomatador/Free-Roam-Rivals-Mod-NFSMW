@@ -11,6 +11,21 @@ struct SpatialVector3 {
     float z = 0.0f;
 };
 
+struct ProspectiveVehicleFootprint {
+    bool valid = false;
+    std::uint32_t modelHash = 0;
+
+    // Collision-root offset in vehicle-local coordinates.
+    SpatialVector3 localCenterOffset{};
+
+    // Collision-root half dimensions.
+    SpatialVector3 halfExtents{};
+
+    // Rotation-independent bound used by the conservative pre-spawn
+    // clearance proof.
+    float conservativeRadiusWorldUnits = 0.0f;
+};
+
 struct VehicleOrientedBox {
     bool valid = false;
     std::uintptr_t identity = 0;
@@ -37,6 +52,24 @@ struct PointOccupancyReport {
     unsigned invalidVehicles = 0;
 
     float nearestSeparationWorldUnits = 0.0f;
+    std::uintptr_t nearestVehicle = 0;
+};
+
+struct ConservativeClearanceReport {
+    bool queryValid = false;
+    bool registryComplete = false;
+    bool evidenceComplete = false;
+    bool verifiedClear = false;
+    bool potentialOverlap = false;
+
+    unsigned checkedVehicles = 0;
+    unsigned invalidVehicles = 0;
+
+    float candidateRadiusWorldUnits = 0.0f;
+    float nearestCenterDistanceWorldUnits = 0.0f;
+    float nearestRequiredClearanceWorldUnits = 0.0f;
+
+    std::uintptr_t blockingVehicle = 0;
     std::uintptr_t nearestVehicle = 0;
 };
 
@@ -76,6 +109,15 @@ PointOccupancyReport evaluatePointAgainstFleet(
     const SpatialVector3& point,
     const std::vector<VehicleOrientedBox>& fleet,
     bool registryComplete
+);
+
+ConservativeClearanceReport
+evaluateConservativeSpawnClearance(
+    const SpatialVector3& candidatePosition,
+    const ProspectiveVehicleFootprint& candidate,
+    const std::vector<VehicleOrientedBox>& fleet,
+    bool registryComplete,
+    float paddingWorldUnits = 0.0f
 );
 
 FleetOverlapReport evaluateFootprintAgainstFleet(
