@@ -14,6 +14,9 @@ struct RuntimeProbeConfig {
     unsigned stableFreeRoamSamplesBeforeSpawn = 6;
     int maxActiveRivals = 1;
 
+    bool useHornToChallenge = true;
+    unsigned fallbackChallengeVirtualKey = 0x47u;
+
     bool undergroundBlacklistEnabled = true;
     bool undergroundBlacklistPersistence = true;
 };
