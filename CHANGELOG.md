@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.0.28-dev
+
+- Audited the all-diagnostics v0.0.27 target run: gameplay/render hooks remained healthy for more than five minutes, 24 fallback-key edges were captured, motion telemetry survived four Free Roam generations, and the game stayed fail-closed through transitions.
+- Found a concrete world-collision ABI bug: NFSPluginSDK MW05 UMath logical vectors are stored physically as y,z,x,(w), while the raw CheckHitWorld bridge encoded x,y,z,w. This explains repeated completed occlusion queries with every ground result still unverified.
+- Fix the raw UMath::Vector4 byte layout for both CheckHitWorld segment input and WorldCollisionInfo vector output; retain the reconstructed 0x58-byte result layout and gameplay-thread mailbox.
+- Replace spatial occupancy iteration over the long-lived PVehicle instance pool with MWSDK's verified live IVehicle list. The target run exposed the old mismatch clearly (74 pool entries versus 20 live vehicles, with 53 failed spatial reads).
+- Use only IVehicle/ISimable/IRigidBody read calls from live-list entries; no guessed pointer subtraction, construction or state mutation is introduced.
+- Keep camera evidence conservative. The primary camera was coherent intermittently on target, but selected-GTI footprint, complete displayed-view coverage, streaming and final visibility remain unverified.
+- Update package/release metadata to v0.0.28-dev. Rival construction, AI takeover, economy and garage writes remain disabled.
+
 ## 0.0.27-dev
 
 - Audited the supplied v0.0.26 target log: the unique MW05 main-loop call site is present, but its destination is redirected; gameplay callbacks/FrameTicks/G edges therefore correctly remained zero.

@@ -10,10 +10,13 @@
 namespace frr::game {
 namespace {
 
+// NFSPluginSDK's MW05 UMath vectors expose logical x/y/z fields but their
+// physical memory order is y,z,x. CheckHitWorld receives UMath::Vector4 bytes,
+// so this raw ABI mirror must preserve that storage order exactly.
 struct RawVector4 {
-    float x;
     float y;
     float z;
+    float x;
     float w;
 };
 
@@ -32,13 +35,16 @@ struct RawWorldCollisionInfo {
 #pragma pack(pop)
 
 struct RawWCollisionMgr {
-    // Reconstructed MW05 constructor WCollisionMgr(surfaceMask, primitiveMask)
-    // only initializes these first two fields. Keep extra zeroed storage so a
-    // reference-build layout extension cannot write past our local object.
     std::uint32_t surfaceExclusionMask;
     std::uint32_t primitiveMask;
     std::uint8_t reserved[0x50];
 };
+
+static_assert(sizeof(RawVector4) == 0x10);
+static_assert(offsetof(RawVector4, y) == 0x00);
+static_assert(offsetof(RawVector4, z) == 0x04);
+static_assert(offsetof(RawVector4, x) == 0x08);
+static_assert(offsetof(RawVector4, w) == 0x0C);
 
 static_assert(
     sizeof(RawWorldCollisionInfo) == 0x58,
@@ -67,6 +73,17 @@ bool finiteVector(
         std::isfinite(value.x) &&
         std::isfinite(value.y) &&
         std::isfinite(value.z);
+}
+
+RawVector4 rawVector(
+    const frr::domain::SpatialVector3& value
+) {
+    RawVector4 out{};
+    out.x = value.x;
+    out.y = value.y;
+    out.z = value.z;
+    out.w = 1.0f;
+    return out;
 }
 
 bool executableAddress(
@@ -119,8 +136,8 @@ frr::domain::WorldCollisionSample callCheckHitWorld(
     manager.primitiveMask = 3;
 
     alignas(16) RawVector4 segment[2] = {
-        {from.x, from.y, from.z, 1.0f},
-        {to.x, to.y, to.z, 1.0f}
+        rawVector(from),
+        rawVector(to)
     };
 
     alignas(16) RawWorldCollisionInfo info{};
@@ -196,8 +213,6 @@ WorldCollisionProbe::sampleGround(
         return {};
     }
 
-    // Mirrors the rigorous fallback reconstructed from MW05:
-    // candidate.y - 2 -> candidate.y + 1000, world-face mask only.
     const frr::domain::SpatialVector3 from{
         point.x,
         point.y - 2.0f,
@@ -222,8 +237,6 @@ WorldCollisionProbe::sampleWorldOcclusion(
     const frr::domain::SpatialVector3& from,
     const frr::domain::SpatialVector3& to
 ) {
-    // Mask 3 checks both world faces and barriers, matching several MW05 AI
-    // line-of-sight call sites. This is world occlusion, not screen visibility.
     return callCheckHitWorld(
         from,
         to,

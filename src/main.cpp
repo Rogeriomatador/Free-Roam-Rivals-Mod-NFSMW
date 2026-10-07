@@ -11,7 +11,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.27-dev";
+constexpr const char* kVersion = "0.0.28-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -115,7 +115,7 @@ int bootstrap() {
     }
 
     log.info(
-        "v0.0.27-dev preserves the verified MW05 main-loop chain when NFSMostWanted.WidescreenFix.asi already owns the call site. Target callback delivery still requires runtime confirmation; construction remains disabled."
+        "v0.0.28-dev fixes the MW05 UMath collision ABI byte order and samples spatial occupancy from the verified live IVehicle list. Construction remains disabled pending target validation."
     );
 
     return NFSMW_OK;
@@ -125,7 +125,7 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.27-dev",
+    "0.0.28-dev",
     "Rogeriomatador"
 )
 

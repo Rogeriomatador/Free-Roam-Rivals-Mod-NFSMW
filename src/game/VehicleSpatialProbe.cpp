@@ -2,8 +2,9 @@
 
 #include <windows.h>
 
+#include <mwsdk/game/mw05.hpp>
+
 #include <NFSPluginSDK/Game.MW05/MW05.h>
-#include <NFSPluginSDK/Game.MW05/Extensions.h>
 
 #include <cmath>
 #include <cstdint>
@@ -33,7 +34,6 @@ bool finiteVector(
 }
 
 enum class SlotReadKind : std::uint8_t {
-    End,
     Ignored,
     Valid,
     Invalid,
@@ -45,11 +45,11 @@ struct SlotReadResult {
     frr::domain::VehicleOrientedBox box{};
 };
 
-// Keep SEH in a POD-only helper. MSVC rejects __try in functions that need
-// C++ object unwinding (VehicleSpatialSnapshot owns a std::vector).
-SlotReadResult readVehicleSlot(
-    std::uint32_t index
-) {
+// D40 in the pinned MWSDK proves that the live list contains IVehicle*
+// interface subobjects. Do not subtract offsets or walk the stale PVehicle
+// instance pool for occupancy. Call only the public IVehicle/ISimable virtual
+// contract from each verified live-list entry and keep every failure fail-closed.
+SlotReadResult readLiveVehicle(void* liveInterface) {
     SlotReadResult out{};
 
 #if defined(_MSC_VER)
@@ -57,30 +57,13 @@ SlotReadResult readVehicleSlot(
 #endif
         using namespace NFSPluginSDK::MW05;
 
-        const auto& slot =
-            PVehicle::g_mInstances[index];
-
-        PVehicle* raw = slot.mInstance;
-
-        if (!raw) {
-            out.kind = SlotReadKind::End;
-            return out;
-        }
-
-        if (!slot.mIsEnabled) {
-            out.kind = SlotReadKind::Ignored;
+        if (!liveInterface) {
+            out.kind = SlotReadKind::Fault;
             return out;
         }
 
         auto* vehicle =
-            raw | PVehicleEx::ValidatePVehicle;
-
-        if (!vehicle) {
-            out.kind = SlotReadKind::Invalid;
-            out.box.identity =
-                reinterpret_cast<std::uintptr_t>(raw);
-            return out;
-        }
+            reinterpret_cast<IVehicle*>(liveInterface);
 
         if (!vehicle->IsActive() ||
             vehicle->IsDestroyed()) {
@@ -89,15 +72,28 @@ SlotReadResult readVehicleSlot(
         }
 
         out.box.identity =
-            reinterpret_cast<std::uintptr_t>(vehicle);
+            reinterpret_cast<std::uintptr_t>(liveInterface);
+
+        if (vehicle->IsLoading()) {
+            out.kind = SlotReadKind::Invalid;
+            return out;
+        }
+
         out.box.vehicleKey =
             vehicle->GetVehicleKey();
 
-        IRigidBody* rigidBody =
-            vehicle->GetRigidBody();
+        ISimable* simable =
+            vehicle->GetSimable();
 
-        if (!rigidBody ||
-            vehicle->IsLoading()) {
+        if (!simable) {
+            out.kind = SlotReadKind::Invalid;
+            return out;
+        }
+
+        IRigidBody* rigidBody =
+            simable->GetRigidBody();
+
+        if (!rigidBody) {
             out.kind = SlotReadKind::Invalid;
             return out;
         }
@@ -127,9 +123,16 @@ SlotReadResult readVehicleSlot(
             return out;
         }
 
-        out.box = frr::domain::makeVehicleOrientedBox(out.box.identity, out.box.vehicleKey,
-            copyVector(position), copyVector(right), copyVector(up),
-            copyVector(forward), copyVector(dimension));
+        out.box =
+            frr::domain::makeVehicleOrientedBox(
+                out.box.identity,
+                out.box.vehicleKey,
+                copyVector(position),
+                copyVector(right),
+                copyVector(up),
+                copyVector(forward),
+                copyVector(dimension)
+            );
 
         out.kind = out.box.valid
             ? SlotReadKind::Valid
@@ -148,21 +151,27 @@ SlotReadResult readVehicleSlot(
 
 VehicleSpatialSnapshot VehicleSpatialProbe::sample() {
     VehicleSpatialSnapshot out{};
-    out.boxes.reserve(32);
 
-    bool registryFault = false;
+    const std::uint32_t count =
+        mwsdk::mw05::vehicle_count();
+
+    if (count > kVehicleCountHardLimit) {
+        out.registryCount = count;
+        out.registryComplete = false;
+        return out;
+    }
+
+    out.registryCount = count;
+    out.registryComplete = true;
+    out.boxes.reserve(count);
 
     for (std::uint32_t index = 0;
-         index < kVehicleCountHardLimit;
+         index < count;
          ++index) {
         const SlotReadResult slot =
-            readVehicleSlot(index);
-
-        if (slot.kind == SlotReadKind::End) {
-            out.registryCount = index;
-            out.registryComplete = !registryFault;
-            break;
-        }
+            readLiveVehicle(
+                mwsdk::mw05::vehicle_at(index)
+            );
 
         if (slot.kind == SlotReadKind::Ignored) {
             ++out.ignoredInactiveVehicles;
@@ -180,20 +189,13 @@ VehicleSpatialSnapshot VehicleSpatialProbe::sample() {
         out.boxes.push_back(slot.box);
 
         if (slot.kind == SlotReadKind::Fault) {
-            // A fault means even the registry slot itself cannot be trusted.
-            // Keep scanning bounded, but never call the fleet complete.
-            registryFault = true;
+            // A live-list slot itself could not be trusted. Do not claim full
+            // fleet coverage for this sample.
             out.registryComplete = false;
         }
-    }
-
-    if (!out.registryComplete) {
-        out.registryCount =
-            kVehicleCountHardLimit;
     }
 
     return out;
 }
 
 } // namespace frr::game
-

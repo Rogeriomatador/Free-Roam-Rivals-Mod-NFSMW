@@ -63,25 +63,26 @@ jobs:
           Copy-Item "docs/GAMEPLAY_LOOP_RECOVERY.md" "$pkg/GAMEPLAY_LOOP_RECOVERY.md"
           Copy-Item "docs/TARGET_CAPTURE_2026-10-07.md" "$pkg/TARGET_CAPTURE_2026-10-07.md"
           Copy-Item "docs/TARGET_CAPTURE_V26_2026-10-07.md" "$pkg/TARGET_CAPTURE_V26_2026-10-07.md"
+          Copy-Item "docs/TARGET_CAPTURE_V27_ALL_DIAGNOSTICS_2026-10-07.md" "$pkg/TARGET_CAPTURE_V27_ALL_DIAGNOSTICS_2026-10-07.md"
 
           @"
-          NFSMW Free Roam Rivals v0.0.27-dev
+          NFSMW Free Roam Rivals v0.0.28-dev
 
           INSTALL:
           1. Extract this ZIP into the Need for Speed Most Wanted game folder.
           2. Confirm FreeRoamRivals.asi is inside the scripts folder.
           3. When updating, replace only the ASI and keep your edited INI.
-          4. For the v0.0.27 callback test, read GAMEPLAY_LOOP_RECOVERY.md.
-          5. Set InputProbeEnabled=1, FrameTickProbeEnabled=1, MotionCaptureEnabled=0.
-          6. Leave WorldCollisionDiagnosticsEnabled=0 for this callback test.
-          7. Enter Free Roam for 30-45 seconds; press/release G three times.
-          8. Send scripts\FreeRoamRivals\FreeRoamRivals.log. G only logs edges here.
+          4. Keep your existing INI when updating.
+          5. For the v0.0.28 validation, use FrameTickProbeEnabled=1 and
+             WorldCollisionDiagnosticsEnabled=1.
+          6. Camera/Motion/Input diagnostics may stay enabled; they are optional.
+          7. Enter Free Roam and drive normally for about 60-90 seconds.
+          8. Send scripts\FreeRoamRivals\FreeRoamRivals.log.
 
-          v0.0.27 recognizes the exact NFSMostWanted.WidescreenFix.asi owner when
-          that mod has already redirected the verified MW05 main-loop CALL. It
-          observes the existing wrapper entry instead of bypassing its chain.
-          Unknown redirects still fail closed. Corrected spatial geometry is now
-          target-confirmed for complete early fleets; construction remains disabled.
+          v0.0.28 corrects the MW05 UMath y,z,x,w collision byte layout and
+          samples occupancy from the verified live IVehicle list instead of the
+          long-lived PVehicle pool. Unknown evidence remains fail-closed and
+          construction remains disabled.
 
           Runtime vehicle creation and AI control are still disabled by default.
           ExperimentalSpawnEnabled=1 only enables read-only preflight diagnostics
@@ -93,15 +94,15 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.27-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.28-dev.zip" -Force
 
-      - name: Publish v0.0.27-dev GitHub Release
+      - name: Publish v0.0.28-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.27-dev"
+          $tag = "v0.0.28-dev"
 
           $published = $false
           for ($attempt = 1; $attempt -le 3; $attempt++) {
@@ -111,17 +112,17 @@ jobs:
               if ($info.targetCommitish -ne "${{ github.sha }}") {
                 throw "Existing release target does not match this source commit."
               }
-              if ($info.assets.name -contains "FreeRoamRivals-v0.0.27-dev.zip") {
+              if ($info.assets.name -contains "FreeRoamRivals-v0.0.28-dev.zip") {
                 $published = $true
                 break
               }
-              gh release upload $tag "release/FreeRoamRivals-v0.0.27-dev.zip"
+              gh release upload $tag "release/FreeRoamRivals-v0.0.28-dev.zip"
             } else {
-              gh release create $tag "release/FreeRoamRivals-v0.0.27-dev.zip" `
+              gh release create $tag "release/FreeRoamRivals-v0.0.28-dev.zip" `
                 --target "${{ github.sha }}" `
-                --title "Free Roam Rivals v0.0.27-dev" `
+                --title "Free Roam Rivals v0.0.28-dev" `
                 --prerelease `
-                --notes "v0.0.27-dev: compatibilidade fail-closed com o encadeamento do NFSMostWanted.WidescreenFix.asi no ciclo principal, mantendo a cadeia existente. Geometria espacial corrigida confirmada no alvo. Criação de rivais permanece bloqueada."
+                --notes "v0.0.28-dev: corrige a ordem binária UMath usada em CheckHitWorld e troca a ocupação espacial para a lista IVehicle viva verificada. Criação de rivais permanece bloqueada até validação no alvo."
             }
             if ($LASTEXITCODE -eq 0) { $published = $true; break }
             if ($attempt -lt 3) { Start-Sleep -Seconds 5 }

@@ -151,3 +151,22 @@ sufficient. New render samples replace pending requests. Generation changes
 and unsafe samples invalidate queued/results state. Historical ground evidence
 cannot carry readiness into a later world. This is still a diagnostic lease,
 not a final candidate-bound spawn authorization.
+
+
+## v0.0.28 target correction: UMath storage order
+
+The all-diagnostics v0.0.27 target capture exposed an ABI mismatch in the raw
+bridge. NFSPluginSDK's shared MW05 `UVector3/UVector4` types provide logical
+`x/y/z` fields but declare their physical storage as `y,z,x,(w)`. The
+previous raw bridge used `x,y,z,w`, so the engine received permuted segment
+bytes even though the logical C++ values were correct.
+
+v0.0.28 mirrors the physical `y,z,x,w` order explicitly and converts back to
+logical x/y/z when publishing collision samples. The vertical rigorous-ground
+probe still changes logical Y exactly as the reconstruction does; only ABI byte
+layout is corrected.
+
+The v0.0.27 capture also proved the call address and gameplay-thread ownership:
+queries completed without SEH failure and world-line occlusion could be
+interpreted, while every ground sample remained unverified. The next target run
+must confirm `ground=valid` before this evidence is promoted any further.
