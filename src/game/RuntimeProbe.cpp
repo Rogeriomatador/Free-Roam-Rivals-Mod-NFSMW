@@ -4,6 +4,7 @@
 #include "GameBridge.h"
 #include "RoadCandidateProbe.h"
 #include "VehicleCatalogProbe.h"
+#include "VehicleSpatialProbe.h"
 #include "../core/Log.h"
 #include "../domain/MotionScaleObserver.h"
 #include "../domain/MutationReadiness.h"
@@ -11,6 +12,7 @@
 #include "../domain/RuntimeSession.h"
 #include "../domain/SpawnSafety.h"
 #include "../domain/UndergroundBlacklist.h"
+#include "../domain/VehicleSpatialEvidence.h"
 #include "../persistence/UndergroundBlacklistStore.h"
 
 #include <nfsmw_sdk/d3d9_hooks.h>
@@ -644,6 +646,13 @@ void sampleAndLog(
             current.roadNavigation
         );
 
+    VehicleSpatialSnapshot vehicleSpatial{};
+    if (current.inWorld &&
+        current.vehicles.registryReadable) {
+        vehicleSpatial =
+            VehicleSpatialProbe::sample();
+    }
+
     if (current.roadNavigation.available) {
         g_roadLookaheadObserved.store(
             true,
@@ -721,6 +730,33 @@ void sampleAndLog(
         );
     }
 
+    if (heartbeat &&
+        current.inWorld &&
+        current.vehicles.registryReadable) {
+        std::ostringstream line;
+        line << "Vehicle-spatial observation:"
+             << " registryComplete="
+             << (vehicleSpatial.registryComplete ? 1 : 0)
+             << " registryCount="
+             << vehicleSpatial.registryCount
+             << " enabledActive="
+             << vehicleSpatial.enabledActiveVehicles
+             << " ignoredInactive="
+             << vehicleSpatial.ignoredInactiveVehicles
+             << " boxes="
+             << vehicleSpatial.boxes.size()
+             << " failedSpatialReads="
+             << vehicleSpatial.failedSpatialReads
+             << " halfExtentSemanticsResearchBacked="
+             << (vehicleSpatial
+                    .halfExtentSemanticsResearchBacked
+                 ? 1
+                 : 0)
+             << " footprintOverlapPromotion=0";
+
+        Log::instance().info(line.str());
+    }
+
     if (heartbeat && !roadCandidates.empty()) {
         std::ostringstream line;
         line << "Road-candidate observations: count="
@@ -748,8 +784,39 @@ void sampleAndLog(
                  << std::fixed << std::setprecision(1)
                  << candidate.distanceWorldUnits
                  << ",projWorld="
-                 << candidate.forwardProjectionWorldUnits
-                 << "]";
+                 << candidate.forwardProjectionWorldUnits;
+
+            if (candidate.position.finite) {
+                const auto occupancy =
+                    frr::domain::evaluatePointAgainstFleet(
+                        {
+                            candidate.position.x,
+                            candidate.position.y,
+                            candidate.position.z
+                        },
+                        vehicleSpatial.boxes,
+                        vehicleSpatial.registryComplete
+                    );
+
+                line << ",pointOccupancy="
+                     << (occupancy.verified
+                         ? (occupancy.insideAnyVehicle
+                            ? "occupied"
+                            : "clear")
+                         : "unverified")
+                     << ",fleetChecked="
+                     << occupancy.checkedVehicles
+                     << ",fleetInvalid="
+                     << occupancy.invalidVehicles;
+
+                if (occupancy.checkedVehicles > 0) {
+                    line << ",nearestVehicleGapWorld="
+                         << occupancy
+                                .nearestSeparationWorldUnits;
+                }
+            }
+
+            line << "]";
         }
 
         Log::instance().info(line.str());
