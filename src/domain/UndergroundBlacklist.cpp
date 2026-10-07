@@ -1,6 +1,7 @@
 #include "UndergroundBlacklist.h"
 
 #include <algorithm>
+#include <utility>
 
 namespace frr::domain {
 namespace {
