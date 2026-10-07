@@ -81,6 +81,7 @@ set(FRR_DOMAIN_SOURCES
     src/domain/StagingStateMachine.cpp
     src/domain/UndergroundBlacklist.cpp
     src/domain/VehicleSelection.cpp
+    src/domain/VehicleFootprintLearning.cpp
     src/domain/VehicleSpatialEvidence.cpp
     src/domain/WorldMetricCalibration.cpp
 )
