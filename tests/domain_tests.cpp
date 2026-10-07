@@ -1,6 +1,7 @@
 #include "domain/EncounterStateMachine.h"
 #include "domain/Progression.h"
 #include "domain/RivalGarage.h"
+#include "domain/RivalPopulation.h"
 #include "domain/StakeRules.h"
 #include "domain/VehicleSelection.h"
 
