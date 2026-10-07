@@ -1,5 +1,6 @@
 #include "RuntimeProbe.h"
 
+#include "ChallengeInputProbe.h"
 #include "GameBridge.h"
 #include "VehicleCatalogProbe.h"
 #include "../core/Log.h"
@@ -598,6 +599,7 @@ void onRenderFrame(void*) {
 
 void onInputPoll() {
     rememberThread(g_inputThreadId);
+    ChallengeInputProbe::onPoll();
     ++g_inputPolls;
 }
 
@@ -616,6 +618,8 @@ DWORD WINAPI healthThread(LPVOID) {
         << " inputPolls=" << g_inputPolls.load()
         << " frameTicks=" << g_frameTicks.load()
         << " samples=" << g_samples.load()
+        << " challengeFallbackPresses="
+        << ChallengeInputProbe::totalPresses()
         << " renderThread=" << renderThread
         << " inputThread=" << inputThread
         << " frameTickThread=" << frameThread;
@@ -662,6 +666,30 @@ RuntimeProbeInstallResult RuntimeProbe::install(
     g_config = config;
 
     RuntimeProbeInstallResult result{};
+
+    ChallengeInputProbeConfig challengeInputConfig{};
+    challengeInputConfig.fallbackVirtualKey =
+        config.fallbackChallengeVirtualKey;
+
+    ChallengeInputProbe::configure(
+        challengeInputConfig
+    );
+
+    {
+        std::ostringstream line;
+        line << "Challenge fallback input configured: virtualKey=0x"
+             << std::hex << std::uppercase
+             << ChallengeInputProbe::fallbackVirtualKey()
+             << std::dec
+             << " (edge-triggered, read-only).";
+        Log::instance().info(line.str());
+    }
+
+    if (config.useHornToChallenge) {
+        Log::instance().warn(
+            "UseHornToChallenge requested, but the verified MW05 action map exposes no native HORN/HONK action yet. The configured fallback key remains the only active challenge input."
+        );
+    }
 
     if (config.renderProbeEnabled) {
         nfsmw_d3d9_install(&onRenderFrame, nullptr);

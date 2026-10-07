@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.0.15-dev
+
+- Added `ChallengeInputEdge` with deterministic rising-edge semantics.
+- Added `ChallengeInputProbe`:
+  - sampled from the existing game input-poll callback
+  - configurable Windows virtual-key fallback
+  - bounded atomic press queue
+  - one press can later be consumed by EncounterDirector
+  - never injects or overwrites game input
+- Added robust decimal/hex parsing for `FallbackChallengeKey`.
+- Runtime health diagnostics now report observed fallback challenge presses.
+- Runtime explicitly reports that the verified MW05 action map currently exposes no native HORN/HONK action.
+- Holding the fallback key cannot generate repeated challenge edges.
+- Added systems tests for press/release/rearm behavior.
+- Added `docs/CHALLENGE_INPUT.md`.
+- EncounterDirector runtime wiring is still pending because no live rival exists yet.
+
+
 ## 0.0.14-dev
 
 - Expanded read-only player road-navigation telemetry with:

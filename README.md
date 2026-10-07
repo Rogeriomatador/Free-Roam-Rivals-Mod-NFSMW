@@ -50,7 +50,7 @@ Support for additional 1.3 executables will be added only after their addresses/
 
 ## Current status
 
-**Pre-alpha / read-only runtime + road lookahead + safe spawn/staging foundations (v0.0.14-dev).**
+**Pre-alpha / read-only runtime + road lookahead + challenge-input + safe spawn/staging foundations (v0.0.15-dev).**
 
 The ASI validates the supported executable, installs observation hooks, separates Free Roam from stock races, enumerates live IVehicle driver classes, independently cross-checks the player PVehicle, observes the road network, reads career cash/car-count/completion, and validates the configured rival-car catalog without mutating the game.
 
@@ -66,6 +66,8 @@ This moves staging/route work from abstract road-network availability toward rea
 v0.0.11 also adds an opt-in, read-only probe at the verified `GameFrameTick @ 0x663D30`. It exists specifically to compare the exact main-loop thread with the existing input and render callbacks before any vehicle creation or AI mutation is permitted. It is disabled by default.
 
 v0.0.14 expands the road-navigation probe with native `SeekAheadPosition`, `FarFuturePosition`, `FarFutureDirection`, segment timing and occlusion evidence. Raw coordinate deltas are explicitly treated as **world units**, not metres. A new `WorldMetricCalibration` gate must be explicitly verified before raw geometry can enter metre-based spawn or staging thresholds.
+
+v0.0.15 adds the first usable challenge input path: a configurable fallback virtual key sampled from the existing game input-poll callback with rising-edge semantics and a bounded atomic queue for the future EncounterDirector. The verified MW05 action table still exposes no native `HORN/HONK` action, so horn integration remains explicitly unproven rather than being faked with another HUD action.
 
 v0.0.9 also adds a tested, independent **Underground Blacklist** domain that unlocks after the vanilla career is completed. It is not a relabel of the original Blacklist: the mod tracks its own ranks, discovery state, qualification requirements, world-hunt eligibility and future portrait/audio asset keys.
 
@@ -103,6 +105,7 @@ docs/
   SPAWN_AND_AI_PLAN.md
   RUNTIME_SPAWN_CONTRACT.md
   ROAD_NAV_PROBE.md
+  CHALLENGE_INPUT.md
   PINK_SLIP_ENGINE_RESEARCH.md
   RIVAL_POPULATION_AND_VEHICLES.md
   UNDERGROUND_BLACKLIST.md

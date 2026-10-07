@@ -1,3 +1,4 @@
+#include "domain/ChallengeInput.h"
 #include "domain/OutrunRace.h"
 #include "domain/RuntimeSession.h"
 #include "domain/RivalRuntimeHandle.h"
@@ -23,6 +24,35 @@ void require(bool value, const char* message) {
 
 int main() {
     using namespace frr::domain;
+
+    ChallengeInputEdge challengeEdge{};
+
+    require(
+        !challengeEdge.update(false),
+        "released challenge input has no edge"
+    );
+    require(
+        challengeEdge.update(true),
+        "challenge input emits one rising edge"
+    );
+    require(
+        !challengeEdge.update(true),
+        "holding challenge input does not repeat"
+    );
+    require(
+        !challengeEdge.update(false),
+        "release rearms without emitting"
+    );
+    require(
+        challengeEdge.update(true),
+        "second press emits a new edge"
+    );
+
+    challengeEdge.reset();
+    require(
+        !challengeEdge.previousDown(),
+        "challenge input reset clears held state"
+    );
 
     WorldMetricCalibration rawScale{};
     rawScale.verified = false;
