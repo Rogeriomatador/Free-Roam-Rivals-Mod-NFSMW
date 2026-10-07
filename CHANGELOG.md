@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.0.9-dev
+
+- Added a real mod-owned post-career Underground Blacklist domain.
+- Unlocks only after the vanilla career-completed flag is true.
+- Keeps the original Blacklist untouched.
+- Added ranked entry states:
+  - Locked
+  - Rumored
+  - HuntAvailable
+  - Discovered
+  - ChallengeReady
+  - Defeated
+- Added independent discovered/defeated masks for persistent progression.
+- Added current-target world-spawn and challenge eligibility outputs.
+- Added Street Rep and qualifier-win requirements per rank.
+- Ranked showdowns must still be found and started physically in Free Roam.
+- Added stable portrait/intro-voice/defeat-voice/theme asset keys for later media.
+- Added 10 provisional post-career ranks (#10 -> #1) in UndergroundBlacklist.ini.
+- Added automated Underground Blacklist tests.
+- Documented the native FNG frontend target (FRR_UndergroundBlacklist.fng).
+- Researched non-destructive frontend integration via the FNG screen stack and targeted FrontB patching.
+- No FRONTB/LANGUAGES files are overwritten by this release.
+- Runtime vehicle construction, AI mutation, frontend mutation, economy writes and garage transfers remain gated.
+
+
 ## 0.0.8-dev
 
 - Added explicit world-generation tracking for Free Roam runtime sessions.
