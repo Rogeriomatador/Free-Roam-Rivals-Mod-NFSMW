@@ -11,6 +11,9 @@
 #include "../domain/MutationReadiness.h"
 #include "../domain/RoadCandidatePlanner.h"
 #include "../domain/RuntimeSession.h"
+#include "../domain/RuntimeEvidence.h"
+#include "../domain/SelectedRivalEvidence.h"
+#include "../domain/RivalPopulation.h"
 #include "../domain/SpawnSafety.h"
 #include "../domain/UndergroundBlacklist.h"
 #include "../domain/VehicleFootprintLearning.h"
@@ -66,6 +69,7 @@ frr::domain::VehicleFootprintLearner g_vehicleFootprintLearner{};
 struct WorldCollisionRequest {
     bool pending = false;
     std::uint64_t id = 0;
+    frr::domain::RuntimeEvidenceStamp stamp{};
     frr::domain::SpatialVector3 candidate{};
     frr::domain::SpatialVector3 lineOrigin{};
     frr::domain::SpatialVector3 lineTarget{};
@@ -75,6 +79,7 @@ struct WorldCollisionRequest {
 struct WorldCollisionResult {
     bool available = false;
     std::uint64_t id = 0;
+    frr::domain::RuntimeEvidenceStamp stamp{};
     frr::domain::SpatialVector3 candidate{};
     frr::domain::GroundEvidence ground{};
     frr::domain::WorldOcclusionEvidence occlusion{};
@@ -83,6 +88,10 @@ struct WorldCollisionResult {
 SRWLOCK g_worldCollisionLock = SRWLOCK_INIT;
 WorldCollisionRequest g_worldCollisionRequest{};
 WorldCollisionResult g_worldCollisionResult{};
+frr::domain::RuntimeEvidenceStamp g_latestEvidenceStamp{};
+std::optional<frr::domain::GeneratedRival> g_selectedRival;
+std::uint64_t g_selectedRivalProfile = 0;
+frr::domain::SelectedRivalVehicle g_selectedRivalVehicle{};
 std::uint64_t g_worldCollisionNextRequestId = 1;
 
 bool g_vehicleCatalogValidated = false;
@@ -110,31 +119,56 @@ bool g_haveSpawnPreflight = false;
 frr::domain::SpawnRejectReason g_lastSpawnPreflightReason =
     frr::domain::SpawnRejectReason::ExperimentalFeatureDisabled;
 
-std::uint32_t findFirstVerifiedCatalogFootprintKey() {
-    const auto& catalog =
-        frr::domain::defaultVehicleCatalog();
+frr::domain::RuntimeEvidenceStamp evidenceStamp(
+    const RuntimeSnapshot& current,
+    std::uint64_t generation
+) {
+    frr::domain::RuntimeEvidenceStamp stamp{};
+    stamp.safeFreeRoam =
+        current.mode == WorldProbeMode::FreeRoamCandidate &&
+        current.capabilities.canClassifyFreeRoam &&
+        current.capabilities.roadNetworkAvailable &&
+        current.vehicles.independentPlayerCrossCheck &&
+        !current.raceStatusLoading && !current.inNIS && !current.fadeScreen;
+    stamp.generation = generation;
+    stamp.playerIVehicle = current.vehicles.playerIVehicle;
+    stamp.playerPVehicle = current.vehicles.playerPVehicle;
+    stamp.roadNetwork = current.roadNetwork;
+    stamp.raceStatus = current.raceStatus;
+    stamp.profileKey = current.career.profileKeyAvailable ? current.career.profileKey : 0;
+    stamp.capturedAtMillis = GetTickCount64();
+    return stamp;
+}
 
-    for (const auto& definition : catalog) {
-        const auto runtimeKey =
-            VehicleCatalogProbe::runtimeKeyForName(
-                definition.key
-            );
-
-        if (!runtimeKey) {
-            continue;
-        }
-
-        const auto estimate =
-            g_vehicleFootprintLearner.estimate(
-                *runtimeKey
-            );
-
-        if (estimate.verified) {
-            return *runtimeKey;
+void selectPendingRival(const RuntimeSnapshot& current) {
+    g_selectedRivalVehicle = {};
+    if (!current.career.available || !current.career.profileKeyAvailable ||
+        current.career.profileKey == 0) {
+        g_selectedRival.reset();
+        g_selectedRivalProfile = 0;
+        return;
+    }
+    if (!g_selectedRival || g_selectedRivalProfile != current.career.profileKey) {
+        frr::domain::ProceduralRivalRequest request{};
+        request.seed = current.career.profileKey ^ 0x4652525331ull;
+        // Career completion is verified, partial career progress is not yet
+        // read. Keep the initial experiment at Tier 1 before completion.
+        request.maximumTier = current.career.careerCompletedAtLeastOnce ? 5 : 1;
+        request.rockportLegend = current.career.careerCompletedAtLeastOnce;
+        g_selectedRival = frr::domain::generateProceduralRival(request);
+        g_selectedRivalProfile = current.career.profileKey;
+        if (g_selectedRival) {
+            std::ostringstream line;
+            line << "Pending first-spawn rival selected: rivalId=" << g_selectedRival->rivalId
+                 << " name=" << g_selectedRival->name
+                 << " vehicle=" << g_selectedRival->vehicleKey
+                 << ". Selection is retained; missing footprint never rerolls the vehicle. No construction enabled.";
+            Log::instance().info(line.str());
         }
     }
-
-    return 0;
+    if (!g_selectedRival) return;
+    const auto key = VehicleCatalogProbe::runtimeKeyForName(g_selectedRival->vehicleKey);
+    g_selectedRivalVehicle = {g_selectedRival->rivalId, key.value_or(0)};
 }
 
 bool collisionGameplayThreadConfirmed() {
@@ -191,6 +225,7 @@ void queueWorldCollisionRequest(
     }
 
     WorldCollisionRequest request{};
+    request.stamp = evidenceStamp(current, g_runtimeSession.snapshot().generation);
     request.candidate = {
         selected->position.x,
         selected->position.y,
@@ -220,7 +255,7 @@ void queueWorldCollisionRequest(
 
             if (estimate.verified) {
                 request.lineTarget.y +=
-                    estimate.meanHalfExtents.y;
+                    estimate.maximumHalfExtents.y;
             }
         }
     }
@@ -229,7 +264,7 @@ void queueWorldCollisionRequest(
         &g_worldCollisionLock
     );
 
-    if (!g_worldCollisionRequest.pending) {
+    if (frr::domain::runtimeEvidenceUsable(request.stamp, g_latestEvidenceStamp, GetTickCount64())) {
         request.pending = true;
         request.id =
             g_worldCollisionNextRequestId++;
@@ -265,6 +300,23 @@ void processWorldCollisionRequest() {
         return;
     }
 
+    // Revalidate live world identity on the confirmed gameplay thread. A
+    // render-side observation cannot authorize a query after a transition.
+    frr::domain::RuntimeEvidenceStamp latest{};
+    AcquireSRWLockShared(&g_worldCollisionLock);
+    latest = g_latestEvidenceStamp;
+    ReleaseSRWLockShared(&g_worldCollisionLock);
+    const auto live = evidenceStamp(GameBridge::sample(), latest.generation);
+    if (!frr::domain::runtimeEvidenceUsable(request.stamp, latest, GetTickCount64()) ||
+        !frr::domain::runtimeEvidenceUsable(request.stamp, live, GetTickCount64())) {
+        AcquireSRWLockExclusive(&g_worldCollisionLock);
+        g_worldCollisionResult = {};
+        ReleaseSRWLockExclusive(&g_worldCollisionLock);
+        g_groundEvidenceObserved.store(false, std::memory_order_relaxed);
+        g_worldOcclusionEvidenceObserved.store(false, std::memory_order_relaxed);
+        return;
+    }
+
     const auto groundSample =
         WorldCollisionProbe::sampleGround(
             request.candidate
@@ -273,6 +325,7 @@ void processWorldCollisionRequest() {
     WorldCollisionResult result{};
     result.available = true;
     result.id = request.id;
+    result.stamp = request.stamp;
     result.candidate = request.candidate;
     result.ground =
         frr::domain::interpretGroundCollision(
@@ -294,28 +347,12 @@ void processWorldCollisionRequest() {
             );
     }
 
-    if (result.ground.groundVerified &&
-        result.ground.groundValid) {
-        g_groundEvidenceObserved.store(
-            true,
-            std::memory_order_relaxed
-        );
+    AcquireSRWLockExclusive(&g_worldCollisionLock);
+    if (frr::domain::runtimeEvidenceUsable(result.stamp, g_latestEvidenceStamp, GetTickCount64())) {
+        g_worldCollisionResult = result;
     }
+    ReleaseSRWLockExclusive(&g_worldCollisionLock);
 
-    if (result.occlusion.occlusionVerified) {
-        g_worldOcclusionEvidenceObserved.store(
-            true,
-            std::memory_order_relaxed
-        );
-    }
-
-    AcquireSRWLockExclusive(
-        &g_worldCollisionLock
-    );
-    g_worldCollisionResult = result;
-    ReleaseSRWLockExclusive(
-        &g_worldCollisionLock
-    );
 }
 
 WorldCollisionResult latestWorldCollisionResult() {
@@ -324,7 +361,10 @@ WorldCollisionResult latestWorldCollisionResult() {
     AcquireSRWLockShared(
         &g_worldCollisionLock
     );
-    result = g_worldCollisionResult;
+    if (frr::domain::runtimeEvidenceUsable(
+            g_worldCollisionResult.stamp, g_latestEvidenceStamp, GetTickCount64())) {
+        result = g_worldCollisionResult;
+    }
     ReleaseSRWLockShared(
         &g_worldCollisionLock
     );
@@ -580,6 +620,24 @@ void updateRuntimeSessionAndSpawnPreflight(
         current.roadNetwork;
 
     const auto session = g_runtimeSession.tick(observation);
+    const auto stamp = evidenceStamp(current, session.generation);
+    AcquireSRWLockExclusive(&g_worldCollisionLock);
+    g_latestEvidenceStamp = stamp;
+    if (!session.active || session.newGeneration ||
+        !frr::domain::runtimeEvidenceUsable(g_worldCollisionResult.stamp, stamp, GetTickCount64())) {
+        g_worldCollisionResult = {};
+    }
+    if (!session.active || session.newGeneration) g_worldCollisionRequest = {};
+    ReleaseSRWLockExclusive(&g_worldCollisionLock);
+    if (!session.active || session.newGeneration) {
+        g_vehicleFootprintLearner.reset();
+        g_motionScaleObserver.reset();
+        g_motionScaleSnapshot = {};
+        g_haveMotionClock = false;
+        g_loggedStableMotionScale = false;
+        g_groundEvidenceObserved.store(false, std::memory_order_relaxed);
+        g_worldOcclusionEvidenceObserved.store(false, std::memory_order_relaxed);
+    }
 
     if (session.newGeneration) {
         std::ostringstream line;
@@ -812,6 +870,8 @@ void sampleAndLog(
 ) {
     const RuntimeSnapshot current = GameBridge::sample();
     ++g_samples;
+    updateRuntimeSessionAndSpawnPreflight(current);
+    selectPendingRival(current);
 
     const auto motionNow =
         std::chrono::steady_clock::now();
@@ -890,13 +950,8 @@ void sampleAndLog(
         g_loggedStableMotionScale = true;
     }
 
-    if (current.mode == WorldProbeMode::FreeRoamCandidate &&
-        current.capabilities.canClassifyFreeRoam) {
-        g_safeFreeRoamObserved.store(
-            true,
-            std::memory_order_relaxed
-        );
-    }
+    const bool safeNow = g_runtimeSession.snapshot().active;
+    g_safeFreeRoamObserved.store(safeNow, std::memory_order_relaxed);
 
     const auto roadCandidates =
         RoadCandidateProbe::build(
@@ -904,26 +959,15 @@ void sampleAndLog(
         );
 
     VehicleSpatialSnapshot vehicleSpatial{};
-    if (current.inWorld &&
-        current.vehicles.registryReadable) {
+    if (safeNow && current.vehicles.registryReadable) {
         vehicleSpatial =
             VehicleSpatialProbe::sample();
     }
 
-    if (current.roadNavigation.available) {
-        g_roadLookaheadObserved.store(
-            true,
-            std::memory_order_relaxed
-        );
-    }
-
-    if (vehicleSpatial.registryComplete &&
-        vehicleSpatial.failedSpatialReads == 0) {
-        g_vehicleSpatialEvidenceObserved.store(
-            true,
-            std::memory_order_relaxed
-        );
-    }
+    g_roadLookaheadObserved.store(safeNow && current.roadNavigation.available, std::memory_order_relaxed);
+    g_vehicleSpatialEvidenceObserved.store(
+        safeNow && vehicleSpatial.registryComplete && vehicleSpatial.failedSpatialReads == 0,
+        std::memory_order_relaxed);
 
     for (const auto& box : vehicleSpatial.boxes) {
         if (box.valid) {
@@ -931,46 +975,11 @@ void sampleAndLog(
         }
     }
 
-    if (g_verifiedFootprintVehicleKey.load(
-            std::memory_order_relaxed) == 0 &&
-        g_vehicleFootprintLearner.verifiedModelCount() > 0) {
-        const std::uint32_t verifiedCatalogKey =
-            findFirstVerifiedCatalogFootprintKey();
-
-        if (verifiedCatalogKey != 0) {
-            g_verifiedFootprintVehicleKey.store(
-                verifiedCatalogKey,
-                std::memory_order_relaxed
-            );
-            g_vehicleFootprintVerified.store(
-                true,
-                std::memory_order_relaxed
-            );
-
-            const auto estimate =
-                g_vehicleFootprintLearner.estimate(
-                    verifiedCatalogKey
-                );
-
-            std::ostringstream line;
-            line << "Verified pre-construction vehicle footprint:"
-                 << " vehicleKey=0x"
-                 << std::hex << std::uppercase
-                 << verifiedCatalogKey
-                 << std::dec
-                 << " samples="
-                 << estimate.sampleCount
-                 << " halfExtentsWorld=("
-                 << std::fixed << std::setprecision(3)
-                 << estimate.meanHalfExtents.x << ","
-                 << estimate.meanHalfExtents.y << ","
-                 << estimate.meanHalfExtents.z << ")"
-                 << " maxRelativeSpread="
-                 << estimate.maximumObservedRelativeSpread;
-
-            Log::instance().info(line.str());
-        }
-    }
+    const auto selectedEstimate = g_vehicleFootprintLearner.estimate(g_selectedRivalVehicle.vehicleKey);
+    const bool selectedFootprintVerified = safeNow && g_selectedRivalVehicle.rivalId != 0 && selectedEstimate.verified;
+    g_verifiedFootprintVehicleKey.store(
+        selectedFootprintVerified ? g_selectedRivalVehicle.vehicleKey : 0, std::memory_order_relaxed);
+    g_vehicleFootprintVerified.store(selectedFootprintVerified, std::memory_order_relaxed);
 
     bool exactRoadCandidateThisSample = false;
     for (const auto& candidate : roadCandidates) {
@@ -981,19 +990,15 @@ void sampleAndLog(
         }
     }
 
-    if (exactRoadCandidateThisSample) {
-        g_exactRoadCandidateObserved.store(
-            true,
-            std::memory_order_relaxed
-        );
-    }
+    g_exactRoadCandidateObserved.store(safeNow && exactRoadCandidateThisSample, std::memory_order_relaxed);
+    queueWorldCollisionRequest(roadCandidates, current);
+    const auto freshCollision = latestWorldCollisionResult();
+    g_groundEvidenceObserved.store(
+        freshCollision.available && freshCollision.ground.groundVerified && freshCollision.ground.groundValid,
+        std::memory_order_relaxed);
+    g_worldOcclusionEvidenceObserved.store(
+        freshCollision.available && freshCollision.occlusion.occlusionVerified, std::memory_order_relaxed);
 
-    queueWorldCollisionRequest(
-        roadCandidates,
-        current
-    );
-
-    updateRuntimeSessionAndSpawnPreflight(current);
     updateUndergroundBlacklistDiagnostic(current);
 
     if (!g_vehicleCatalogValidated &&
@@ -1141,64 +1146,21 @@ void sampleAndLog(
                                 .nearestSeparationWorldUnits;
                 }
 
-                const std::uint32_t footprintKey =
-                    g_verifiedFootprintVehicleKey.load(
-                        std::memory_order_relaxed
-                    );
+                const auto selectedOverlap = frr::domain::evaluateSelectedRivalOverlap(
+                    g_selectedRivalVehicle, candidate, g_vehicleFootprintLearner,
+                    vehicleSpatial.boxes, safeNow && vehicleSpatial.registryComplete);
+                // Feed the actual selected model's SAT result into the existing
+                // promotion contract. Unresolved evidence retains safe defaults.
+                const auto promotion = frr::domain::promoteRoadCandidateForSpawn(
+                    candidate, selectedOverlap.evidence, {}, g_selectedRivalVehicle.vehicleKey != 0);
+                line << ",selectedRivalId=" << g_selectedRivalVehicle.rivalId
+                     << ",selectedVehicleKey=0x" << std::hex << g_selectedRivalVehicle.vehicleKey << std::dec
+                     << ",preconstructionOverlap="
+                     << (selectedOverlap.evidence.overlapVerified
+                         ? (selectedOverlap.evidence.overlapsLiveVehicle ? "occupied" : "clear") : "unverified")
+                     << ",overlapVerified=" << (selectedOverlap.evidence.overlapVerified ? 1 : 0)
+                     << ",promotion=" << frr::domain::roadCandidateBlockerName(promotion.blocker);
 
-                if (footprintKey != 0 &&
-                    candidate.forward.finite) {
-                    const auto footprintEstimate =
-                        g_vehicleFootprintLearner.estimate(
-                            footprintKey
-                        );
-
-                    if (footprintEstimate.verified) {
-                        const auto candidateFootprint =
-                            frr::domain::
-                                makeRoadAlignedVehicleFootprint(
-                                    footprintKey,
-                                    {
-                                        candidate.position.x,
-                                        candidate.position.y,
-                                        candidate.position.z
-                                    },
-                                    {
-                                        candidate.forward.x,
-                                        candidate.forward.y,
-                                        candidate.forward.z
-                                    },
-                                    footprintEstimate
-                                        .meanHalfExtents
-                                );
-
-                        const auto footprintOverlap =
-                            frr::domain::
-                                evaluateFootprintAgainstFleet(
-                                    candidateFootprint,
-                                    vehicleSpatial.boxes,
-                                    vehicleSpatial
-                                        .registryComplete
-                                );
-
-                        line << ",footprintKey=0x"
-                             << std::hex << std::uppercase
-                             << footprintKey
-                             << std::dec
-                             << ",preconstructionOverlap="
-                             << (footprintOverlap.verified
-                                 ? (footprintOverlap.overlaps
-                                    ? "occupied"
-                                    : "clear")
-                                 : "unverified")
-                             << ",footprintFleetChecked="
-                             << footprintOverlap
-                                    .checkedVehicles
-                             << ",footprintFleetInvalid="
-                             << footprintOverlap
-                                    .invalidVehicles;
-                    }
-                }
             }
 
             line << "]";
@@ -1604,3 +1566,4 @@ RuntimeProbeInstallResult RuntimeProbe::install(
 }
 
 } // namespace frr::game
+

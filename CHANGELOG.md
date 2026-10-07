@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.0.22-dev
+
+- Bound pre-construction SAT evidence to one selected pending procedural rival and its exact runtime model key. Selection does not reroll to find an already learned model.
+- Promoted selected-model full-fleet results to `RoadCandidateEvidence.overlapVerified`; unknown/incomplete evidence remains occupied/unverified.
+- Use maximum observed half-extents instead of the smaller mean for candidate boxes. Later inconsistent measurements revoke readiness.
+- Added value-only world evidence leases: generation, both player identities, road network, race status, pseudonymous profile and 500 ms age.
+- Collision requests are revalidated with a fresh GameBridge read on the confirmed gameplay thread, replaced by newer samples, and discarded on transitions/expiry. Results also expire.
+- Reset footprint/motion accumulators across world generations; readiness observations now reflect the latest safe sample instead of session-long latches.
+- Added evidence regression tests and v0.0.22 release packaging. Vehicle construction, metric scale, streaming and final candidate promotion remain blocked.
+
 ## 0.0.21-dev
 
 - Added opt-in `WorldCollisionDiagnosticsEnabled` (disabled by default).
@@ -451,3 +461,4 @@
 - Added minimal native ASI bootstrap.
 - Added Win32 GitHub Actions build workflow.
 - No gameplay hooks or save mutations yet.
+

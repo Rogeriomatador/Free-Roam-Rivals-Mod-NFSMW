@@ -11,7 +11,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.21-dev";
+constexpr const char* kVersion = "0.0.22-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -102,7 +102,7 @@ int bootstrap() {
     }
 
     log.info(
-        "v0.0.21-dev adds an opt-in gameplay-thread-only WCollisionMgr probe for verified world-face ground and world/barrier occlusion evidence. Ground now has its own construction-readiness gate; camera visibility and streaming remain fail-closed."
+        "v0.0.22-dev binds overlap to the selected rival model and expires world-collision requests on age, identity or generation changes. Construction remains blocked."
     );
 
     return NFSMW_OK;
@@ -112,10 +112,11 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.21-dev",
+    "0.0.22-dev",
     "Rogeriomatador"
 )
 
 NFSMW_PLUGIN_MAIN() {
     return frr::bootstrap();
 }
+

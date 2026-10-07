@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.21
+    VERSION 0.0.22
     LANGUAGES C CXX
 )
 
@@ -73,6 +73,8 @@ set(FRR_DOMAIN_SOURCES
     src/domain/RivalGarage.cpp
     src/domain/RivalPopulation.cpp
     src/domain/RivalRuntimeHandle.cpp
+    src/domain/RuntimeEvidence.cpp
+    src/domain/SelectedRivalEvidence.cpp
     src/domain/RuntimeSession.cpp
     src/domain/SpawnExperiment.cpp
     src/domain/SpawnSafety.cpp
@@ -222,3 +224,8 @@ add_test(
     NAME FreeRoamRivalsSpawnExperimentTests
     COMMAND FreeRoamRivalsSpawnExperimentTests
 )
+
+
+add_executable(FreeRoamRivalsEvidenceTests tests/evidence_tests.cpp ${FRR_DOMAIN_SOURCES})
+target_include_directories(FreeRoamRivalsEvidenceTests PRIVATE src)
+add_test(NAME FreeRoamRivalsEvidenceTests COMMAND FreeRoamRivalsEvidenceTests)
