@@ -10,7 +10,7 @@
 namespace frr::game {
 namespace {
 
-struct alignas(16) RawVector4 {
+struct RawVector4 {
     float x;
     float y;
     float z;
@@ -118,7 +118,7 @@ frr::domain::WorldCollisionSample callCheckHitWorld(
     manager.surfaceExclusionMask = 0;
     manager.primitiveMask = 3;
 
-    RawVector4 segment[2] = {
+    alignas(16) RawVector4 segment[2] = {
         {from.x, from.y, from.z, 1.0f},
         {to.x, to.y, to.z, 1.0f}
     };
