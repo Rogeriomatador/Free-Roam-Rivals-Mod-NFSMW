@@ -11,7 +11,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.13-dev";
+constexpr const char* kVersion = "0.0.14-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -96,7 +96,7 @@ int bootstrap() {
     }
 
     log.info(
-        "v0.0.13-dev adds the fail-closed state machine for the first controlled create-register-AI-motion-cleanup spawn experiment. Engine construction remains disabled until target-machine diagnostics validate the callback and road candidate."
+        "v0.0.14-dev expands native road lookahead telemetry and adds a verified world-unit-to-metre calibration gate. Raw WRoadNav coordinate deltas cannot enter metric spawn/staging thresholds. Engine construction remains disabled until target-machine diagnostics validate the callback, scale and road candidate."
     );
 
     return NFSMW_OK;
@@ -106,7 +106,7 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.13-dev",
+    "0.0.14-dev",
     "Rogeriomatador"
 )
 
