@@ -32,11 +32,15 @@ Exit criterion: loading the ASI does not alter gameplay and creates a diagnostic
 - [x] Build typed Current/Future/SeekAhead/FarFuture road-candidate observations
 - [x] Require exact WRoadNav association before candidate promotion
 - [x] Encode streaming/ground/visibility/overlap evidence required by spawn promotion
-- [ ] Implement live streaming/ground/visibility/overlap evidence probes
+- [x] Implement read-only live-vehicle OBB spatial probe
+- [x] Implement OBB-vs-OBB SAT and point-occupancy evidence
+- [ ] Obtain selected rival collision footprint before construction
+- [ ] Promote live vehicle overlap result into RoadCandidateEvidence
+- [ ] Implement live streaming/ground/visibility evidence probes
 - [ ] Extract and promote one verified road-safe/off-screen spawn candidate in-game
 - [ ] Validate dedicated gameplay-thread mutation callback in-game
   - [x] Add opt-in read-only GameFrameTick entry probe
-  - [x] Encode callback/thread/FreeRoam/lookahead/exact-road/calibration/candidate readiness blockers
+  - [x] Encode callback/thread/FreeRoam/lookahead/exact-road/vehicle-spatial/calibration/candidate readiness blockers
   - [ ] Confirm callback/thread health on target installation before mutation
 - [x] Encode construct/registry/AI/motion/cleanup experiment as a fail-closed state machine
 - [ ] Wire the state machine to verified engine construction/cleanup calls
