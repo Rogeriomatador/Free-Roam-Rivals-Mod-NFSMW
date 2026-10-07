@@ -46,7 +46,9 @@ public:
     std::size_t modelCount() const;
     std::size_t verifiedModelCount() const;
 
-private:
+    // Public only so the implementation can build an estimate without
+    // duplicating the accumulator layout. Callers should treat this as
+    // implementation state.
     struct Accumulator {
         std::uint32_t vehicleKey = 0;
         std::uint32_t sampleCount = 0;
@@ -56,6 +58,7 @@ private:
         SpatialVector3 maximum{};
     };
 
+private:
     VehicleFootprintTuning tuning_{};
     std::vector<Accumulator> accumulators_{};
 };
