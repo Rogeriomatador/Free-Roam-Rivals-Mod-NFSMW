@@ -472,6 +472,14 @@ int main() {
     readinessReport = evaluateMutationReadiness(readiness);
     require(
         readinessReport.blocker ==
+            MutationReadinessBlocker::RenderVisibilityUnavailable,
+        "readiness requires verified render-frustum visibility evidence"
+    );
+
+    readiness.renderVisibilityEvidenceVerified = true;
+    readinessReport = evaluateMutationReadiness(readiness);
+    require(
+        readinessReport.blocker ==
             MutationReadinessBlocker::MetricCalibrationUnverified,
         "readiness requires verified metric scale"
     );
