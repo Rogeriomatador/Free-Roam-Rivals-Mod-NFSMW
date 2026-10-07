@@ -60,23 +60,27 @@ jobs:
           Copy-Item "tools/analyze_motion_capture.py" "$pkg/tools/"
           Copy-Item "docs/MOTION_CAPTURE.md" "$pkg/MOTION_CAPTURE.md"
           Copy-Item "docs/RENDER_HOOK_RECOVERY.md" "$pkg/RENDER_HOOK_RECOVERY.md"
+          Copy-Item "docs/GAMEPLAY_LOOP_RECOVERY.md" "$pkg/GAMEPLAY_LOOP_RECOVERY.md"
+          Copy-Item "docs/TARGET_CAPTURE_2026-10-07.md" "$pkg/TARGET_CAPTURE_2026-10-07.md"
 
           @"
-          NFSMW Free Roam Rivals v0.0.25-dev
+          NFSMW Free Roam Rivals v0.0.26-dev
 
           INSTALL:
           1. Extract this ZIP into the Need for Speed Most Wanted game folder.
           2. Confirm FreeRoamRivals.asi is inside the scripts folder.
-          3. Start the game and enter Free Roam.
-          4. For capture, set MotionCaptureEnabled=1 under [Diagnostics] in the INI.
-          5. Enter Free Roam and drive steadily for 60-90 seconds.
-          6. Check scripts\FreeRoamRivals\FreeRoamRivals.log.
-          7. If renderFrames/samples remain zero, send the log; do not repeat driving runs.
+          3. When updating, replace only the ASI and keep your edited INI.
+          4. For the v0.0.26 callback test, read GAMEPLAY_LOOP_RECOVERY.md.
+          5. Set InputProbeEnabled=1, FrameTickProbeEnabled=1, MotionCaptureEnabled=0.
+          6. Leave WorldCollisionDiagnosticsEnabled=0 for the first callback test.
+          7. Enter Free Roam for 30-45 seconds; press/release G three times.
+          8. Send scripts\FreeRoamRivals\FreeRoamRivals.log. G only logs edges here.
 
-          v0.0.25 recovers read-only render observation with guarded EndScene/Present
-          method hooks, device tracking and periodic health. When updating from
-          v0.0.24, replace the ASI and keep your edited INI. See MOTION_CAPTURE.md.
-          Metre scale and target-game callback delivery remain unverified.
+          v0.0.26 adds guarded signature/ABI-verified main-loop observation and
+          fixes fresh spatial boxes always rejecting their own validity flag.
+          Render/motion capture is confirmed on the target; gameplay-loop delivery,
+          physical metre scale and complete corrected fleet evidence are pending.
+          A redirected CALL fails closed instead of bypassing another mod.
 
           Runtime vehicle creation and AI control are still disabled by default.
           ExperimentalSpawnEnabled=1 only enables read-only preflight diagnostics
@@ -88,23 +92,37 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.25-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.26-dev.zip" -Force
 
-      - name: Publish v0.0.25-dev GitHub Release
+      - name: Publish v0.0.26-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.25-dev"
+          $tag = "v0.0.26-dev"
 
-          gh release view $tag *> $null
-          if ($LASTEXITCODE -eq 0) {
-            Write-Host "Release $tag already exists; keeping existing release."
-          } else {
-            gh release create $tag "release/FreeRoamRivals-v0.0.25-dev.zip" `
-              --target "${{ github.sha }}" `
-              --title "Free Roam Rivals v0.0.25-dev" `
-              --prerelease `
-              --notes "v0.0.25-dev: correção da coleta via EndScene/Present, rastreamento do dispositivo e saúde contínua dos hooks. Inclui testes Win32 de ponteiros armazenados e troca de dispositivo. Criação de rivais continua bloqueada."
+          $published = $false
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            $existing = gh release view $tag --json targetCommitish,assets 2>$null
+            if ($LASTEXITCODE -eq 0) {
+              $info = $existing | ConvertFrom-Json
+              if ($info.targetCommitish -ne "${{ github.sha }}") {
+                throw "Existing release target does not match this source commit."
+              }
+              if ($info.assets.name -contains "FreeRoamRivals-v0.0.26-dev.zip") {
+                $published = $true
+                break
+              }
+              gh release upload $tag "release/FreeRoamRivals-v0.0.26-dev.zip"
+            } else {
+              gh release create $tag "release/FreeRoamRivals-v0.0.26-dev.zip" `
+                --target "${{ github.sha }}" `
+                --title "Free Roam Rivals v0.0.26-dev" `
+                --prerelease `
+                --notes "v0.0.26-dev: observação do ciclo principal com assinatura/ABI verificadas, tecla de desafio e correção das caixas espaciais. Coleta de movimento confirmada no alvo. Criação de rivais permanece bloqueada."
+            }
+            if ($LASTEXITCODE -eq 0) { $published = $true; break }
+            if ($attempt -lt 3) { Start-Sleep -Seconds 5 }
           }
+          if (-not $published) { throw "Release publication failed after three attempts." }

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.25
+    VERSION 0.0.26
     LANGUAGES C CXX
 )
 
@@ -64,6 +64,7 @@ set(NFSMW__MINHOOK_SRCS
 
 set(FRR_DOMAIN_SOURCES
     src/domain/CameraFrustumEvidence.cpp
+    src/domain/GameplayLoopEvidence.cpp
     src/domain/ChallengeInput.cpp
     src/domain/EncounterStateMachine.cpp
     src/domain/MotionScaleObserver.cpp
@@ -100,6 +101,7 @@ nfsmw_add_plugin(FreeRoamRivals
         src/core/VersionGuard.cpp
         src/game/CameraFrustumProbe.cpp
         src/game/ChallengeInputProbe.cpp
+        src/game/GameplayLoopHook.cpp
         src/game/GameBridge.cpp
         src/game/PlayerMotionProbe.cpp
         src/game/RoadCandidateProbe.cpp
@@ -250,3 +252,16 @@ add_executable(FreeRoamRivalsRenderHookTests tests/render_hook_tests.cpp src/gam
 target_include_directories(FreeRoamRivalsRenderHookTests PRIVATE src "${NFSMW_SDK_MINHOOK_DIR}/include")
 target_compile_definitions(FreeRoamRivalsRenderHookTests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX FRR_RENDER_HOOK_TESTING)
 add_test(NAME FreeRoamRivalsRenderHookTests COMMAND FreeRoamRivalsRenderHookTests)
+
+add_executable(FreeRoamRivalsGameplayLoopTests tests/gameplay_loop_tests.cpp src/domain/GameplayLoopEvidence.cpp src/domain/MutationReadiness.cpp)
+target_include_directories(FreeRoamRivalsGameplayLoopTests PRIVATE src)
+add_test(NAME FreeRoamRivalsGameplayLoopTests COMMAND FreeRoamRivalsGameplayLoopTests)
+
+add_executable(FreeRoamRivalsGameplayHookTests tests/gameplay_hook_tests.cpp src/game/GameplayLoopHook.cpp src/domain/GameplayLoopEvidence.cpp src/core/Log.cpp ${NFSMW__MINHOOK_SRCS})
+target_include_directories(FreeRoamRivalsGameplayHookTests PRIVATE src "${NFSMW_SDK_MINHOOK_DIR}/include")
+target_compile_definitions(FreeRoamRivalsGameplayHookTests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX FRR_GAMEPLAY_HOOK_TESTING)
+add_test(NAME FreeRoamRivalsGameplayHookTests COMMAND FreeRoamRivalsGameplayHookTests)
+
+add_executable(FreeRoamRivalsSpatialFactoryTests tests/vehicle_spatial_factory_tests.cpp src/domain/VehicleSpatialEvidence.cpp)
+target_include_directories(FreeRoamRivalsSpatialFactoryTests PRIVATE src)
+add_test(NAME FreeRoamRivalsSpatialFactoryTests COMMAND FreeRoamRivalsSpatialFactoryTests)

@@ -31,6 +31,13 @@ struct MutationReadinessInput {
     std::uint32_t frameTickThreadId = 0;
     std::uint32_t inputThreadId = 0;
 
+    // Explicit alternative to the old unobserved input-poller anchor. This
+    // requires the WFP CALL ABI + pinned GameFrameTick target to agree.
+    bool gameplayLoopSourceVerified = false;
+    bool gameplayLoopThreadConsistent = false;
+    std::uint64_t gameplayLoopCompletedCount = 0;
+    std::uint32_t gameplayLoopThreadId = 0;
+
     bool safeFreeRoamObserved = false;
     bool roadLookaheadObserved = false;
     bool exactRoadCandidateObserved = false;
@@ -57,3 +64,4 @@ const char* mutationReadinessBlockerName(
 );
 
 } // namespace frr::domain
+

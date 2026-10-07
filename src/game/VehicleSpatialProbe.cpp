@@ -127,15 +127,9 @@ SlotReadResult readVehicleSlot(
             return out;
         }
 
-        out.box.center = copyVector(position);
-        out.box.right = copyVector(right);
-        out.box.up = copyVector(up);
-        out.box.forward = copyVector(forward);
-        out.box.halfExtents = copyVector(dimension);
-        out.box.valid =
-            frr::domain::validVehicleOrientedBox(
-                out.box
-            );
+        out.box = frr::domain::makeVehicleOrientedBox(out.box.identity, out.box.vehicleKey,
+            copyVector(position), copyVector(right), copyVector(up),
+            copyVector(forward), copyVector(dimension));
 
         out.kind = out.box.valid
             ? SlotReadKind::Valid
@@ -202,3 +196,4 @@ VehicleSpatialSnapshot VehicleSpatialProbe::sample() {
 }
 
 } // namespace frr::game
+

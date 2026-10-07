@@ -60,6 +60,12 @@ bool validVehicleOrientedBox(
     const VehicleOrientedBox& box
 );
 
+// Build a new read observation without requiring its initially false valid
+// flag to authorize itself. Invalid geometry still returns valid=false.
+VehicleOrientedBox makeVehicleOrientedBox(std::uintptr_t identity, std::uint32_t vehicleKey,
+    SpatialVector3 center, SpatialVector3 right, SpatialVector3 up,
+    SpatialVector3 forward, SpatialVector3 halfExtents);
+
 bool pointInsideVehicleOrientedBox(
     const SpatialVector3& point,
     const VehicleOrientedBox& box
@@ -90,3 +96,4 @@ FleetOverlapReport evaluateFootprintAgainstFleet(
 );
 
 } // namespace frr::domain
+

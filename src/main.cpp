@@ -11,7 +11,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.25-dev";
+constexpr const char* kVersion = "0.0.26-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -107,14 +107,15 @@ int bootstrap() {
 
     if (!installed.renderProbeArmed &&
         !installed.inputProbeInstalled &&
-        !installed.frameTickProbeInstalled) {
+        !installed.frameTickProbeInstalled &&
+        !installed.gameplayLoopInstalled) {
         log.error(
             "No runtime observation hook could be armed. All gameplay features remain disabled."
         );
     }
 
     log.info(
-        "v0.0.25-dev verifies EndScene/Present method hooks, follows device changes and reports ongoing callback health. Vehicle construction remains blocked; target-game capture must still be confirmed."
+        "v0.0.26-dev observes a signature-verified cdecl-float gameplay loop for fallback input. Target render capture is confirmed; gameplay delivery and construction remain to be validated."
     );
 
     return NFSMW_OK;
@@ -124,7 +125,7 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.25-dev",
+    "0.0.26-dev",
     "Rogeriomatador"
 )
 
