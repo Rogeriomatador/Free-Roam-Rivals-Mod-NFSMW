@@ -17,6 +17,7 @@
   - straight-line distance and forward projection to seek/far-future points
 - Added a dedicated player-road-navigation runtime capability flag.
 - Added configurable RoadNavProbeEnabled and RoadNavLogEverySamples diagnostics.
+- Runtime hook health now records render-thread and input-poll-thread IDs plus whether both callbacks are observed on the same thread; this is evidence for choosing the future gameplay mutation callback.
 - Road distances are deliberately logged as engine world units until in-game
   captures establish the exact practical mapping for spawn/staging tuning.
 - Vehicle construction and AI mutation remain disabled; the purpose of this

@@ -108,7 +108,21 @@ Before a point may be promoted into the spawn planner, captures must establish:
 
 Only after those checks should the runtime construct a vehicle.
 
+## Gameplay-thread evidence
+
+The runtime health line also records the first thread ID observed by the D3D9
+render callback and by the engine input-poll callback:
+
+```text
+renderThread=... inputThread=... sameThread=0|1
+```
+
+This does not by itself authorize gameplay mutation. It gives us an in-game
+fact about callback execution so the construction probe can avoid being placed
+on an arbitrary background thread.
+
 ## Safety
+
 
 The probe is read-only and is sampled only while the runtime classifies the
 game as a FreeRoamCandidate.
