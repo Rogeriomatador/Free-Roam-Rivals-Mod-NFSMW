@@ -15,6 +15,10 @@ struct VehicleOrientedBox {
     bool valid = false;
     std::uintptr_t identity = 0;
 
+    // Stable MW05 pvehicle collection key returned by IVehicle::GetVehicleKey.
+    // Candidate boxes may use identity=0 but still carry this model key.
+    std::uint32_t vehicleKey = 0;
+
     SpatialVector3 center{};
     SpatialVector3 right{};
     SpatialVector3 up{};
