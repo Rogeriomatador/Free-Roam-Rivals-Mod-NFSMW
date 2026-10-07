@@ -63,6 +63,8 @@ v0.0.10 adds two runtime foundations that were previously only planned:
 
 This moves staging/route work from abstract road-network availability toward real lane/segment data and gives the post-career ladder a safe persistence path without touching the vanilla save.
 
+v0.0.11 also adds an opt-in, read-only probe at the verified `GameFrameTick @ 0x663D30`. It exists specifically to compare the exact main-loop thread with the existing input and render callbacks before any vehicle creation or AI mutation is permitted. It is disabled by default.
+
 v0.0.9 also adds a tested, independent **Underground Blacklist** domain that unlocks after the vanilla career is completed. It is not a relabel of the original Blacklist: the mod tracks its own ranks, discovery state, qualification requirements, world-hunt eligibility and future portrait/audio asset keys.
 
 The previous runtime foundations remain in place:
