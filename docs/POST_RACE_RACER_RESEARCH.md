@@ -12,7 +12,7 @@ followable after races. This is an owner report, not a capture made here.
 | Same revision, `src/Speed/Indep/Src/Physics/PVehicle.h` | VehicleParams field order, direction/position references, cache and flags | Supports SDK semantics; not an executed x86 ABI test |
 | [s-b-repo/nfsmw-2005-re](https://github.com/s-b-repo/nfsmw-2005-re/tree/0dbc9393e263d95d182e6c98bff3dab4140aa2ff), `notes/project_ai_racer.md`, `docs/renames.csv` | Host/goal layers, racing-line and catchup dependencies | Notes and CSV disagree on an entry address; addresses need executable verification |
 | [NFS Chat Chaos Mod](https://github.com/berkayylmao/NFS-Chat-Chaos-Mod/tree/2059ff1b71144328f50cbff18e05f50a063770af), `GuessWhosBack.hpp`, `Impostor.hpp` | Published construction, ground placement, cop AI, Kill and driver-class-change code | Source inspection, not local gameplay; swap effect operates within a stock race |
-| [MW Native Free Roam Racer](https://github.com/Zakkey250/MW-NativeFreeRoamRacer/tree/c8e728809bdc77bfd11e31d975bb2bc7e0cce2bd), Runtime.cpp, AnchorRoadSeed.inl, VALIDATION.md | Published Traffic-seed to Racer activation and author-reported gameplay sessions | Different LAA executable hash, not executed here; its original code is not copied/bundled |
+| [MW Native Free Roam Racer](https://github.com/Zakkey250/MW-NativeFreeRoamRacer/tree/c8e728809bdc77bfd11e31d975bb2bc7e0cce2bd), Runtime.cpp, AnchorRoadSeed.inl, ExecutableTargets.h, VALIDATION.md | Published Traffic-seed to Racer activation and author-reported gameplay sessions | LAA targets checked by SHA-256; equivalence with our MD5-pinned executable unverified; not executed here; original code not copied/bundled |
 | [veritr1x/nfsmw-recomp](https://github.com/veritr1x/nfsmw-recomp), README.md, docs/testing.md | PC translation and test infrastructure | Requires original game files for gameplay; reports race-loading hangs and unrechecked platforms |
 
 ## What the owner's clue suggests
@@ -36,6 +36,14 @@ a functioning roaming AI. These are source findings, not copied implementation
 or completed compatibility tests. The NFRR author permits research but restricts
 redistribution of original code/modified builds; only links and findings belong
 in this repository.
+
+Compatibility precision: its README names NFSPatcher English 1.3 + LAA
+(6,029,312 bytes, SHA-256 B248271BF8EAC8C9B283B8C95E3ADD672B713BF529B05F1780E58268493B9D06).
+ExecutableTargets.h at the inspected revision also allows redux-3.04-4gb
+(5,926,912 bytes). Our project's executable is pinned by MD5, not SHA-256;
+the two digest algorithms cannot be compared directly. Identical size alone
+does not establish that the NFSPatcher target is identical to, or different
+from, the owner's file. Compatibility has not been established here.
 
 ## Implemented diagnostic
 
