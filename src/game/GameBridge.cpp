@@ -348,6 +348,11 @@ RuntimeSnapshot GameBridge::sample() {
     out.vehicles = probeVehicles();
 
     if (out.vehicles.playerPVehicle != 0) {
+        out.playerMotion =
+            PlayerMotionProbeReader::sample(
+                out.vehicles.playerPVehicle
+            );
+
         out.roadNavigation = RoadNavProbe::sample(
             out.vehicles.playerPVehicle
         );
