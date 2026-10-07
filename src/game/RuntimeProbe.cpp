@@ -2,10 +2,12 @@
 
 #include "ChallengeInputProbe.h"
 #include "GameBridge.h"
+#include "RoadCandidateProbe.h"
 #include "VehicleCatalogProbe.h"
 #include "../core/Log.h"
 #include "../domain/MotionScaleObserver.h"
 #include "../domain/MutationReadiness.h"
+#include "../domain/RoadCandidatePlanner.h"
 #include "../domain/RuntimeSession.h"
 #include "../domain/SpawnSafety.h"
 #include "../domain/UndergroundBlacklist.h"
@@ -44,6 +46,7 @@ std::atomic<DWORD> g_frameTickThreadId{0};
 std::atomic<bool> g_frameTickProbeInstalled{false};
 std::atomic<bool> g_safeFreeRoamObserved{false};
 std::atomic<bool> g_roadLookaheadObserved{false};
+std::atomic<bool> g_exactRoadCandidateObserved{false};
 
 bool g_vehicleCatalogValidated = false;
 
@@ -636,8 +639,29 @@ void sampleAndLog(
         );
     }
 
+    const auto roadCandidates =
+        RoadCandidateProbe::build(
+            current.roadNavigation
+        );
+
     if (current.roadNavigation.available) {
         g_roadLookaheadObserved.store(
+            true,
+            std::memory_order_relaxed
+        );
+    }
+
+    bool exactRoadCandidateThisSample = false;
+    for (const auto& candidate : roadCandidates) {
+        if (frr::domain::inspectRoadCandidate(candidate) ==
+            frr::domain::RoadCandidateBlocker::None) {
+            exactRoadCandidateThisSample = true;
+            break;
+        }
+    }
+
+    if (exactRoadCandidateThisSample) {
+        g_exactRoadCandidateObserved.store(
             true,
             std::memory_order_relaxed
         );
@@ -695,6 +719,40 @@ void sampleAndLog(
             std::string("Runtime heartbeat: ") +
             describe(current)
         );
+    }
+
+    if (heartbeat && !roadCandidates.empty()) {
+        std::ostringstream line;
+        line << "Road-candidate observations: count="
+             << roadCandidates.size()
+             << " exactUsable="
+             << (exactRoadCandidateThisSample ? 1 : 0);
+
+        for (const auto& candidate : roadCandidates) {
+            const auto blocker =
+                frr::domain::inspectRoadCandidate(
+                    candidate
+                );
+
+            line << " ["
+                 << frr::domain::roadCandidateSourceName(
+                        candidate.source
+                    )
+                 << ":"
+                 << frr::domain::roadCandidateBlockerName(
+                        blocker
+                    )
+                 << ",seg=" << candidate.segmentIndex
+                 << ",lane=" << candidate.laneIndex
+                 << ",distWorld="
+                 << std::fixed << std::setprecision(1)
+                 << candidate.distanceWorldUnits
+                 << ",projWorld="
+                 << candidate.forwardProjectionWorldUnits
+                 << "]";
+        }
+
+        Log::instance().info(line.str());
     }
 
     if (heartbeat &&
@@ -827,6 +885,10 @@ DWORD WINAPI healthThread(LPVOID) {
         g_roadLookaheadObserved.load(
             std::memory_order_relaxed
         );
+    readiness.exactRoadCandidateObserved =
+        g_exactRoadCandidateObserved.load(
+            std::memory_order_relaxed
+        );
 
     // Intentionally false until target-machine calibration/candidate
     // promotion work completes. This keeps construction fail-closed.
@@ -854,6 +916,8 @@ DWORD WINAPI healthThread(LPVOID) {
              << (readiness.safeFreeRoamObserved ? 1 : 0)
              << " roadLookaheadObserved="
              << (readiness.roadLookaheadObserved ? 1 : 0)
+             << " exactRoadCandidateObserved="
+             << (readiness.exactRoadCandidateObserved ? 1 : 0)
              << " metricCalibrationVerified=0"
              << " spawnCandidateVerified=0";
 
