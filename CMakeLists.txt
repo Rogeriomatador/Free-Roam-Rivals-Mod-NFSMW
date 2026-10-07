@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.8
+    VERSION 0.0.9
     LANGUAGES C CXX
 )
 
@@ -18,8 +18,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(FetchContent)
 
-# Pin every external reverse-engineering dependency. We do not follow moving
-# main/master branches in reproducible release builds.
 set(NFSMW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 
 FetchContent_Declare(
@@ -76,6 +74,7 @@ set(FRR_DOMAIN_SOURCES
     src/domain/StakeRules.cpp
     src/domain/StagingPlanner.cpp
     src/domain/StagingStateMachine.cpp
+    src/domain/UndergroundBlacklist.cpp
     src/domain/VehicleSelection.cpp
 )
 
@@ -147,4 +146,20 @@ endif()
 add_test(
     NAME FreeRoamRivalsSystemsTests
     COMMAND FreeRoamRivalsSystemsTests
+)
+
+add_executable(FreeRoamRivalsBlacklistTests
+    tests/blacklist_tests.cpp
+    ${FRR_DOMAIN_SOURCES}
+)
+
+target_include_directories(FreeRoamRivalsBlacklistTests PRIVATE src)
+
+if(MSVC)
+    target_compile_options(FreeRoamRivalsBlacklistTests PRIVATE /W4)
+endif()
+
+add_test(
+    NAME FreeRoamRivalsBlacklistTests
+    COMMAND FreeRoamRivalsBlacklistTests
 )
