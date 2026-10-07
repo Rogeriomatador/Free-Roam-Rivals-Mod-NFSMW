@@ -117,7 +117,7 @@ int main() {
 
     VehicleOrientedBox candidateFootprint = parked;
     candidateFootprint.identity = 0x3333;
-    candidateFootprint.center = {8.0f, 0.0f, 0.0f};
+    candidateFootprint.center = {9.0f, 0.0f, 0.0f};
 
     const auto clearFleet =
         evaluateFootprintAgainstFleet(
