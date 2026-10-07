@@ -454,6 +454,14 @@ int main() {
     readinessReport = evaluateMutationReadiness(readiness);
     require(
         readinessReport.blocker ==
+            MutationReadinessBlocker::VehicleFootprintUnavailable,
+        "readiness requires a verified pre-construction vehicle footprint"
+    );
+
+    readiness.vehicleFootprintVerified = true;
+    readinessReport = evaluateMutationReadiness(readiness);
+    require(
+        readinessReport.blocker ==
             MutationReadinessBlocker::MetricCalibrationUnverified,
         "readiness requires verified metric scale"
     );
