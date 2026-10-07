@@ -19,6 +19,53 @@ enum class WorldProbeMode {
     FreeRoamCandidate
 };
 
+struct Vector3Probe {
+    float x = 0.0f;
+    float y = 0.0f;
+    float z = 0.0f;
+};
+
+struct RoadGeometryProbe {
+    bool available = false;
+    bool valid = false;
+
+    std::int16_t segmentIndex = -1;
+    int laneIndex = -1;
+    float segmentTime = 0.0f;
+    float curvature = 0.0f;
+    float widthWorldUnits = 0.0f;
+
+    bool deadEnd = false;
+    std::int32_t roadOcclusion = 0;
+    std::int32_t avoidableOcclusion = 0;
+    bool occludedFromBehind = false;
+
+    Vector3Probe position{};
+    Vector3Probe forward{};
+    Vector3Probe leftPosition{};
+    Vector3Probe rightPosition{};
+    Vector3Probe startPosition{};
+    Vector3Probe endPosition{};
+};
+
+struct PlayerRoadNavProbe {
+    bool available = false;
+    std::uintptr_t vehicleAI = 0;
+
+    Vector3Probe playerPosition{};
+    RoadGeometryProbe current{};
+    RoadGeometryProbe future{};
+
+    Vector3Probe seekAheadPosition{};
+    Vector3Probe farFuturePosition{};
+    Vector3Probe farFutureDirection{};
+
+    float seekAheadDistanceWorldUnits = 0.0f;
+    float seekAheadProjectionWorldUnits = 0.0f;
+    float farFutureDistanceWorldUnits = 0.0f;
+    float farFutureProjectionWorldUnits = 0.0f;
+};
+
 struct VehicleProbe {
     bool registryReadable = false;
 
@@ -57,6 +104,7 @@ struct RuntimeCapabilities {
     bool canIdentifyPlayer = false;
     bool canClassifyFreeRoam = false;
     bool roadNetworkAvailable = false;
+    bool playerRoadNavigationReadable = false;
     bool careerReadAvailable = false;
 
     // Remains false until a dedicated experimental-spawn build proves the
@@ -83,6 +131,7 @@ struct RuntimeSnapshot {
     std::uintptr_t roadNetwork = 0;
 
     VehicleProbe vehicles{};
+    PlayerRoadNavProbe roadNav{};
     CareerProbe career{};
     RuntimeCapabilities capabilities{};
 

@@ -5,8 +5,10 @@ namespace frr {
 struct Config {
     bool renderProbeEnabled = true;
     bool inputProbeEnabled = true;
+    bool roadNavProbeEnabled = true;
     unsigned runtimeSampleEveryFrames = 30;
     unsigned runtimeProbeHeartbeatFrames = 600;
+    unsigned roadNavLogEverySamples = 20;
 
     bool experimentalSpawnEnabled = false;
     bool experimentalAIControlEnabled = false;

@@ -9,6 +9,7 @@
 #include <windows.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -64,6 +65,88 @@ bool readAbsolute(std::uintptr_t address, T& value) {
     );
 
     return true;
+}
+
+Vector3Probe copyVector(
+    const NFSPluginSDK::MW05::UMath::Vector3& value
+) {
+    Vector3Probe out{};
+    out.x = value.x;
+    out.y = value.y;
+    out.z = value.z;
+    return out;
+}
+
+float vectorDistance(
+    const NFSPluginSDK::MW05::UMath::Vector3& a,
+    const NFSPluginSDK::MW05::UMath::Vector3& b
+) {
+    return a.GetDistance(b);
+}
+
+float forwardProjection(
+    const NFSPluginSDK::MW05::UMath::Vector3& origin,
+    const NFSPluginSDK::MW05::UMath::Vector3& target,
+    const NFSPluginSDK::MW05::UMath::Vector3& forward
+) {
+    const float dx = target.x - origin.x;
+    const float dy = target.y - origin.y;
+    const float dz = target.z - origin.z;
+
+    const float length = std::sqrt(
+        forward.x * forward.x +
+        forward.y * forward.y +
+        forward.z * forward.z
+    );
+
+    if (!std::isfinite(length) || length <= 0.0001f) {
+        return 0.0f;
+    }
+
+    return
+        dx * (forward.x / length) +
+        dy * (forward.y / length) +
+        dz * (forward.z / length);
+}
+
+RoadGeometryProbe copyRoad(
+    const NFSPluginSDK::MW05::WRoadNav* road
+) {
+    RoadGeometryProbe out{};
+
+    if (!road) {
+        return out;
+    }
+
+    out.available = true;
+    out.valid = road->fValid;
+    out.segmentIndex = road->fSegmentInd;
+    out.laneIndex = static_cast<int>(road->fLaneInd);
+    out.segmentTime = road->fSegTime;
+    out.curvature = road->fCurvature;
+    out.deadEnd = road->fDeadEnd != 0;
+    out.roadOcclusion = road->nRoadOcclusion;
+    out.avoidableOcclusion = road->nAvoidableOcclusion;
+    out.occludedFromBehind = road->bOccludedFromBehind;
+
+    out.position = copyVector(road->fPosition);
+    out.forward = copyVector(road->fForwardVector);
+    out.leftPosition = copyVector(road->fLeftPosition);
+    out.rightPosition = copyVector(road->fRightPosition);
+    out.startPosition = copyVector(road->fStartPos);
+    out.endPosition = copyVector(road->fEndPos);
+
+    const float width =
+        vectorDistance(
+            road->fLeftPosition,
+            road->fRightPosition
+        );
+
+    if (std::isfinite(width) && width >= 0.0f) {
+        out.widthWorldUnits = width;
+    }
+
+    return out;
 }
 
 void probeNfsPluginPVehicleRegistry(VehicleProbe& out) {
@@ -190,6 +273,125 @@ VehicleProbe probeVehicles() {
     return out;
 }
 
+PlayerRoadNavProbe probePlayerRoadNavigation(
+    const VehicleProbe& vehicles
+) {
+    PlayerRoadNavProbe out{};
+
+    if (!vehicles.independentPlayerCrossCheck ||
+        vehicles.playerPVehicle == 0) {
+        return out;
+    }
+
+#if defined(_MSC_VER)
+    __try {
+#endif
+        using namespace NFSPluginSDK::MW05;
+
+        auto* raw = reinterpret_cast<PVehicle*>(
+            vehicles.playerPVehicle
+        );
+
+        auto* player =
+            raw | PVehicleEx::ValidatePVehicle;
+
+        if (!player) {
+            return out;
+        }
+
+        auto* ai = player->GetAIVehiclePtr();
+        if (!ai) {
+            return out;
+        }
+
+        const auto& playerPosition =
+            player->GetPosition();
+
+        auto* currentRoad = ai->GetCurrentRoad();
+        auto* futureRoad = ai->GetFutureRoad();
+
+        const auto& seekAhead =
+            ai->GetSeekAheadPosition();
+        const auto& farFuture =
+            ai->GetFarFuturePosition();
+        const auto& farDirection =
+            ai->GetFarFutureDirection();
+
+        out.available = true;
+        out.vehicleAI =
+            reinterpret_cast<std::uintptr_t>(ai);
+        out.playerPosition =
+            copyVector(playerPosition);
+        out.current = copyRoad(currentRoad);
+        out.future = copyRoad(futureRoad);
+        out.seekAheadPosition =
+            copyVector(seekAhead);
+        out.farFuturePosition =
+            copyVector(farFuture);
+        out.farFutureDirection =
+            copyVector(farDirection);
+
+        const float seekDistance =
+            vectorDistance(
+                playerPosition,
+                seekAhead
+            );
+
+        const float farDistance =
+            vectorDistance(
+                playerPosition,
+                farFuture
+            );
+
+        if (std::isfinite(seekDistance)) {
+            out.seekAheadDistanceWorldUnits =
+                seekDistance;
+        }
+
+        if (std::isfinite(farDistance)) {
+            out.farFutureDistanceWorldUnits =
+                farDistance;
+        }
+
+        const auto* projectionRoad =
+            currentRoad && currentRoad->fValid
+                ? currentRoad
+                : futureRoad;
+
+        if (projectionRoad) {
+            const float seekProjection =
+                forwardProjection(
+                    playerPosition,
+                    seekAhead,
+                    projectionRoad->fForwardVector
+                );
+
+            const float farProjection =
+                forwardProjection(
+                    playerPosition,
+                    farFuture,
+                    projectionRoad->fForwardVector
+                );
+
+            if (std::isfinite(seekProjection)) {
+                out.seekAheadProjectionWorldUnits =
+                    seekProjection;
+            }
+
+            if (std::isfinite(farProjection)) {
+                out.farFutureProjectionWorldUnits =
+                    farProjection;
+            }
+        }
+#if defined(_MSC_VER)
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        out = PlayerRoadNavProbe{};
+    }
+#endif
+
+    return out;
+}
+
 void probeRaceStatus(RuntimeSnapshot& out) {
 #if defined(_MSC_VER)
     __try {
@@ -283,6 +485,9 @@ void deriveCapabilities(RuntimeSnapshot& out) {
     caps.roadNetworkAvailable =
         out.roadNetwork != 0;
 
+    caps.playerRoadNavigationReadable =
+        out.roadNav.available;
+
     caps.careerReadAvailable =
         out.career.available;
 
@@ -346,6 +551,11 @@ RuntimeSnapshot GameBridge::sample() {
         out.mode = WorldProbeMode::FreeRoamCandidate;
     } else {
         out.mode = WorldProbeMode::NoPlayerVehicle;
+    }
+
+    if (out.mode == WorldProbeMode::FreeRoamCandidate) {
+        out.roadNav =
+            probePlayerRoadNavigation(out.vehicles);
     }
 
     deriveCapabilities(out);
