@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.0.10-dev
+
+- Added a read-only player WRoadNav probe through the validated PVehicle/IVehicleAI path.
+- Runtime snapshots can now observe:
+  - player AI pointer availability
+  - current and future road-nav objects
+  - segment and lane indices
+  - road width
+  - curvature
+  - road start/end span
+  - current-to-future navigation distance
+- Added a dedicated capability flag for live road-navigation reads.
+- Added pseudonymous per-profile identity keys derived in memory from the NFSMW profile name.
+  - the raw profile name is never written by Free Roam Rivals
+  - only a stable 64-bit hash is used in mod-owned filenames
+- Added atomic mod-side Underground Blacklist JSON persistence under:
+  - `scripts/FreeRoamRivals/Saves/profile_<hash>.json`
+- Persisted fields are limited to mod-owned progression:
+  - Street Rep
+  - qualifier wins for the current rank
+  - pink-slip wins
+  - defeated rank mask
+  - discovered rank mask
+- Runtime-owned facts such as career completion and whether the target is physically present are never trusted from disk.
+- Added malformed-schema fail-closed parsing and persistence round-trip tests.
+- Runtime automatically binds the correct mod save to the active profile and creates the file after vanilla career completion.
+- Vehicle spawning, AI mutation, economy writes and frontend mutation remain disabled pending lifecycle validation.
+
+
 ## 0.0.9-dev
 
 - Added a real mod-owned post-career Underground Blacklist domain.
