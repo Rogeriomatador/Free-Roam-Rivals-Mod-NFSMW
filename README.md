@@ -50,7 +50,7 @@ Support for additional 1.3 executables will be added only after their addresses/
 
 ## Current status
 
-**Pre-alpha / read-only runtime + gameplay-thread world-collision evidence + road/spawn-readiness foundations (v0.0.23-dev).**
+**Pre-alpha / read-only runtime + gameplay-thread world-collision evidence + road/spawn-readiness foundations (v0.0.24-dev).**
 
 The ASI validates the supported executable, installs observation hooks, separates Free Roam from stock races, enumerates live IVehicle driver classes, independently cross-checks the player PVehicle, observes the road network, reads career cash/car-count/completion, and validates the configured rival-car catalog without mutating the game.
 
@@ -186,3 +186,7 @@ This project is being built using public clean-room reverse-engineering/modding 
 
 No EA game assets are stored in this repository.
 
+
+## v0.0.24 motion capture
+
+Opt-in `MotionCaptureEnabled=1` records each raw motion sample with a capture/cohort ID, generation and exact player model key. The observer resets across player/profile/world identity changes, uses at most 120 consecutive accepted pairs and revokes stability on rejected pairs. `tools/analyze_motion_capture.py` independently audits these records; it never verifies metre calibration. See [MOTION_CAPTURE.md](docs/MOTION_CAPTURE.md) for the target-machine procedure and [MOTION_SCALE_CALIBRATION.md](docs/MOTION_SCALE_CALIBRATION.md) for physical-unit research.

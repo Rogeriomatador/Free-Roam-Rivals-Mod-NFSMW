@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstdint>
+#include <deque>
+#include <array>
 
 namespace frr::domain {
 
@@ -12,6 +14,7 @@ struct MotionScaleTuning {
     float minimumWorldDistance = 0.05f;
     unsigned minimumStableSamples = 12;
     float maximumCoefficientOfVariation = 0.05f;
+    unsigned maximumWindowSamples = 120;
 };
 
 struct MotionScaleFrame {
@@ -34,6 +37,8 @@ struct MotionScaleFrame {
 struct MotionScaleSnapshot {
     unsigned acceptedSamples = 0;
     unsigned rejectedSamples = 0;
+    unsigned windowSamples = 0;
+    bool lastPairAccepted = false;
 
     // world units / (engine speed unit * second)
     float meanWorldUnitsPerSpeedUnitSecond = 0.0f;
@@ -66,6 +71,7 @@ public:
     MotionScaleSnapshot snapshot() const;
 
 private:
+    void clearWindow();
     bool acceptPair(
         const MotionScaleFrame& previous,
         const MotionScaleFrame& current,
@@ -84,6 +90,9 @@ private:
 
     unsigned acceptedSamples_ = 0;
     unsigned rejectedSamples_ = 0;
+    bool lastPairAccepted_ = false;
+    // Ratio plus four cross-checks; old samples cannot dominate a new regime.
+    std::deque<std::array<double, 5>> window_{};
 
     double ratioSum_ = 0.0;
     double ratioSquareSum_ = 0.0;

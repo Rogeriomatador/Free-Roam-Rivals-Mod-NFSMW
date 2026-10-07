@@ -163,6 +163,8 @@ Config Config::load() {
 
     cfg.cameraFrustumDiagnosticsEnabled =
         iniInt(ini, "Diagnostics", "CameraFrustumDiagnosticsEnabled", 0) != 0;
+    cfg.motionCaptureEnabled =
+        iniInt(ini, "Diagnostics", "MotionCaptureEnabled", 0) != 0;
 
     cfg.runtimeSampleEveryFrames =
         static_cast<unsigned>(
@@ -425,4 +427,3 @@ Config Config::load() {
 }
 
 } // namespace frr
-

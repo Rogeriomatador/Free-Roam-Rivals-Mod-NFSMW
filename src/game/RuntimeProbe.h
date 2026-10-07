@@ -9,6 +9,7 @@ struct RuntimeProbeConfig {
     bool frameTickProbeEnabled = false;
     bool worldCollisionDiagnosticsEnabled = false;
     bool cameraFrustumDiagnosticsEnabled = false;
+    bool motionCaptureEnabled = false;
     unsigned sampleEveryFrames = 30;
     unsigned heartbeatFrames = 600;
 
@@ -37,4 +38,3 @@ public:
 };
 
 } // namespace frr::game
-

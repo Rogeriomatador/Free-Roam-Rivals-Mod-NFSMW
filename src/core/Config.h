@@ -9,6 +9,7 @@ struct Config {
     bool frameTickProbeEnabled = false;
     bool worldCollisionDiagnosticsEnabled = false;
     bool cameraFrustumDiagnosticsEnabled = false;
+    bool motionCaptureEnabled = false;
     unsigned runtimeSampleEveryFrames = 30;
     unsigned runtimeProbeHeartbeatFrames = 600;
 
@@ -46,4 +47,3 @@ struct Config {
 };
 
 } // namespace frr
-

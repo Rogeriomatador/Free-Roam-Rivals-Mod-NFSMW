@@ -14,6 +14,12 @@ struct RuntimeEvidenceStamp {
     std::uint64_t capturedAtMillis = 0;
 };
 
+// Identity only; this does not establish freshness or candidate safety.
+bool sameRuntimeEvidenceContext(
+    const RuntimeEvidenceStamp& captured,
+    const RuntimeEvidenceStamp& current
+);
+
 bool runtimeEvidenceUsable(
     const RuntimeEvidenceStamp& captured,
     const RuntimeEvidenceStamp& current,

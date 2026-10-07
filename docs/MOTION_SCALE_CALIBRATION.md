@@ -109,13 +109,21 @@ The observer rejects pairs when:
 - world displacement is effectively zero;
 - the computed ratio is non-finite/invalid.
 
-This avoids calibrating from menus, transitions, jumps, teleports or violent
-acceleration/deceleration.
+This rejects sampled menus, transitions, airborne endpoints and large speed
+changes. It cannot prove the absence of a teleport, turn or collision between
+samples, and wall time alone cannot distinguish normal simulation from Speedbreaker.
 
 ## Stability
 
-The current default requires at least 12 accepted samples and a coefficient of
+The current default requires at least 12 consecutive accepted samples and a coefficient of
 variation no greater than 5%.
+
+Since v0.0.24, statistics cover at most the latest 120 accepted pairs; rejection
+clears the window and revokes stability. Runtime accumulation also resets on
+model/player/profile/race-status/road-network/world identity changes.
+Nonfinite channels, nonpositive velocity magnitudes and non-forward speed pairs
+are rejected. Cumulative accepted/rejected counts are diagnostics within a cohort,
+not the sample count used to determine current stability.
 
 A stable estimate only means the relationship is internally consistent.
 
@@ -171,3 +179,28 @@ Otherwise the verified physical conversion must be applied explicitly.
 
 Until that proof exists, spawn and staging remain blocked by
 `MetricCalibrationUnverified`.
+
+## Pinned physical-unit research — v0.0.24
+
+The public MW05 reconstruction at commit
+`1f2cdd7996791c81a580b3f7b36b44d4f9f6719c` supplies stronger semantic evidence:
+
+- [ConversionUtil.hpp](https://github.com/dbalatoni13/nfsmw/blob/1f2cdd7996791c81a580b3f7b36b44d4f9f6719c/src/Speed/Indep/Tools/Inc/ConversionUtil.hpp)
+  defines MPS-to-KPH/MPH conversions and inches-to-metres wheel dimensions.
+- [FeSpeedometer.cpp](https://github.com/dbalatoni13/nfsmw/blob/1f2cdd7996791c81a580b3f7b36b44d4f9f6719c/src/Speed/Indep/Src/Frontend/HUD/FeSpeedometer.cpp)
+  applies those MPS conversions when rendering the selected HUD speed units.
+- [PhysicsInfo.cpp](https://github.com/dbalatoni13/nfsmw/blob/1f2cdd7996791c81a580b3f7b36b44d4f9f6719c/src/Speed/Indep/Src/Physics/PhysicsInfo.cpp)
+  computes wheel diameter from rim/section/aspect dimensions, and its Mps-typed
+  speedometer uses wheel radius, transmission ratio and angular speed.
+- [EngineRacer.cpp](https://github.com/dbalatoni13/nfsmw/blob/1f2cdd7996791c81a580b3f7b36b44d4f9f6719c/src/Speed/Indep/Src/Physics/Behaviors/EngineRacer.cpp)
+  obtains the drivetrain speedometer from transmission angular velocity and
+  explicitly converts `IVehicle::GetAbsoluteSpeed()` from MPS for NOS thresholds.
+
+These sources support MPS semantics as an inference. They also explain why a
+drivetrain speedometer may differ from chassis motion. They do not establish the
+exact PC getter implementation, position integration/time basis, or the target
+machine's observed scale. Reconstruction platform addresses are not imported.
+No metric gate is promoted from this research alone.
+
+Use [MOTION_CAPTURE.md](MOTION_CAPTURE.md) and the packaged offline auditor to
+collect and inspect the missing measurements reproducibly.

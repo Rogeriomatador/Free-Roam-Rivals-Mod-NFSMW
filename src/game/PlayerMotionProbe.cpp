@@ -70,6 +70,7 @@ PlayerMotionProbe PlayerMotionProbeReader::sample(
         }
 
         out.pVehicle = playerPVehicle;
+        out.vehicleKey = player->GetVehicleKey();
 
         out.speed = player->GetSpeed();
         out.speedometer = player->GetSpeedometer();

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.23
+    VERSION 0.0.24
     LANGUAGES C CXX
 )
 
@@ -235,3 +235,7 @@ add_test(NAME FreeRoamRivalsEvidenceTests COMMAND FreeRoamRivalsEvidenceTests)
 add_executable(FreeRoamRivalsCameraTests tests/camera_tests.cpp src/domain/CameraFrustumEvidence.cpp src/domain/VehicleSpatialEvidence.cpp)
 target_include_directories(FreeRoamRivalsCameraTests PRIVATE src)
 add_test(NAME FreeRoamRivalsCameraTests COMMAND FreeRoamRivalsCameraTests)
+
+add_executable(FreeRoamRivalsMotionTests tests/motion_tests.cpp src/domain/MotionScaleObserver.cpp src/domain/RuntimeEvidence.cpp)
+target_include_directories(FreeRoamRivalsMotionTests PRIVATE src)
+add_test(NAME FreeRoamRivalsMotionTests COMMAND FreeRoamRivalsMotionTests)

@@ -11,7 +11,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.23-dev";
+constexpr const char* kVersion = "0.0.24-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -72,6 +72,7 @@ int bootstrap() {
     probeConfig.worldCollisionDiagnosticsEnabled =
         config.worldCollisionDiagnosticsEnabled;
     probeConfig.cameraFrustumDiagnosticsEnabled = config.cameraFrustumDiagnosticsEnabled;
+    probeConfig.motionCaptureEnabled = config.motionCaptureEnabled;
     probeConfig.sampleEveryFrames =
         config.runtimeSampleEveryFrames;
     probeConfig.heartbeatFrames =
@@ -103,7 +104,7 @@ int bootstrap() {
     }
 
     log.info(
-        "v0.0.23-dev adds opt-in read-only primary-camera OBB frustum diagnostics with engine coordinate mapping and coherent-matrix guards. Complete spawn visibility remains unverified."
+        "v0.0.24-dev adds opt-in reproducible motion capture, model/context isolation and bounded continuous consistency windows. Metric calibration and vehicle construction remain unverified."
     );
 
     return NFSMW_OK;
@@ -113,11 +114,10 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.23-dev",
+    "0.0.24-dev",
     "Rogeriomatador"
 )
 
 NFSMW_PLUGIN_MAIN() {
     return frr::bootstrap();
 }
-

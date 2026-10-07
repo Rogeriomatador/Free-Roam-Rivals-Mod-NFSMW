@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.0.24-dev
+
+- Added opt-in `MotionCaptureEnabled=0` by default: per-sample, round-trip float telemetry with capture/cohort identity and exact player model key.
+- Split motion statistics across model/player/profile/race-status/road-network/world identity changes.
+- Bounded statistical evidence to the latest 120 consecutive accepted pairs; any rejected pair revokes prior stability.
+- Reject nonfinite motion channels, invalid velocity magnitudes and non-forward speed pairs instead of allowing misleading zero cross-checks.
+- Added an independent standard-library Python auditor for capture logs, timing/window/ratio consistency, malformed samples and direction-change warnings. It never promotes metric calibration.
+- Added C++ motion regressions and Python capture tests; included the auditor and capture instructions in the install ZIP.
+- Pinned physical-unit research for HUD MPS conversions, wheel dimensions and drivetrain speedometer calculations. Wall-clock/Speedbreaker and target executable proof remain outstanding.
+- Updated package/release metadata to v0.0.24-dev. Vehicle construction remains blocked.
+
 ## 0.0.23-dev
 
 - Added opt-in `CameraFrustumDiagnosticsEnabled`, disabled by default, using guarded reads from the already pinned MWSDK primary-camera API.
