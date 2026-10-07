@@ -11,7 +11,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.5-dev";
+constexpr const char* kVersion = "0.0.6-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -81,7 +81,7 @@ int bootstrap() {
     }
 
     log.info(
-        "v0.0.5-dev remains mutation-safe: rival spawning, AI control, economy writes, garage writes and pink-slip transfers are disabled."
+        "v0.0.6-dev adds progression-aware vehicle population and live catalog validation; rival spawning, AI control, economy writes, garage writes and pink-slip transfers remain disabled."
     );
 
     return NFSMW_OK;
@@ -91,7 +91,7 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.5-dev",
+    "0.0.6-dev",
     "Rogeriomatador"
 )
 
