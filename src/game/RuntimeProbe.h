@@ -6,6 +6,7 @@ struct RuntimeProbeConfig {
     bool renderProbeEnabled = true;
     bool inputProbeEnabled = true;
     bool roadNavDiagnosticsEnabled = true;
+    bool frameTickProbeEnabled = false;
     unsigned sampleEveryFrames = 30;
     unsigned heartbeatFrames = 600;
 
@@ -20,6 +21,7 @@ struct RuntimeProbeConfig {
 struct RuntimeProbeInstallResult {
     bool renderProbeArmed = false;
     bool inputProbeInstalled = false;
+    bool frameTickProbeInstalled = false;
 };
 
 class RuntimeProbe {
