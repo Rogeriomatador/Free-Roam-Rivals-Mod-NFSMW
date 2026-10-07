@@ -46,6 +46,8 @@ void MotionScaleObserver::reset() {
     rejectedSamples_ = 0;
     ratioSum_ = 0.0;
     ratioSquareSum_ = 0.0;
+    speedometerToSpeedSum_ = 0.0;
+    absoluteToSpeedSum_ = 0.0;
     speedToLocalSum_ = 0.0;
     speedToLinearSum_ = 0.0;
 }
@@ -55,6 +57,8 @@ bool MotionScaleObserver::acceptPair(
     const MotionScaleFrame& current,
     float deltaSeconds,
     float& ratio,
+    float& speedometerToSpeed,
+    float& absoluteToSpeed,
     float& speedToLocal,
     float& speedToLinear
 ) const {
@@ -123,6 +127,20 @@ bool MotionScaleObserver::acceptPair(
         return false;
     }
 
+    const float speedometerAverage =
+        (std::abs(previous.speedometer) +
+         std::abs(current.speedometer)) * 0.5f;
+
+    const float absoluteAverage =
+        (std::abs(previous.absoluteSpeed) +
+         std::abs(current.absoluteSpeed)) * 0.5f;
+
+    speedometerToSpeed =
+        safeRatio(speedometerAverage, averageSpeed);
+
+    absoluteToSpeed =
+        safeRatio(absoluteAverage, averageSpeed);
+
     const float localAverage =
         (previous.localVelocityMagnitude +
          current.localVelocityMagnitude) * 0.5f;
@@ -151,6 +169,8 @@ MotionScaleSnapshot MotionScaleObserver::push(
     }
 
     float ratio = 0.0f;
+    float speedometerToSpeed = 0.0f;
+    float absoluteToSpeed = 0.0f;
     float speedToLocal = 0.0f;
     float speedToLinear = 0.0f;
 
@@ -159,6 +179,8 @@ MotionScaleSnapshot MotionScaleObserver::push(
             frame,
             deltaSeconds,
             ratio,
+            speedometerToSpeed,
+            absoluteToSpeed,
             speedToLocal,
             speedToLinear)) {
         ++acceptedSamples_;
@@ -166,6 +188,10 @@ MotionScaleSnapshot MotionScaleObserver::push(
         ratioSquareSum_ +=
             static_cast<double>(ratio) *
             static_cast<double>(ratio);
+        speedometerToSpeedSum_ +=
+            speedometerToSpeed;
+        absoluteToSpeedSum_ +=
+            absoluteToSpeed;
         speedToLocalSum_ += speedToLocal;
         speedToLinearSum_ += speedToLinear;
     } else {
@@ -208,6 +234,16 @@ MotionScaleSnapshot MotionScaleObserver::snapshot() const {
         mean > 0.0
         ? static_cast<float>(stddev / mean)
         : 0.0f;
+
+    out.meanSpeedometerToEngineSpeedRatio =
+        static_cast<float>(
+            speedometerToSpeedSum_ / count
+        );
+
+    out.meanAbsoluteToEngineSpeedRatio =
+        static_cast<float>(
+            absoluteToSpeedSum_ / count
+        );
 
     out.meanSpeedToLocalVelocityRatio =
         static_cast<float>(
