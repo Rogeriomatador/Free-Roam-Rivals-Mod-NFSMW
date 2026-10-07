@@ -3,7 +3,7 @@
 This document defines the exact safety contract that must be satisfied before
 Free Roam Rivals is allowed to create a live Racer in Rockport.
 
-## v0.0.8 implementation status
+## v0.0.9 implementation status
 
 The contract is now represented by executable domain code rather than
 documentation alone.
@@ -24,15 +24,18 @@ Implemented and unit-tested:
 - long-distance streaming-proof rule
 - world-generation tracking
 - generation-scoped runtime rival handles
+- read-only player CurrentRoad/FutureRoad/SeekAhead/FarFuture geometry
+
+v0.0.9 also records road segment/lane, width, curvature, occlusion, forward vectors and player-relative distance/projection in engine world units. This is evidence gathering only: the values are not yet accepted as spawn coordinates.
 
 The ASI can optionally log a **read-only spawn preflight** when
 `ExperimentalSpawnEnabled=1`. A READY preflight means only that the world
 environment is eligible for the next research step. It does **not** construct a
-car in v0.0.8.
+car in v0.0.9.
 
 Still blocked before first mutation:
 
-1. obtain a live road-relative candidate with enough streaming/visibility proof;
+1. validate the v0.0.9 road-nav captures across Rockport and obtain a live road-relative candidate with enough streaming/visibility proof;
 2. establish a dedicated gameplay-thread mutation callback;
 3. prove Construct -> registry -> AI -> road-nav -> cleanup as one lifecycle.
 

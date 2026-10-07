@@ -49,9 +49,9 @@ Support for additional 1.3 executables will be added only after their addresses/
 
 ## Current status
 
-**Pre-alpha / read-only runtime + executable gameplay-system foundations (v0.0.8-dev).**
+**Pre-alpha / read-only runtime + executable gameplay-system foundations (v0.0.9-dev).**
 
-The ASI validates the supported executable, installs observation hooks, separates Free Roam from stock races, enumerates live IVehicle driver classes, independently cross-checks the player PVehicle, observes the road network, reads career cash/car-count/completion, and validates the configured rival-car catalog without mutating the game.
+The ASI validates the supported executable, installs observation hooks, separates Free Roam from stock races, enumerates live IVehicle driver classes, independently cross-checks the player PVehicle, observes the road network, reads the player's live road-navigation state, reads career cash/car-count/completion, and validates the configured rival-car catalog without mutating the game.
 
 The population layer distinguishes authored persistent rivals, deterministic procedural locals with stable names/personality/vehicle identity, legendary condition-based rivals, and untouched vanilla traffic.
 
@@ -66,9 +66,11 @@ v0.0.8 also turns several design contracts into tested code:
 - cinematic staging state flow from search through release;
 - mandatory camera/control restoration directives on staging failure or completion.
 
+v0.0.9 adds a guarded, read-only player-road probe through the validated PVehicle/IVehicleAI chain. In Free Roam it samples CurrentRoad, FutureRoad, segment/lane, width, curvature, occlusion, SeekAheadPosition, FarFuturePosition/FarFutureDirection, straight-line distance and forward projection. These values are logged in engine world units so they can be validated in-game before being promoted into spawn or staging coordinates.
+
 The next hard runtime milestone remains intentionally narrow:
 
-> Feed a verified road-safe/off-screen candidate into a dedicated gameplay-thread construction probe, prove create → AI → road navigation → cleanup, then allow one native rival to roam.
+> Validate the road-nav probe across Rockport, promote only proven road-relative geometry into an off-screen spawn candidate, then feed that candidate into a dedicated gameplay-thread construction probe and prove create → AI → road navigation → cleanup.
 
 The render callback remains observation-only. Pink slips and save mutation come later, after the runtime foundation is proven stable.
 
@@ -88,6 +90,7 @@ docs/
   ENGINE_INTEGRATION_MAP.md
   SPAWN_AND_AI_PLAN.md
   RUNTIME_SPAWN_CONTRACT.md
+  ROAD_NAV_PROBE.md
   PINK_SLIP_ENGINE_RESEARCH.md
   RIVAL_POPULATION_AND_VEHICLES.md
 .github/workflows/     CI build
