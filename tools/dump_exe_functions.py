@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Read-only dump of MW05 function prologues from the supported speed.exe.
 
-Purpose: let the project verify, offline and without touching the game, the
-ABI of the engine functions the SDKs claim for vehicle creation. The mod must
-not call PVehicle::Construct until the bytes below confirm calling convention,
-argument layout and callee stack cleanup.
+Purpose: collect offline evidence for manual review of engine functions the
+SDKs claim for vehicle creation. This tool does not verify an ABI. The mod
+must not call PVehicle::Construct until independent analysis verifies the
+calling convention, argument layout, lifetime and cleanup behaviour.
 
 Usage:
     python tools/dump_exe_functions.py "D:\\...\\speed.exe" [-o report.txt]

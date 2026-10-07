@@ -1,5 +1,10 @@
 # Target capture: v0.0.29-dev, all diagnostics, Golf GTI (2026-10-07)
 
+Provenance: this audit was supplied in Claude's patch. The original log was
+not supplied for this review, so the quoted measurements below have not been
+independently reproduced here. They are historical reported evidence, not a
+new target-game test of v0.0.30.
+
 Session 16:31:12 to 16:33:48 (about 2.5 minutes), supported speed.exe, Free Roam,
 player driving a Golf GTI, all diagnostics enabled, all Experimental flags 0.
 Only one log was received (two uploads shared the same file name).

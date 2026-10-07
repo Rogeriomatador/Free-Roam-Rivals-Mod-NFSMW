@@ -96,7 +96,7 @@ class DumpTests(unittest.TestCase):
             self.assertEqual(exe.read_bytes(), b"original game")
             self.assertEqual(report.read_bytes(), b"existing report")
 
-    def test_symlink_and_hardlink_output_do_not_modify_input(self):
+    def test_hardlink_output_does_not_modify_input(self):
         with tempfile.TemporaryDirectory() as root:
             exe = Path(root) / "speed.exe"
             exe.write_bytes(b"original game")
