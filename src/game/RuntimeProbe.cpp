@@ -584,6 +584,8 @@ void sampleAndLog(
 
     motionFrame.engineSpeed =
         current.playerMotion.speed;
+    motionFrame.speedometer =
+        current.playerMotion.speedometer;
     motionFrame.absoluteSpeed =
         current.playerMotion.absoluteSpeed;
     motionFrame.localVelocityMagnitude =
@@ -608,6 +610,18 @@ void sampleAndLog(
              << " cv="
              << g_motionScaleSnapshot
                     .coefficientOfVariation
+             << " speedometerToSpeedRatio="
+             << g_motionScaleSnapshot
+                    .meanSpeedometerToEngineSpeedRatio
+             << " absoluteToSpeedRatio="
+             << g_motionScaleSnapshot
+                    .meanAbsoluteToEngineSpeedRatio
+             << " speedometerToSpeedRatio="
+             << g_motionScaleSnapshot
+                    .meanSpeedometerToEngineSpeedRatio
+             << " absoluteToSpeedRatio="
+             << g_motionScaleSnapshot
+                    .meanAbsoluteToEngineSpeedRatio
              << " speedToLocalRatio="
              << g_motionScaleSnapshot
                     .meanSpeedToLocalVelocityRatio
