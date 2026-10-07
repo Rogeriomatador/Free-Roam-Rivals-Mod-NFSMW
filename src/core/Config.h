@@ -6,6 +6,7 @@ struct Config {
     bool renderProbeEnabled = true;
     bool inputProbeEnabled = true;
     bool roadNavDiagnosticsEnabled = true;
+    bool frameTickProbeEnabled = false;
     unsigned runtimeSampleEveryFrames = 30;
     unsigned runtimeProbeHeartbeatFrames = 600;
 
