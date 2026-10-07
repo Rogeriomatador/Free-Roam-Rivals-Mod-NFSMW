@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.0.13-dev
+
+- Added the first-spawn experiment lifecycle state machine.
+- The experimental sequence is now encoded as:
+  - AwaitConstruction
+  - VerifyRegistries
+  - VerifyAI
+  - ObserveMotion
+  - Cleanup
+  - VerifyRemoval
+  - Succeeded / Failed
+- Construction and cleanup commands are one-shot outputs rather than implicit side effects.
+- Every phase has a timeout.
+- Losing Free Roam/world-generation preconditions before construction fails immediately.
+- Losing preconditions after vehicle ownership forces cleanup before final failure.
+- A successful experiment still cleans the vehicle up; lifecycle proof requires repeated registry-removal confirmation.
+- Cleanup timeout is fatal and disables further session spawning.
+- Added dedicated tests for success, construction failure, registry timeout and unsafe-transition cleanup.
+- No PVehicle construction call is enabled yet; this controller is the fail-closed orchestration contract the runtime adapter must obey.
+
+
 ## 0.0.12-dev
 
 - Added deterministic Underground Blacklist progress events:
