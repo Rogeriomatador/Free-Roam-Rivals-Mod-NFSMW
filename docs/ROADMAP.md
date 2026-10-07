@@ -29,10 +29,14 @@ Exit criterion: loading the ASI does not alter gameplay and creates a diagnostic
 - [x] Observe world-units per engine-speed-unit-second statistically
 - [ ] Capture target-machine motion logs across cars/districts
 - [ ] Prove physical GetSpeed unit semantics and calibrate world-units-to-metre scale
-- [ ] Extract a verified road-safe/off-screen spawn candidate from the live road system
+- [x] Build typed Current/Future/SeekAhead/FarFuture road-candidate observations
+- [x] Require exact WRoadNav association before candidate promotion
+- [x] Encode streaming/ground/visibility/overlap evidence required by spawn promotion
+- [ ] Implement live streaming/ground/visibility/overlap evidence probes
+- [ ] Extract and promote one verified road-safe/off-screen spawn candidate in-game
 - [ ] Validate dedicated gameplay-thread mutation callback in-game
   - [x] Add opt-in read-only GameFrameTick entry probe
-  - [x] Encode callback/thread/FreeRoam/lookahead/calibration/candidate readiness blockers
+  - [x] Encode callback/thread/FreeRoam/lookahead/exact-road/calibration/candidate readiness blockers
   - [ ] Confirm callback/thread health on target installation before mutation
 - [x] Encode construct/registry/AI/motion/cleanup experiment as a fail-closed state machine
 - [ ] Wire the state machine to verified engine construction/cleanup calls
@@ -71,7 +75,8 @@ Exit criterion: complete repeatable 1v1 Outrun without loading a stock race.
 - [x] Read native seek-ahead/far-future positions and occlusion evidence
 - [x] Require verified metric scale before metre-based staging scoring
 - [x] Implement safe staging-candidate scoring/selection rules
-- [ ] Populate staging candidates from the live road network
+- [x] Define typed road-observation -> staging-candidate promotion contract
+- [ ] Populate fully evidenced staging candidates from the live road network
 - [x] Implement Search -> Reserve -> Approach -> Align state flow
 - [ ] Rival approach runtime control
 - [ ] Temporary player control suppression bridge
