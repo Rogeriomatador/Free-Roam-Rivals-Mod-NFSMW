@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.5
+    VERSION 0.0.6
     LANGUAGES C CXX
 )
 
@@ -68,6 +68,7 @@ set(FRR_DOMAIN_SOURCES
     src/domain/EncounterStateMachine.cpp
     src/domain/Progression.cpp
     src/domain/StakeRules.cpp
+    src/domain/VehicleSelection.cpp
 )
 
 nfsmw_add_plugin(FreeRoamRivals
@@ -78,6 +79,7 @@ nfsmw_add_plugin(FreeRoamRivals
         src/core/VersionGuard.cpp
         src/game/GameBridge.cpp
         src/game/RuntimeProbe.cpp
+        src/game/VehicleCatalogProbe.cpp
         ${FRR_DOMAIN_SOURCES}
 )
 
