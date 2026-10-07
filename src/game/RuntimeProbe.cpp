@@ -34,6 +34,7 @@
 #include <chrono>
 #include <cstdint>
 #include <iomanip>
+#include <limits>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -115,6 +116,10 @@ frr::domain::MotionScaleSnapshot g_motionScaleSnapshot{};
 bool g_haveMotionClock = false;
 std::chrono::steady_clock::time_point g_lastMotionClock{};
 bool g_loggedStableMotionScale = false;
+frr::domain::RuntimeEvidenceStamp g_motionEvidenceStamp{};
+std::uint32_t g_motionVehicleKey = 0;
+std::uint64_t g_motionCaptureId = 0;
+std::uint64_t g_motionCohortId = 0;
 
 bool g_haveSpawnPreflight = false;
 frr::domain::SpawnRejectReason g_lastSpawnPreflightReason =
@@ -874,6 +879,18 @@ void sampleAndLog(
     updateRuntimeSessionAndSpawnPreflight(current);
     selectPendingRival(current);
 
+    const auto motionStamp = evidenceStamp(current, g_runtimeSession.snapshot().generation);
+    if (!frr::domain::sameRuntimeEvidenceContext(g_motionEvidenceStamp, motionStamp) ||
+        current.playerMotion.vehicleKey == 0 || g_motionVehicleKey != current.playerMotion.vehicleKey) {
+        g_motionScaleObserver.reset();
+        g_motionScaleSnapshot = {};
+        g_haveMotionClock = false;
+        g_loggedStableMotionScale = false;
+        ++g_motionCohortId;
+    }
+    g_motionEvidenceStamp = motionStamp;
+    g_motionVehicleKey = current.playerMotion.vehicleKey;
+
     const auto motionNow =
         std::chrono::steady_clock::now();
 
@@ -892,8 +909,8 @@ void sampleAndLog(
     motionFrame.valid =
         current.playerMotion.available;
     motionFrame.safeFreeRoam =
-        current.mode == WorldProbeMode::FreeRoamCandidate &&
-        current.capabilities.canClassifyFreeRoam;
+        motionStamp.safeFreeRoam && g_motionVehicleKey != 0 &&
+        frr::domain::sameRuntimeEvidenceContext(motionStamp, motionStamp);
     motionFrame.grounded =
         current.playerMotion.wheelsOnGround >= 3u;
 
@@ -921,6 +938,37 @@ void sampleAndLog(
             motionFrame,
             motionDeltaSeconds
         );
+
+    if (g_config.motionCaptureEnabled) {
+        std::ostringstream line;
+        line << std::setprecision(std::numeric_limits<float>::max_digits10)
+             << "FRR_MOTION_V1 capture=" << g_motionCaptureId
+             << " cohort=" << g_motionCohortId
+             << " generation=" << motionStamp.generation
+             << " model=" << g_motionVehicleKey
+             << " timeMs=" << motionStamp.capturedAtMillis
+             << " dt=" << motionDeltaSeconds
+             << " valid=" << (motionFrame.valid ? 1 : 0)
+             << " safe=" << (motionFrame.safeFreeRoam ? 1 : 0)
+             << " grounded=" << (motionFrame.grounded ? 1 : 0)
+             << " x=" << motionFrame.x << " y=" << motionFrame.y << " z=" << motionFrame.z
+             << " speed=" << motionFrame.engineSpeed
+             << " speedometer=" << motionFrame.speedometer
+             << " absolute=" << motionFrame.absoluteSpeed
+             << " local=" << motionFrame.localVelocityMagnitude
+             << " linear=" << motionFrame.linearVelocityMagnitude
+             << " vx=" << current.playerMotion.linearVelocity.x
+             << " vy=" << current.playerMotion.linearVelocity.y
+             << " vz=" << current.playerMotion.linearVelocity.z
+             << " slip=" << current.playerMotion.slipAngle
+             << " accepted=" << (g_motionScaleSnapshot.lastPairAccepted ? 1 : 0)
+             << " window=" << g_motionScaleSnapshot.windowSamples
+             << " ratio=" << g_motionScaleSnapshot.meanWorldUnitsPerSpeedUnitSecond
+             << " cv=" << g_motionScaleSnapshot.coefficientOfVariation
+             << " stable=" << (g_motionScaleSnapshot.stable ? 1 : 0)
+             << " metricVerified=0";
+        Log::instance().info(line.str());
+    }
 
     if (g_motionScaleSnapshot.stable &&
         !g_loggedStableMotionScale) {
@@ -1251,6 +1299,7 @@ void sampleAndLog(
              << g_motionScaleSnapshot.acceptedSamples
              << " rejected="
              << g_motionScaleSnapshot.rejectedSamples
+             << " window=" << g_motionScaleSnapshot.windowSamples
              << " worldUnitsPerSpeedUnitSecond="
              << std::fixed << std::setprecision(5)
              << g_motionScaleSnapshot
@@ -1471,6 +1520,7 @@ RuntimeProbeInstallResult RuntimeProbe::install(
     const RuntimeProbeConfig& config
 ) {
     g_config = config;
+    g_motionCaptureId = GetTickCount64();
 
     RuntimeProbeInstallResult result{};
 
@@ -1582,4 +1632,3 @@ RuntimeProbeInstallResult RuntimeProbe::install(
 }
 
 } // namespace frr::game
-

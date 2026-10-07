@@ -27,6 +27,8 @@ Exit criterion: loading the ASI does not alter gameplay and creates a diagnostic
 - [x] Emit a single fail-closed construction-readiness diagnostic
 - [x] Instrument GetSpeed/GetSpeedometer/absolute/local/linear motion cross-checks
 - [x] Observe world-units per engine-speed-unit-second statistically
+- [x] Add per-model/context motion capture and independent offline audit tooling
+- [x] Revoke stale statistical stability and bound motion consistency windows
 - [ ] Capture target-machine motion logs across cars/districts
 - [ ] Prove physical GetSpeed unit semantics and calibrate world-units-to-metre scale
 - [x] Build typed Current/Future/SeekAhead/FarFuture road-candidate observations

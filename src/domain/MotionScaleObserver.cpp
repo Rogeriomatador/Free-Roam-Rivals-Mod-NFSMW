@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace frr::domain {
 namespace {
@@ -26,11 +27,11 @@ float safeRatio(
     if (!std::isfinite(numerator) ||
         !std::isfinite(denominator) ||
         denominator <= 0.0001f) {
-        return 0.0f;
+        return std::numeric_limits<float>::quiet_NaN();
     }
 
     const float value = numerator / denominator;
-    return std::isfinite(value) ? value : 0.0f;
+    return value;
 }
 
 } // namespace
@@ -44,6 +45,12 @@ void MotionScaleObserver::reset() {
     previous_ = {};
     acceptedSamples_ = 0;
     rejectedSamples_ = 0;
+    lastPairAccepted_ = false;
+    clearWindow();
+}
+
+void MotionScaleObserver::clearWindow() {
+    window_.clear();
     ratioSum_ = 0.0;
     ratioSquareSum_ = 0.0;
     speedometerToSpeedSum_ = 0.0;
@@ -62,8 +69,17 @@ bool MotionScaleObserver::acceptPair(
     float& speedToLocal,
     float& speedToLinear
 ) const {
+    const auto finiteFrame = [](const MotionScaleFrame& f) {
+        return std::isfinite(f.x) && std::isfinite(f.y) && std::isfinite(f.z) &&
+            std::isfinite(f.engineSpeed) && std::isfinite(f.speedometer) &&
+            std::isfinite(f.absoluteSpeed) && std::isfinite(f.localVelocityMagnitude) &&
+            std::isfinite(f.linearVelocityMagnitude) &&
+            f.localVelocityMagnitude > 0.0001f && f.linearVelocityMagnitude > 0.0001f;
+    };
     if (!previous.valid ||
         !current.valid ||
+        !finiteFrame(previous) || !finiteFrame(current) ||
+        previous.engineSpeed <= 0.0f || current.engineSpeed <= 0.0f ||
         !previous.safeFreeRoam ||
         !current.safeFreeRoam ||
         !previous.grounded ||
@@ -84,7 +100,7 @@ bool MotionScaleObserver::acceptPair(
     const float currentSpeed =
         std::abs(current.engineSpeed);
     const float averageSpeed =
-        (previousSpeed + currentSpeed) * 0.5f;
+        previousSpeed * 0.5f + currentSpeed * 0.5f;
 
     if (!std::isfinite(averageSpeed) ||
         averageSpeed <
@@ -128,12 +144,12 @@ bool MotionScaleObserver::acceptPair(
     }
 
     const float speedometerAverage =
-        (std::abs(previous.speedometer) +
-         std::abs(current.speedometer)) * 0.5f;
+        std::abs(previous.speedometer) * 0.5f +
+        std::abs(current.speedometer) * 0.5f;
 
     const float absoluteAverage =
-        (std::abs(previous.absoluteSpeed) +
-         std::abs(current.absoluteSpeed)) * 0.5f;
+        std::abs(previous.absoluteSpeed) * 0.5f +
+        std::abs(current.absoluteSpeed) * 0.5f;
 
     speedometerToSpeed =
         safeRatio(speedometerAverage, averageSpeed);
@@ -142,12 +158,12 @@ bool MotionScaleObserver::acceptPair(
         safeRatio(absoluteAverage, averageSpeed);
 
     const float localAverage =
-        (previous.localVelocityMagnitude +
-         current.localVelocityMagnitude) * 0.5f;
+        previous.localVelocityMagnitude * 0.5f +
+        current.localVelocityMagnitude * 0.5f;
 
     const float linearAverage =
-        (previous.linearVelocityMagnitude +
-         current.linearVelocityMagnitude) * 0.5f;
+        previous.linearVelocityMagnitude * 0.5f +
+        current.linearVelocityMagnitude * 0.5f;
 
     speedToLocal =
         safeRatio(averageSpeed, localAverage);
@@ -155,13 +171,16 @@ bool MotionScaleObserver::acceptPair(
     speedToLinear =
         safeRatio(averageSpeed, linearAverage);
 
-    return true;
+    return std::isfinite(speedometerToSpeed) && std::isfinite(absoluteToSpeed) &&
+        std::isfinite(speedToLocal) && std::isfinite(speedToLinear) &&
+        speedToLocal > 0.0f && speedToLinear > 0.0f;
 }
 
 MotionScaleSnapshot MotionScaleObserver::push(
     const MotionScaleFrame& frame,
     float deltaSeconds
 ) {
+    lastPairAccepted_ = false;
     if (!havePrevious_) {
         previous_ = frame;
         havePrevious_ = frame.valid;
@@ -184,6 +203,8 @@ MotionScaleSnapshot MotionScaleObserver::push(
             speedToLocal,
             speedToLinear)) {
         ++acceptedSamples_;
+        lastPairAccepted_ = true;
+        window_.push_back({ratio, speedometerToSpeed, absoluteToSpeed, speedToLocal, speedToLinear});
         ratioSum_ += ratio;
         ratioSquareSum_ +=
             static_cast<double>(ratio) *
@@ -194,8 +215,21 @@ MotionScaleSnapshot MotionScaleObserver::push(
             absoluteToSpeed;
         speedToLocalSum_ += speedToLocal;
         speedToLinearSum_ += speedToLinear;
+        const auto limit = std::clamp(tuning_.maximumWindowSamples, 1u, 4096u);
+        if (window_.size() > limit) {
+            const auto old = window_.front();
+            window_.pop_front();
+            ratioSum_ -= old[0];
+            ratioSquareSum_ -= old[0] * old[0];
+            speedometerToSpeedSum_ -= old[1];
+            absoluteToSpeedSum_ -= old[2];
+            speedToLocalSum_ -= old[3];
+            speedToLinearSum_ -= old[4];
+        }
     } else {
         ++rejectedSamples_;
+        // Menus, jumps, gaps and invalid channels revoke old stability.
+        clearWindow();
     }
 
     previous_ = frame;
@@ -208,13 +242,15 @@ MotionScaleSnapshot MotionScaleObserver::snapshot() const {
     MotionScaleSnapshot out{};
     out.acceptedSamples = acceptedSamples_;
     out.rejectedSamples = rejectedSamples_;
+    out.windowSamples = static_cast<unsigned>(window_.size());
+    out.lastPairAccepted = lastPairAccepted_;
 
-    if (acceptedSamples_ == 0) {
+    if (window_.empty()) {
         return out;
     }
 
     const double count =
-        static_cast<double>(acceptedSamples_);
+        static_cast<double>(window_.size());
 
     const double mean =
         ratioSum_ / count;
@@ -256,7 +292,7 @@ MotionScaleSnapshot MotionScaleObserver::snapshot() const {
         );
 
     out.stable =
-        acceptedSamples_ >=
+        out.windowSamples >=
             std::max(
                 tuning_.minimumStableSamples,
                 1u

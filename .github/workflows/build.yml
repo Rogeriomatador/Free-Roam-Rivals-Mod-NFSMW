@@ -25,6 +25,9 @@ jobs:
       - name: Run domain/system tests
         run: ctest --test-dir build -C Release --output-on-failure
 
+      - name: Audit motion capture tests
+        run: python -m unittest discover -s tests -p test_motion_capture.py
+
       - name: Collect ASI
         shell: pwsh
         run: |
@@ -53,9 +56,12 @@ jobs:
           Copy-Item "config/Rivals.ini" "$pkg/scripts/FreeRoamRivals/Rivals.ini"
           Copy-Item "config/VehiclePools.ini" "$pkg/scripts/FreeRoamRivals/VehiclePools.ini"
           Copy-Item "config/UndergroundBlacklist.ini" "$pkg/scripts/FreeRoamRivals/UndergroundBlacklist.ini"
+          New-Item -ItemType Directory -Force "$pkg/tools" | Out-Null
+          Copy-Item "tools/analyze_motion_capture.py" "$pkg/tools/"
+          Copy-Item "docs/MOTION_CAPTURE.md" "$pkg/MOTION_CAPTURE.md"
 
           @"
-          NFSMW Free Roam Rivals v0.0.23-dev
+          NFSMW Free Roam Rivals v0.0.24-dev
 
           INSTALL:
           1. Extract this ZIP into the Need for Speed Most Wanted game folder.
@@ -64,9 +70,9 @@ jobs:
           4. Drive for 20-30 seconds.
           5. Check scripts\FreeRoamRivals\FreeRoamRivals.log.
 
-          v0.0.23 adds opt-in primary-camera/view matrix reads and whole-OBB
-          frustum classification. Mirror/view coverage and visual model bounds
-          still block complete off-screen spawn verification.
+          v0.0.24 adds opt-in per-sample motion capture and an offline Python
+          auditor. See MOTION_CAPTURE.md. Bounded consistency windows reset
+          across player/model/profile/world changes. Metre scale remains unverified.
 
           Runtime vehicle creation and AI control are still disabled by default.
           ExperimentalSpawnEnabled=1 only enables read-only preflight diagnostics
@@ -78,23 +84,23 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.23-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.24-dev.zip" -Force
 
-      - name: Publish v0.0.23-dev GitHub Release
+      - name: Publish v0.0.24-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.23-dev"
+          $tag = "v0.0.24-dev"
 
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
             Write-Host "Release $tag already exists; keeping existing release."
           } else {
-            gh release create $tag "release/FreeRoamRivals-v0.0.23-dev.zip" `
+            gh release create $tag "release/FreeRoamRivals-v0.0.24-dev.zip" `
               --target "${{ github.sha }}" `
-              --title "Free Roam Rivals v0.0.23-dev" `
+              --title "Free Roam Rivals v0.0.24-dev" `
               --prerelease `
-              --notes "v0.0.23-dev: diagnóstico opt-in da câmera principal, conversão física/render e frustum da OBB inteira. Cobertura de espelhos e geometria visual continuam bloqueando spawn."
+              --notes "v0.0.24-dev: captura de movimento por modelo/contexto, janela estatística limitada e auditor Python incluído. Calibração métrica e criação de rivais continuam bloqueadas."
           }

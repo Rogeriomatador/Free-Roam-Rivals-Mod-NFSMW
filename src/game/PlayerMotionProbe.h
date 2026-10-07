@@ -15,6 +15,7 @@ struct PlayerMotionProbe {
     bool available = false;
 
     std::uintptr_t pVehicle = 0;
+    std::uint32_t vehicleKey = 0;
 
     float speed = 0.0f;
     float speedometer = 0.0f;
