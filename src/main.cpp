@@ -11,7 +11,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.20-dev";
+constexpr const char* kVersion = "0.0.21-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -102,7 +102,7 @@ int bootstrap() {
     }
 
     log.info(
-        "v0.0.20-dev learns stable per-model half-extents from live PVehicle rigid bodies, maps catalog names to IVehicle::GetVehicleKey, builds road-aligned pre-construction OBBs and performs full fleet overlap checks before any vehicle creation."
+        "v0.0.21-dev adds an opt-in gameplay-thread-only WCollisionMgr probe for verified world-face ground and world/barrier occlusion evidence. Ground now has its own construction-readiness gate; camera visibility and streaming remain fail-closed."
     );
 
     return NFSMW_OK;
@@ -112,7 +112,7 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.20-dev",
+    "0.0.21-dev",
     "Rogeriomatador"
 )
 
