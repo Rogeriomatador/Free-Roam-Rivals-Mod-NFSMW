@@ -99,6 +99,14 @@ Config Config::load() {
             1
         ) != 0;
 
+    cfg.roadNavDiagnosticsEnabled =
+        iniInt(
+            ini,
+            "Diagnostics",
+            "RoadNavDiagnosticsEnabled",
+            1
+        ) != 0;
+
     cfg.runtimeSampleEveryFrames =
         static_cast<unsigned>(
             std::clamp(
@@ -317,6 +325,22 @@ Config Config::load() {
             ini,
             "Staging",
             "AllowHiddenAlignmentFallback",
+            1
+        ) != 0;
+
+    cfg.undergroundBlacklistEnabled =
+        iniInt(
+            ini,
+            "UndergroundBlacklist",
+            "Enabled",
+            1
+        ) != 0;
+
+    cfg.undergroundBlacklistPersistence =
+        iniInt(
+            ini,
+            "UndergroundBlacklist",
+            "PersistProgress",
             1
         ) != 0;
 

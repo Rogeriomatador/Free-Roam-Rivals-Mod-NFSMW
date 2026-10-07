@@ -1,5 +1,7 @@
 #include "GameBridge.h"
 
+#include "../core/ProfileKey.h"
+
 #include <mwsdk/game/mw05.hpp>
 #include <mwsdk/game/mw05_research.hpp>
 
@@ -250,6 +252,17 @@ CareerProbe probeCareer() {
         out.careerCompletedAtLeastOnce =
             profile->mCareerModeHasBeenCompletedAtLeastOnce;
 
+        const auto profileKey = frr::profileKeyFromName(
+            profile->m_aProfileName,
+            sizeof(profile->m_aProfileName),
+            profile->m_bNamed
+        );
+
+        if (profileKey) {
+            out.profileKeyAvailable = true;
+            out.profileKey = *profileKey;
+        }
+
         const std::size_t carCount =
             profile->mPlayersCarStable.GetNumCareerCars();
 
@@ -282,6 +295,9 @@ void deriveCapabilities(RuntimeSnapshot& out) {
 
     caps.roadNetworkAvailable =
         out.roadNetwork != 0;
+
+    caps.roadNavigationReadAvailable =
+        out.roadNavigation.available;
 
     caps.careerReadAvailable =
         out.career.available;
@@ -330,6 +346,13 @@ RuntimeSnapshot GameBridge::sample() {
 
     probeRaceStatus(out);
     out.vehicles = probeVehicles();
+
+    if (out.vehicles.playerPVehicle != 0) {
+        out.roadNavigation = RoadNavProbe::sample(
+            out.vehicles.playerPVehicle
+        );
+    }
+
     out.career = probeCareer();
 
     if (!out.inWorld) {

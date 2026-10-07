@@ -11,7 +11,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.9-dev";
+constexpr const char* kVersion = "0.0.10-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -65,6 +65,8 @@ int bootstrap() {
         config.renderProbeEnabled;
     probeConfig.inputProbeEnabled =
         config.inputProbeEnabled;
+    probeConfig.roadNavDiagnosticsEnabled =
+        config.roadNavDiagnosticsEnabled;
     probeConfig.sampleEveryFrames =
         config.runtimeSampleEveryFrames;
     probeConfig.heartbeatFrames =
@@ -75,6 +77,10 @@ int bootstrap() {
         config.stableFreeRoamSamplesBeforeSpawn;
     probeConfig.maxActiveRivals =
         config.maxActiveRivals;
+    probeConfig.undergroundBlacklistEnabled =
+        config.undergroundBlacklistEnabled;
+    probeConfig.undergroundBlacklistPersistence =
+        config.undergroundBlacklistPersistence;
 
     const auto installed =
         game::RuntimeProbe::install(probeConfig);
@@ -87,7 +93,7 @@ int bootstrap() {
     }
 
     log.info(
-        "v0.0.9-dev adds the independent post-career Underground Blacklist domain: ranks, discovery, requirements, world-hunt eligibility and future portrait/audio asset keys. Vehicle creation, AI mutation and frontend mutation remain disabled until their lifecycles are proven."
+        "v0.0.10-dev adds live player road-navigation telemetry and mod-owned per-profile Underground Blacklist persistence using a pseudonymous profile key. Vehicle creation, AI mutation and frontend mutation remain disabled until their lifecycles are proven."
     );
 
     return NFSMW_OK;
@@ -97,7 +103,7 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.9-dev",
+    "0.0.10-dev",
     "Rogeriomatador"
 )
 
