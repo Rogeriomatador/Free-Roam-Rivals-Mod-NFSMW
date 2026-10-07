@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.0.12-dev
+
+- Added deterministic Underground Blacklist progress events:
+  - Street Rep earned
+  - qualifier win
+  - pink-slip win
+  - current target sighted
+  - current target defeated
+- Target-specific events enforce the current rank and cannot skip ahead.
+- Sighting/defeat events enforce rank requirements.
+- A target must be discovered before a defeat result can commit.
+- Defeating a rank resets the qualifier-win counter for the next rank.
+- Additive counters use saturating arithmetic and reject non-positive event amounts.
+- Added explicit rejection reasons for invalid progress events.
+- Added `UndergroundBlacklistStore::applyAndSave`:
+  - accepted event -> update -> atomic JSON save
+  - rejected event -> no write
+  - save failure -> event result returned but persistence remains uncommitted
+- Expanded Blacklist and persistence tests for ordering, requirements, reset behavior and reload after event commit.
+
+
 ## 0.0.11-dev
 
 - Added an opt-in, read-only mid-hook at verified `GameFrameTick @ 0x663D30`.
