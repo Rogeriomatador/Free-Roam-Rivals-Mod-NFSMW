@@ -13,6 +13,8 @@ namespace {
 frr::domain::ChallengeInputEdge g_edge{};
 unsigned g_fallbackVirtualKey = 0x47u;
 
+constexpr std::uint32_t kMaxPendingPresses = 16u;
+
 std::atomic<std::uint32_t> g_pendingPresses{0};
 std::atomic<std::uint64_t> g_totalPresses{0};
 
@@ -55,15 +57,25 @@ void ChallengeInputProbe::onPoll() {
         return;
     }
 
-    g_pendingPresses.fetch_add(
-        1,
-        std::memory_order_release
-    );
-
     g_totalPresses.fetch_add(
         1,
         std::memory_order_relaxed
     );
+
+    std::uint32_t current =
+        g_pendingPresses.load(
+            std::memory_order_acquire
+        );
+
+    while (current < kMaxPendingPresses) {
+        if (g_pendingPresses.compare_exchange_weak(
+                current,
+                current + 1u,
+                std::memory_order_acq_rel,
+                std::memory_order_acquire)) {
+            break;
+        }
+    }
 }
 
 bool ChallengeInputProbe::consumePress() {
