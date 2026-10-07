@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.0.20-dev
+
+- Added stable per-model footprint identity through `IVehicle::GetVehicleKey()`.
+- Added safe catalog-name -> live pvehicle-key resolution.
+- Added `VehicleFootprintLearner` with four-sample consistency verification.
+- Learns local rigid-body half-extents per vehicle model without constructing a new vehicle.
+- Rejects inconsistent dimension samples by relative spread.
+- Added road-aligned pre-construction OBB generation using candidate position/forward.
+- Runtime can now perform full OBB-vs-live-fleet overlap checks for a verified learned catalog model before vehicle creation.
+- Added `VehicleFootprintUnavailable` to construction readiness.
+- Expanded runtime diagnostics with learned-model counts, verified model key and pre-construction overlap state.
+- Candidate construction remains disabled; metric, streaming, ground and visibility gates remain unresolved/fail-closed.
+- Added tests for footprint learning, unstable samples and road-aligned pre-construction overlap.
+
+
 ## 0.0.19-dev
 
 - Added read-only `VehicleSpatialProbe` over the validated NFSPluginSDK PVehicle registry.

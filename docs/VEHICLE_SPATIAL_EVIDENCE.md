@@ -135,3 +135,34 @@ Free Roam Rivals will not call that path until the exact lookup ABI/address is
 verified for the supported executable.
 
 Until then, candidate-footprint overlap remains fail-closed.
+
+
+## v0.0.20 — learned pre-construction footprints
+
+The missing candidate footprint can now be learned without calling an unverified
+collision-geometry lookup.
+
+Every valid live OBB also records `IVehicle::GetVehicleKey()`. Public
+reconstruction shows this key is the pvehicle collection key used by traffic
+patterns and the attribute database.
+
+The learner groups rigid-body half-extents by that stable key and requires four
+samples whose maximum component spread is within 3%.
+
+Configured catalog names such as `supra` and `rx7` are resolved through the
+live pvehicle database to the same key.
+
+Once a catalog model is verified, the runtime can construct a temporary
+road-aligned OBB from:
+
+```text
+candidate road position
+candidate road forward
+learned model half-extents
+```
+
+and run the existing SAT test against the complete live fleet.
+
+This is still read-only. It does not instantiate a PVehicle. The final spawn
+candidate remains blocked until the other independent gates—metric scale,
+streaming, ground and visibility—are also proven.

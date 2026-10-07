@@ -1,6 +1,6 @@
 # Runtime Construction Readiness
 
-v0.0.19 extends the remaining first-spawn prerequisites into one
+v0.0.20 extends the remaining first-spawn prerequisites into one
 fail-closed readiness report.
 
 The report exists so target-machine testing can answer:
@@ -21,8 +21,9 @@ The evaluator checks, in order:
 7. live road lookahead observed
 8. at least one ahead point with exact WRoadNav geometry observed
 9. complete live-vehicle spatial evidence observed
-10. metric calibration verified
-11. final spawn candidate verified
+10. at least one catalog vehicle has a verified learned pre-construction footprint
+11. metric calibration verified
+12. final spawn candidate verified
 
 Only when every item passes is:
 
@@ -56,6 +57,8 @@ Construction readiness after 8s:
   roadLookaheadObserved=1
   exactRoadCandidateObserved=1
   vehicleSpatialEvidenceObserved=1
+  vehicleFootprintVerified=1
+  verifiedFootprintVehicleKey=0x...
   metricCalibrationVerified=0
   spawnCandidateVerified=0
 ```
@@ -71,6 +74,7 @@ Possible blocker names:
 - `RoadLookaheadUnavailable`
 - `ExactRoadCandidateUnavailable`
 - `VehicleSpatialEvidenceUnavailable`
+- `VehicleFootprintUnavailable`
 - `MetricCalibrationUnverified`
 - `SpawnCandidateUnverified`
 
@@ -101,7 +105,8 @@ The runtime adapter only feeds it:
 - whether safe Free Roam was observed;
 - whether road lookahead was observed;
 - whether at least one ahead candidate has exact WRoadNav geometry;
-- whether the active PVehicle set has complete, valid spatial OBB evidence.
+- whether the active PVehicle set has complete, valid spatial OBB evidence;
+- whether a configured catalog model has enough consistent live samples to build its footprint before construction.
 
 It does not:
 

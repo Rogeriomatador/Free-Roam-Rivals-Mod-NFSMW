@@ -90,6 +90,8 @@ SlotReadResult readVehicleSlot(
 
         out.box.identity =
             reinterpret_cast<std::uintptr_t>(vehicle);
+        out.box.vehicleKey =
+            vehicle->GetVehicleKey();
 
         IRigidBody* rigidBody =
             vehicle->GetRigidBody();

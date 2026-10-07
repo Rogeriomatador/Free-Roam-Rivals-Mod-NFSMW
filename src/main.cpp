@@ -11,7 +11,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.19-dev";
+constexpr const char* kVersion = "0.0.20-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -100,7 +100,7 @@ int bootstrap() {
     }
 
     log.info(
-        "v0.0.19-dev adds read-only live-vehicle OBB spatial evidence, SAT overlap tests and road-point occupancy diagnostics. Complete vehicle spatial reads are now a construction-readiness prerequisite; candidate footprint overlap remains fail-closed until the selected rival footprint is available before construction."
+        "v0.0.20-dev learns stable per-model half-extents from live PVehicle rigid bodies, maps catalog names to IVehicle::GetVehicleKey, builds road-aligned pre-construction OBBs and performs full fleet overlap checks before any vehicle creation."
     );
 
     return NFSMW_OK;
@@ -110,7 +110,7 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.19-dev",
+    "0.0.20-dev",
     "Rogeriomatador"
 )
 
