@@ -21,6 +21,8 @@ Exit criterion: loading the ASI does not alter gameplay and creates a diagnostic
 - [ ] Identify/spawn one rival vehicle
 - [ ] Keep stable rival handle/pointer validation
 - [ ] Rival roaming state
+- [x] Progression-aware vanilla vehicle catalog and deterministic selector
+- [x] Persistent-vs-procedural vehicle ownership policy
 - [ ] Interest distance check
 - [ ] ChallengeAvailable state
 - [ ] Detect horn or configured fallback input
@@ -69,13 +71,13 @@ Exit criterion: repeatable cash wagers that survive save/load without corruption
 
 ## v0.5 — Rival persistence
 
-- [ ] Rival definitions
+- [x] Rival definitions (template schema)
 - [ ] Personalities
 - [ ] W/L history
 - [ ] Respect / grudge / fear
-- [ ] Persistent rival garage
+- [x] Persistent rival garage model/schema
 - [ ] Rematches
-- [ ] District preferences
+- [x] District preferences in vehicle selection model
 - [ ] Dynamic difficulty without speed cheating
 
 ## v0.6 — Pink slip: player wins
