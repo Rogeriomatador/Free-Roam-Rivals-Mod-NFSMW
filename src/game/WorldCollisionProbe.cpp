@@ -123,7 +123,7 @@ frr::domain::WorldCollisionSample callCheckHitWorld(
         {to.x, to.y, to.z, 1.0f}
     };
 
-    RawWorldCollisionInfo info{};
+    alignas(16) RawWorldCollisionInfo info{};
 
 #if defined(_MSC_VER)
     __try {
