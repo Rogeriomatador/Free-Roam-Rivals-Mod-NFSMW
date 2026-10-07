@@ -7,6 +7,21 @@ namespace frr::domain {
 
 enum class RaceObservationPhase { Unavailable, Racing, Roaming };
 
+// Values copied from the live registry. Matching two reads detects observed
+// storage/membership changes; it is not an atomic snapshot or a lifetime proof.
+struct VehicleRegistrySnapshot {
+    std::uintptr_t storage = 0;
+    std::uint32_t count = 0;
+    bool complete = false;
+    std::vector<std::uintptr_t> slots{};
+};
+enum class RegistrySnapshotStatus {
+    Stable, Incomplete, InvalidMembership, StorageChanged, CountChanged, MembershipChanged
+};
+RegistrySnapshotStatus compareVehicleRegistrySnapshots(
+    const VehicleRegistrySnapshot& before, const VehicleRegistrySnapshot& after);
+const char* registrySnapshotStatusName(RegistrySnapshotStatus status);
+
 struct RaceObservationContext {
     std::uintptr_t player = 0;
     std::uintptr_t roadNetwork = 0;

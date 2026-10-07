@@ -52,6 +52,8 @@ verified main loop completes on its consistent thread. No render probe or
 FrameTick setting is needed for this diagnostic.
 
 - Read the live IVehicle registry with guarded reads and a 512-slot ceiling.
+- Reread count/storage and all slot identities, including inactive slots;
+  reject observed changes or partial traversal and log registryStatus.
 - Record numeric IVehicle/ISimable/model identities, driver class, position,
   AI interface identity and interface vtable. No concrete AI cast or goal call.
 - Capture Racer-class identities during Racing; correlate matching identities
@@ -80,3 +82,5 @@ intervals, disappearance/address reuse, context changes, incomplete reads,
 duplicate identities, gaps and expiry. They are not a game simulation. The
 Windows build compiles the real probe but does not run it in speed.exe. This
 revision does not create a native rival.
+
+Further investigation: [native roaming, streaming and vehicle-cache research](NATIVE_ROAMING_STREAMING_RESEARCH.md).

@@ -54,6 +54,8 @@ Support for additional 1.3 executables will be added only after their addresses/
 
 v0.0.30 adds an optional `Diagnostics.PostRaceRacerDiagnosticsEnabled=1` observation of native racers across stock-race/free-roam transitions. It correlates live vehicle identities, AI interface identities and movement without changing race goals or constructing cars. Loading, incomplete reads and context changes discard correlations; no matches are inconclusive. Target-game validation is pending. See [post-race research and test procedure](docs/POST_RACE_RACER_RESEARCH.md) for pinned public sources, evidence limits and the separate existing Native Free Roam Racers implementation.
 
+The [streaming/roaming/cache investigation](docs/NATIVE_ROAMING_STREAMING_RESEARCH.md) records why global loading completion, Racer class and inactive traffic counts cannot establish a safe creation path. Post-race samples also reject observed live-list storage or membership changes during traversal.
+
 The ASI validates the supported executable, installs observation hooks, separates Free Roam from stock races, enumerates live IVehicle driver classes, independently cross-checks the player PVehicle, observes the road network, reads career cash/car-count/completion, and validates the configured rival-car catalog without mutating the game.
 
 The population layer distinguishes authored persistent rivals, deterministic procedural locals with stable names/personality/vehicle identity, legendary condition-based rivals, and untouched vanilla traffic.

@@ -2,6 +2,9 @@
 
 ## 0.0.30-dev
 
+- Deepen pinned-source roaming/streaming/cache research: separate racer goal/class, candidate-section activation, mutating road-nav queries, deferred cleanup and companion resource limits.
+- Reject post-race samples when reread live-list storage/count/membership changes; include inactive slots, log registry status and world-transition revocations, and add portable regression cases. Equal reads do not claim atomicity or object lifetime.
+
 - Add disabled-by-default, read-only post-race racer diagnostics on the verified completed gameplay loop, with bounded identity correlation and invalidation on incomplete samples, loading, context changes or observation gaps. No runtime target-game validation has been performed for this new probe.
 - Add portable regression tests for transition matching, movement, AI identity changes, disappearance/reuse, invalid observations and evidence expiry.
 - Document pinned public reconstruction sources and the independently authored Native Free Roam Racers mod. Treat the user's post-race observation as a research lead, not an executable ABI proof.

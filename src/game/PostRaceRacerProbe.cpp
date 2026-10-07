@@ -53,22 +53,37 @@ bool readVehicle(void* raw, frr::domain::ObservedRaceVehicle& out, bool& ignored
 #endif
 }
 
-// The registry access itself also needs an SEH boundary.
-bool readCount(std::uint32_t& count) {
+// The registry access itself also needs a POD-only SEH boundary. Read the
+// existing pinned SDK's data symbol, without introducing a guessed address.
+bool readHeader(std::uint32_t& count, std::uintptr_t& storage) {
 #if defined(_MSC_VER)
     __try {
 #endif
         count = mwsdk::mw05::vehicle_count();
-        return count <= 512;
+        storage = reinterpret_cast<std::uintptr_t>(mwsdk::mw05::read<void**>(
+            mwsdk::mw05::process(), mwsdk::mw05::db::data::PVehicle_mVehicleListData));
+        return count <= 512 && (!count || storage);
 #if defined(_MSC_VER)
     } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
 #endif
 }
-bool readSlot(std::uint32_t index, frr::domain::ObservedRaceVehicle& out, bool& ignored) {
+bool readIdentity(std::uint32_t index, std::uintptr_t& identity) {
 #if defined(_MSC_VER)
     __try {
 #endif
-        return readVehicle(mwsdk::mw05::vehicle_at(index), out, ignored);
+        identity = reinterpret_cast<std::uintptr_t>(mwsdk::mw05::vehicle_at(index));
+        return identity != 0;
+#if defined(_MSC_VER)
+    } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+#endif
+}
+bool readSlot(std::uint32_t index, frr::domain::ObservedRaceVehicle& out,
+    bool& ignored, std::uintptr_t& identity) {
+#if defined(_MSC_VER)
+    __try {
+#endif
+        if (!readIdentity(index, identity)) return false;
+        return readVehicle(reinterpret_cast<void*>(identity), out, ignored);
 #if defined(_MSC_VER)
     } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
 #endif
@@ -93,24 +108,50 @@ void samplePostRaceRacers() {
     if (!current.inWorld || current.inNIS || current.fadeScreen || current.raceStatusLoading ||
         !current.vehicles.independentPlayerCrossCheck) {
         observer.reset();
+        std::ostringstream line;
+        line << "PostRace observation revoked: inWorld=" << current.inWorld
+            << " nis=" << current.inNIS << " fade=" << current.fadeScreen
+            << " loading=" << current.raceStatusLoading
+            << " playerCrossCheck=" << current.vehicles.independentPlayerCrossCheck
+            << " readOnly=1 lifetimeProven=0";
+        Log::instance().info(line.str());
         return;
     }
     if (current.mode == WorldProbeMode::StockRace)
         sample.phase = frr::domain::RaceObservationPhase::Racing;
     else if (current.mode == WorldProbeMode::FreeRoamCandidate)
         sample.phase = frr::domain::RaceObservationPhase::Roaming;
-    std::uint32_t count = 0;
-    sample.complete = readCount(count);
-    for (std::uint32_t i = 0; sample.complete && i < count; ++i) {
+    frr::domain::VehicleRegistrySnapshot before{}, after{};
+    before.complete = readHeader(before.count, before.storage);
+    for (std::uint32_t i = 0; before.complete && i < before.count; ++i) {
         frr::domain::ObservedRaceVehicle vehicle{};
         bool ignored = false;
-        sample.complete = readSlot(i, vehicle, ignored);
-        if (sample.complete && !ignored) sample.vehicles.push_back(vehicle);
+        std::uintptr_t identity = 0;
+        before.complete = readSlot(i, vehicle, ignored, identity);
+        if (before.complete) {
+            before.slots.push_back(identity); // Include inactive slots in membership proof.
+            if (!ignored) sample.vehicles.push_back(vehicle);
+        }
     }
+    after.complete = before.complete && readHeader(after.count, after.storage);
+    for (std::uint32_t i = 0; after.complete && i < after.count; ++i) {
+        std::uintptr_t identity = 0;
+        after.complete = readIdentity(i, identity);
+        if (after.complete) after.slots.push_back(identity);
+    }
+    // Guard the second traversal's header too. This still cannot detect an
+    // unobserved remove/reinsert (ABA); logs deliberately keep lifetimeProven=0.
+    std::uint32_t finalCount = 0;
+    std::uintptr_t finalStorage = 0;
+    after.complete = after.complete && readHeader(finalCount, finalStorage) &&
+        finalCount == after.count && finalStorage == after.storage;
+    const auto registryStatus = frr::domain::compareVehicleRegistrySnapshots(before, after);
+    sample.complete = registryStatus == frr::domain::RegistrySnapshotStatus::Stable;
     const auto matches = observer.observe(sample);
     std::ostringstream summary;
     summary << "PostRace observation: phase=" << racePlayModeName(current.racePlayMode)
-        << " complete=" << sample.complete << " liveCount=" << count
+        << " complete=" << sample.complete << " liveCount=" << before.count
+        << " registryStatus=" << frr::domain::registrySnapshotStatusName(registryStatus)
         << " matchingRaceIdentities=" << matches.size()
         << " readOnly=1 lifetimeProven=0";
     Log::instance().info(summary.str());

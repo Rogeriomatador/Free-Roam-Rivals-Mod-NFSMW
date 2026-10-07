@@ -14,6 +14,37 @@ bool sameIdentity(const ObservedRaceVehicle& a, const ObservedRaceVehicle& b) {
 }
 }
 
+RegistrySnapshotStatus compareVehicleRegistrySnapshots(
+    const VehicleRegistrySnapshot& before, const VehicleRegistrySnapshot& after) {
+    for (const auto* s : {&before, &after}) {
+        if (!s->complete || s->count != s->slots.size())
+            return RegistrySnapshotStatus::Incomplete;
+        if (s->count > 512 || (s->count && !s->storage))
+            return RegistrySnapshotStatus::InvalidMembership;
+        for (std::size_t i = 0; i < s->slots.size(); ++i) {
+            if (!s->slots[i] || std::find(s->slots.begin(), s->slots.begin() + i,
+                    s->slots[i]) != s->slots.begin() + i)
+                return RegistrySnapshotStatus::InvalidMembership;
+        }
+    }
+    if (before.storage != after.storage) return RegistrySnapshotStatus::StorageChanged;
+    if (before.count != after.count) return RegistrySnapshotStatus::CountChanged;
+    if (before.slots != after.slots) return RegistrySnapshotStatus::MembershipChanged;
+    return RegistrySnapshotStatus::Stable;
+}
+
+const char* registrySnapshotStatusName(RegistrySnapshotStatus status) {
+    switch (status) {
+        case RegistrySnapshotStatus::Stable: return "Stable";
+        case RegistrySnapshotStatus::Incomplete: return "Incomplete";
+        case RegistrySnapshotStatus::InvalidMembership: return "InvalidMembership";
+        case RegistrySnapshotStatus::StorageChanged: return "StorageChanged";
+        case RegistrySnapshotStatus::CountChanged: return "CountChanged";
+        case RegistrySnapshotStatus::MembershipChanged: return "MembershipChanged";
+    }
+    return "Unknown";
+}
+
 void PostRaceObserver::reset() {
     context_ = {};
     haveContext_ = haveClock_ = false;

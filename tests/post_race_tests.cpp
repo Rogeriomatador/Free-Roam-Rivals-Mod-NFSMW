@@ -14,6 +14,40 @@ RaceVehicleObservation racing() {
     return s;
 }
 int main() {
+    VehicleRegistrySnapshot before{100, 2, true, {10, 11}};
+    auto after = before;
+    require(compareVehicleRegistrySnapshots(before, after) == RegistrySnapshotStatus::Stable,
+        "unchanged complete membership can be accepted");
+    after.slots[1] = 12;
+    require(compareVehicleRegistrySnapshots(before, after) == RegistrySnapshotStatus::MembershipChanged,
+        "a same-count replacement is detected");
+    after = before; after.slots = {11, 10};
+    require(compareVehicleRegistrySnapshots(before, after) == RegistrySnapshotStatus::MembershipChanged,
+        "same-size registry reordering is not silently accepted");
+    after = before; after.storage++;
+    require(compareVehicleRegistrySnapshots(before, after) == RegistrySnapshotStatus::StorageChanged,
+        "relocated registry storage invalidates the sample");
+    after = before; after.count = 1; after.slots.pop_back();
+    require(compareVehicleRegistrySnapshots(before, after) == RegistrySnapshotStatus::CountChanged,
+        "changed registry count invalidates the sample");
+    after = before; after.complete = false;
+    require(compareVehicleRegistrySnapshots(before, after) == RegistrySnapshotStatus::Incomplete,
+        "failed second reads are not disappearance evidence");
+    after = before; after.slots.pop_back();
+    require(compareVehicleRegistrySnapshots(before, after) == RegistrySnapshotStatus::Incomplete,
+        "a partial traversal cannot claim complete membership");
+    for (int fault = 0; fault < 4; ++fault) {
+        after = before;
+        if (fault == 0) after.storage = 0;
+        if (fault == 1) after.slots[1] = 0;
+        if (fault == 2) after.slots[1] = after.slots[0];
+        if (fault == 3) { after.count = 513; after.slots.resize(513, 12); }
+        require(compareVehicleRegistrySnapshots(before, after) == RegistrySnapshotStatus::InvalidMembership,
+            "null, duplicate, oversized or storage-less registries fail closed");
+    }
+    before = {0, 0, true, {}}; after = before;
+    require(compareVehicleRegistrySnapshots(before, after) == RegistrySnapshotStatus::Stable,
+        "a complete empty list remains distinct from a failed read");
     PostRaceObserver observer;
     auto s = racing();
     require(observer.observe(s).empty(), "a racing snapshot never claims a post-race match");
