@@ -1,5 +1,6 @@
 #pragma once
 
+#include "PlayerMotionProbe.h"
 #include "RoadNavProbe.h"
 
 #include <cstdint>
@@ -91,6 +92,7 @@ struct RuntimeSnapshot {
     std::uintptr_t roadNetwork = 0;
 
     VehicleProbe vehicles{};
+    PlayerMotionProbe playerMotion{};
     PlayerRoadNavigationProbe roadNavigation{};
     CareerProbe career{};
     RuntimeCapabilities capabilities{};

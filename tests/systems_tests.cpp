@@ -1,4 +1,5 @@
 #include "domain/ChallengeInput.h"
+#include "domain/MotionScaleObserver.h"
 #include "domain/MutationReadiness.h"
 #include "domain/OutrunRace.h"
 #include "domain/RuntimeSession.h"
@@ -25,6 +26,92 @@ void require(bool value, const char* message) {
 
 int main() {
     using namespace frr::domain;
+
+    MotionScaleTuning motionTuning{};
+    motionTuning.minimumStableSamples = 4;
+    motionTuning.maximumCoefficientOfVariation = 0.01f;
+
+    MotionScaleObserver motionObserver(motionTuning);
+
+    MotionScaleFrame motionFrame{};
+    motionFrame.valid = true;
+    motionFrame.safeFreeRoam = true;
+    motionFrame.grounded = true;
+    motionFrame.engineSpeed = 10.0f;
+    motionFrame.speedometer = 36.0f;
+    motionFrame.absoluteSpeed = 10.0f;
+    motionFrame.localVelocityMagnitude = 10.0f;
+    motionFrame.linearVelocityMagnitude = 10.0f;
+    motionFrame.x = 0.0f;
+
+    auto motionSnapshot =
+        motionObserver.push(motionFrame, 1.0f);
+
+    require(
+        motionSnapshot.acceptedSamples == 0,
+        "first motion frame establishes baseline only"
+    );
+
+    for (int i = 1; i <= 4; ++i) {
+        motionFrame.x = static_cast<float>(i * 20);
+        motionSnapshot =
+            motionObserver.push(motionFrame, 2.0f);
+    }
+
+    require(
+        motionSnapshot.acceptedSamples == 4 &&
+        motionSnapshot.stable &&
+        motionSnapshot.meanWorldUnitsPerSpeedUnitSecond > 0.99f &&
+        motionSnapshot.meanWorldUnitsPerSpeedUnitSecond < 1.01f,
+        "stable synthetic motion observes world-unit to speed-unit ratio"
+    );
+
+    require(
+        motionSnapshot.meanSpeedometerToEngineSpeedRatio > 3.59f &&
+        motionSnapshot.meanSpeedometerToEngineSpeedRatio < 3.61f &&
+        motionSnapshot.meanAbsoluteToEngineSpeedRatio > 0.99f &&
+        motionSnapshot.meanAbsoluteToEngineSpeedRatio < 1.01f,
+        "motion observer exposes speedometer and absolute-speed ratios"
+    );
+
+    require(
+        motionSnapshot.meanSpeedToLocalVelocityRatio > 0.99f &&
+        motionSnapshot.meanSpeedToLocalVelocityRatio < 1.01f &&
+        motionSnapshot.meanSpeedToLinearVelocityRatio > 0.99f &&
+        motionSnapshot.meanSpeedToLinearVelocityRatio < 1.01f,
+        "motion observer cross-checks engine speed against velocity vectors"
+    );
+
+    MotionScaleFrame airborne = motionFrame;
+    airborne.grounded = false;
+    airborne.x += 20.0f;
+
+    const auto afterAirborne =
+        motionObserver.push(airborne, 2.0f);
+
+    require(
+        afterAirborne.acceptedSamples == 4 &&
+        afterAirborne.rejectedSamples == 1,
+        "airborne calibration pair is rejected"
+    );
+
+    MotionScaleObserver unstableObserver(motionTuning);
+    MotionScaleFrame fast = motionFrame;
+    fast.x = 0.0f;
+    fast.engineSpeed = 10.0f;
+    fast.speedometer = 36.0f;
+    unstableObserver.push(fast, 1.0f);
+    fast.x = 20.0f;
+    fast.engineSpeed = 20.0f;
+
+    const auto unstable =
+        unstableObserver.push(fast, 2.0f);
+
+    require(
+        unstable.acceptedSamples == 0 &&
+        unstable.rejectedSamples == 1,
+        "large speed swing is rejected from scale observation"
+    );
 
     MutationReadinessInput readiness{};
     auto readinessReport =

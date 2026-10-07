@@ -50,7 +50,7 @@ Support for additional 1.3 executables will be added only after their addresses/
 
 ## Current status
 
-**Pre-alpha / read-only runtime + construction-readiness + road/challenge/spawn foundations (v0.0.16-dev).**
+**Pre-alpha / read-only runtime + motion calibration research + road/challenge/spawn foundations (v0.0.17-dev).**
 
 The ASI validates the supported executable, installs observation hooks, separates Free Roam from stock races, enumerates live IVehicle driver classes, independently cross-checks the player PVehicle, observes the road network, reads career cash/car-count/completion, and validates the configured rival-car catalog without mutating the game.
 
@@ -70,6 +70,8 @@ v0.0.14 expands the road-navigation probe with native `SeekAheadPosition`, `FarF
 v0.0.15 adds the first usable challenge input path: a configurable fallback virtual key sampled from the existing game input-poll callback with rising-edge semantics and a bounded atomic queue for the future EncounterDirector. The verified MW05 action table still exposes no native `HORN/HONK` action, so horn integration remains explicitly unproven rather than being faked with another HUD action.
 
 v0.0.16 consolidates the remaining first-spawn prerequisites into a single fail-closed construction-readiness report. It identifies the first blocker among FrameTick enablement/install/observation, main-loop thread confirmation, safe Free Roam, road lookahead, metric calibration and final spawn-candidate promotion.
+
+v0.0.17 adds read-only player-motion cross-checks for `GetSpeed`, `GetSpeedometer`, `GetAbsoluteSpeed`, local/linear velocity and world-position displacement over elapsed time. A statistical observer can establish a stable `worldUnitsPerSpeedUnitSecond` relationship, but it deliberately does not promote that value to metres until the physical speed unit is proven on the target installation.
 
 v0.0.9 also adds a tested, independent **Underground Blacklist** domain that unlocks after the vanilla career is completed. It is not a relabel of the original Blacklist: the mod tracks its own ranks, discovery state, qualification requirements, world-hunt eligibility and future portrait/audio asset keys.
 
@@ -109,6 +111,7 @@ docs/
   ROAD_NAV_PROBE.md
   CHALLENGE_INPUT.md
   RUNTIME_READINESS.md
+  MOTION_SCALE_CALIBRATION.md
   PINK_SLIP_ENGINE_RESEARCH.md
   RIVAL_POPULATION_AND_VEHICLES.md
   UNDERGROUND_BLACKLIST.md

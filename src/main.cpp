@@ -11,7 +11,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.16-dev";
+constexpr const char* kVersion = "0.0.17-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -100,7 +100,7 @@ int bootstrap() {
     }
 
     log.info(
-        "v0.0.16-dev adds a single fail-closed construction-readiness report covering FrameTick installation/observation, main-loop thread evidence, Free Roam, road lookahead, metric calibration and spawn-candidate promotion."
+        "v0.0.17-dev adds read-only player motion telemetry and statistical world-unit/speed-unit consistency observation. Metric calibration remains deliberately unverified until target-machine evidence proves the physical speed semantics."
     );
 
     return NFSMW_OK;
@@ -110,7 +110,7 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.16-dev",
+    "0.0.17-dev",
     "Rogeriomatador"
 )
 

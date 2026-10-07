@@ -4,6 +4,7 @@
 #include "GameBridge.h"
 #include "VehicleCatalogProbe.h"
 #include "../core/Log.h"
+#include "../domain/MotionScaleObserver.h"
 #include "../domain/MutationReadiness.h"
 #include "../domain/RuntimeSession.h"
 #include "../domain/SpawnSafety.h"
@@ -18,6 +19,7 @@
 #include <windows.h>
 
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <iomanip>
 #include <sstream>
@@ -57,6 +59,13 @@ std::uint64_t g_blacklistProfileKey = 0;
 frr::domain::UndergroundBlacklistProgress g_blacklistProgress{};
 
 frr::domain::RuntimeSessionTracker g_runtimeSession{};
+
+frr::domain::MotionScaleObserver g_motionScaleObserver{};
+frr::domain::MotionScaleSnapshot g_motionScaleSnapshot{};
+bool g_haveMotionClock = false;
+std::chrono::steady_clock::time_point g_lastMotionClock{};
+bool g_loggedStableMotionScale = false;
+
 bool g_haveSpawnPreflight = false;
 frr::domain::SpawnRejectReason g_lastSpawnPreflightReason =
     frr::domain::SpawnRejectReason::ExperimentalFeatureDisabled;
@@ -94,6 +103,8 @@ bool sameMeaningfulState(
             b.vehicles.copVehicles &&
         a.vehicles.racerVehicles ==
             b.vehicles.racerVehicles &&
+        a.playerMotion.available ==
+            b.playerMotion.available &&
         a.roadNavigation.available ==
             b.roadNavigation.available &&
         a.roadNavigation.playerAiAvailable ==
@@ -180,6 +191,27 @@ std::string describe(const RuntimeSnapshot& s) {
         << ",garageWrite:"
         << (s.capabilities.garageWriteVerified ? 1 : 0)
         << "]";
+
+    if (s.playerMotion.available) {
+        out << " motion=[speed:"
+            << std::fixed << std::setprecision(3)
+            << s.playerMotion.speed
+            << ",speedometer:"
+            << s.playerMotion.speedometer
+            << ",absSpeed:"
+            << s.playerMotion.absoluteSpeed
+            << ",localMag:"
+            << s.playerMotion.localVelocityMagnitude
+            << ",linearMag:"
+            << s.playerMotion.linearVelocityMagnitude
+            << ",slip:"
+            << s.playerMotion.slipAngle
+            << ",wheels:"
+            << s.playerMotion.wheelsOnGround
+            << ",units:engine/unverified]";
+    } else {
+        out << " motion=unavailable";
+    }
 
     if (g_config.roadNavDiagnosticsEnabled) {
         if (s.roadNavigation.available) {
@@ -519,6 +551,83 @@ void sampleAndLog(
     const RuntimeSnapshot current = GameBridge::sample();
     ++g_samples;
 
+    const auto motionNow =
+        std::chrono::steady_clock::now();
+
+    float motionDeltaSeconds = 0.0f;
+    if (g_haveMotionClock) {
+        motionDeltaSeconds =
+            std::chrono::duration<float>(
+                motionNow - g_lastMotionClock
+            ).count();
+    }
+
+    g_lastMotionClock = motionNow;
+    g_haveMotionClock = true;
+
+    frr::domain::MotionScaleFrame motionFrame{};
+    motionFrame.valid =
+        current.playerMotion.available;
+    motionFrame.safeFreeRoam =
+        current.mode == WorldProbeMode::FreeRoamCandidate &&
+        current.capabilities.canClassifyFreeRoam;
+    motionFrame.grounded =
+        current.playerMotion.wheelsOnGround >= 3u;
+
+    if (current.playerMotion.position.finite) {
+        motionFrame.x = current.playerMotion.position.x;
+        motionFrame.y = current.playerMotion.position.y;
+        motionFrame.z = current.playerMotion.position.z;
+    } else {
+        motionFrame.valid = false;
+    }
+
+    motionFrame.engineSpeed =
+        current.playerMotion.speed;
+    motionFrame.speedometer =
+        current.playerMotion.speedometer;
+    motionFrame.absoluteSpeed =
+        current.playerMotion.absoluteSpeed;
+    motionFrame.localVelocityMagnitude =
+        current.playerMotion.localVelocityMagnitude;
+    motionFrame.linearVelocityMagnitude =
+        current.playerMotion.linearVelocityMagnitude;
+
+    g_motionScaleSnapshot =
+        g_motionScaleObserver.push(
+            motionFrame,
+            motionDeltaSeconds
+        );
+
+    if (g_motionScaleSnapshot.stable &&
+        !g_loggedStableMotionScale) {
+        std::ostringstream line;
+        line << "Motion-scale observation became stable: "
+             << "worldUnitsPerSpeedUnitSecond="
+             << std::fixed << std::setprecision(5)
+             << g_motionScaleSnapshot
+                    .meanWorldUnitsPerSpeedUnitSecond
+             << " cv="
+             << g_motionScaleSnapshot
+                    .coefficientOfVariation
+             << " speedometerToSpeedRatio="
+             << g_motionScaleSnapshot
+                    .meanSpeedometerToEngineSpeedRatio
+             << " absoluteToSpeedRatio="
+             << g_motionScaleSnapshot
+                    .meanAbsoluteToEngineSpeedRatio
+             << " speedToLocalRatio="
+             << g_motionScaleSnapshot
+                    .meanSpeedToLocalVelocityRatio
+             << " speedToLinearRatio="
+             << g_motionScaleSnapshot
+                    .meanSpeedToLinearVelocityRatio
+             << ". This is consistency evidence only; metric calibration remains unverified.";
+
+        Log::instance().info(line.str());
+        g_loggedStableMotionScale = true;
+    }
+
     if (current.mode == WorldProbeMode::FreeRoamCandidate &&
         current.capabilities.canClassifyFreeRoam) {
         g_safeFreeRoamObserved.store(
@@ -586,6 +695,40 @@ void sampleAndLog(
             std::string("Runtime heartbeat: ") +
             describe(current)
         );
+    }
+
+    if (heartbeat &&
+        (g_motionScaleSnapshot.acceptedSamples > 0 ||
+         g_motionScaleSnapshot.rejectedSamples > 0)) {
+        std::ostringstream line;
+        line << "Motion-scale observation: accepted="
+             << g_motionScaleSnapshot.acceptedSamples
+             << " rejected="
+             << g_motionScaleSnapshot.rejectedSamples
+             << " worldUnitsPerSpeedUnitSecond="
+             << std::fixed << std::setprecision(5)
+             << g_motionScaleSnapshot
+                    .meanWorldUnitsPerSpeedUnitSecond
+             << " cv="
+             << g_motionScaleSnapshot
+                    .coefficientOfVariation
+             << " speedometerToSpeedRatio="
+             << g_motionScaleSnapshot
+                    .meanSpeedometerToEngineSpeedRatio
+             << " absoluteToSpeedRatio="
+             << g_motionScaleSnapshot
+                    .meanAbsoluteToEngineSpeedRatio
+             << " speedToLocalRatio="
+             << g_motionScaleSnapshot
+                    .meanSpeedToLocalVelocityRatio
+             << " speedToLinearRatio="
+             << g_motionScaleSnapshot
+                    .meanSpeedToLinearVelocityRatio
+             << " stable="
+             << (g_motionScaleSnapshot.stable ? 1 : 0)
+             << " metricVerified=0";
+
+        Log::instance().info(line.str());
     }
 
     g_last = current;

@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.0.17-dev
+
+- Added read-only `PlayerMotionProbe` through the validated player PVehicle.
+- Captures:
+  - GetSpeed
+  - GetSpeedometer
+  - GetAbsoluteSpeed
+  - GetSlipAngle
+  - wheels-on-ground count
+  - player world position
+  - local velocity + magnitude
+  - linear velocity + magnitude
+- Added `MotionScaleObserver` using position displacement and elapsed observational time.
+- Reports `worldUnitsPerSpeedUnitSecond` rather than pretending the result is metres.
+- Cross-checks:
+  - speedometer / engine speed
+  - absolute speed / engine speed
+  - engine speed / local-velocity magnitude
+  - engine speed / linear-velocity magnitude
+- Rejects samples from unsafe Free Roam, insufficient wheels on ground, very low speed, extreme speed changes and invalid timing/displacement.
+- Requires multiple low-variance accepted samples before an observation is called stable.
+- Stable motion evidence does not set `WorldMetricCalibration.verified`.
+- Runtime heartbeat logs motion-scale evidence and raw motion telemetry.
+- Added synthetic systems tests for stable/rejected observations.
+- Added `docs/MOTION_SCALE_CALIBRATION.md`.
+
+
 ## 0.0.16-dev
 
 - Added a pure `MutationReadiness` evaluator for the first controlled construction experiment.

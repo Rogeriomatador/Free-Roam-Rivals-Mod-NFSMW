@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.16
+    VERSION 0.0.17
     LANGUAGES C CXX
 )
 
@@ -65,6 +65,7 @@ set(NFSMW__MINHOOK_SRCS
 set(FRR_DOMAIN_SOURCES
     src/domain/ChallengeInput.cpp
     src/domain/EncounterStateMachine.cpp
+    src/domain/MotionScaleObserver.cpp
     src/domain/MutationReadiness.cpp
     src/domain/OutrunRace.cpp
     src/domain/Progression.cpp
@@ -91,6 +92,7 @@ nfsmw_add_plugin(FreeRoamRivals
         src/core/VersionGuard.cpp
         src/game/ChallengeInputProbe.cpp
         src/game/GameBridge.cpp
+        src/game/PlayerMotionProbe.cpp
         src/game/RoadNavProbe.cpp
         src/game/RuntimeProbe.cpp
         src/game/VehicleCatalogProbe.cpp
