@@ -54,6 +54,11 @@ VehicleSpatialSnapshot VehicleSpatialProbe::sample() {
                 break;
             }
 
+            if (!slot.mIsEnabled) {
+                ++out.ignoredInactiveVehicles;
+                continue;
+            }
+
             auto* vehicle =
                 raw | PVehicleEx::ValidatePVehicle;
 
@@ -67,8 +72,7 @@ VehicleSpatialSnapshot VehicleSpatialProbe::sample() {
                 continue;
             }
 
-            if (!slot.mIsEnabled ||
-                !vehicle->IsActive() ||
+            if (!vehicle->IsActive() ||
                 vehicle->IsDestroyed()) {
                 ++out.ignoredInactiveVehicles;
                 continue;
