@@ -18,6 +18,7 @@ enum class RoadCandidateSource {
 enum class RoadCandidateBlocker {
     None,
     PositionUnavailable,
+    ForwardUnavailable,
     RoadGeometryUnavailable,
     RoadGeometryAssociationUnverified,
     RoadInvalid,
