@@ -25,6 +25,7 @@ struct MotionScaleFrame {
 
     // Unit semantics are intentionally NOT assumed here.
     float engineSpeed = 0.0f;
+    float speedometer = 0.0f;
     float absoluteSpeed = 0.0f;
     float localVelocityMagnitude = 0.0f;
     float linearVelocityMagnitude = 0.0f;
@@ -38,6 +39,8 @@ struct MotionScaleSnapshot {
     float meanWorldUnitsPerSpeedUnitSecond = 0.0f;
     float coefficientOfVariation = 0.0f;
 
+    float meanSpeedometerToEngineSpeedRatio = 0.0f;
+    float meanAbsoluteToEngineSpeedRatio = 0.0f;
     float meanSpeedToLocalVelocityRatio = 0.0f;
     float meanSpeedToLinearVelocityRatio = 0.0f;
 
@@ -68,6 +71,8 @@ private:
         const MotionScaleFrame& current,
         float deltaSeconds,
         float& ratio,
+        float& speedometerToSpeed,
+        float& absoluteToSpeed,
         float& speedToLocal,
         float& speedToLinear
     ) const;
@@ -82,6 +87,8 @@ private:
 
     double ratioSum_ = 0.0;
     double ratioSquareSum_ = 0.0;
+    double speedometerToSpeedSum_ = 0.0;
+    double absoluteToSpeedSum_ = 0.0;
     double speedToLocalSum_ = 0.0;
     double speedToLinearSum_ = 0.0;
 };
