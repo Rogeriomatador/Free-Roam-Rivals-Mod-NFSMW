@@ -67,6 +67,7 @@ set(NFSMW__MINHOOK_SRCS
 set(FRR_DOMAIN_SOURCES
     src/domain/EncounterStateMachine.cpp
     src/domain/Progression.cpp
+    src/domain/RivalGarage.cpp
     src/domain/StakeRules.cpp
     src/domain/VehicleSelection.cpp
 )
