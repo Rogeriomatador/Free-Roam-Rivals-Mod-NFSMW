@@ -55,7 +55,7 @@ jobs:
           Copy-Item "config/UndergroundBlacklist.ini" "$pkg/scripts/FreeRoamRivals/UndergroundBlacklist.ini"
 
           @"
-          NFSMW Free Roam Rivals v0.0.19-dev
+          NFSMW Free Roam Rivals v0.0.20-dev
 
           INSTALL:
           1. Extract this ZIP into the Need for Speed Most Wanted game folder.
@@ -64,10 +64,9 @@ jobs:
           4. Drive for 20-30 seconds.
           5. Check scripts\FreeRoamRivals\FreeRoamRivals.log.
 
-          v0.0.19 adds read-only live-vehicle oriented boxes, SAT overlap logic,
-          road-point occupancy diagnostics and a construction-readiness gate for
-          complete vehicle spatial evidence. Candidate footprint overlap stays
-          fail-closed until pre-construction rival dimensions are available.
+          v0.0.20 learns per-model rigid-body half-extents from repeated live
+          samples, resolves catalog names to stable pvehicle keys, builds a
+          road-aligned pre-construction OBB and checks it against the live fleet.
 
           Runtime vehicle creation and AI control are still disabled by default.
           ExperimentalSpawnEnabled=1 only enables read-only preflight diagnostics
@@ -79,23 +78,23 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.19-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.20-dev.zip" -Force
 
-      - name: Publish v0.0.19-dev GitHub Release
+      - name: Publish v0.0.20-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.19-dev"
+          $tag = "v0.0.20-dev"
 
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
             Write-Host "Release $tag already exists; keeping existing release."
           } else {
-            gh release create $tag "release/FreeRoamRivals-v0.0.19-dev.zip" `
+            gh release create $tag "release/FreeRoamRivals-v0.0.20-dev.zip" `
               --target "${{ github.sha }}" `
-              --title "Free Roam Rivals v0.0.19-dev" `
+              --title "Free Roam Rivals v0.0.20-dev" `
               --prerelease `
-              --notes "v0.0.19-dev: adiciona sondagem espacial read-only de PVehicle com caixas orientadas, SAT para overlap, ocupação dos pontos de estrada e novo gate de readiness. O overlap da footprint do rival continua fail-closed até termos suas dimensões antes da construção."
+              --notes "v0.0.20-dev: aprende footprints por modelo usando GetVehicleKey + dimensões do rigid body, exige amostras consistentes e testa a OBB do rival no ponto candidato antes da construção."
           }
