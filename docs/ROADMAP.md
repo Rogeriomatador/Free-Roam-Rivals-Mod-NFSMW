@@ -22,6 +22,9 @@ Exit criterion: loading the ASI does not alter gameplay and creates a diagnostic
 - [x] Track world generations and invalidate stale runtime handles
 - [x] Add generation-scoped rival runtime-handle model
 - [x] Add read-only spawn preflight diagnostics
+- [x] Read native SeekAhead/FarFuture road-lookahead geometry
+- [x] Block raw world-unit geometry from metric spawn thresholds until calibrated
+- [ ] Calibrate world-units-to-metre scale on the target installation
 - [ ] Extract a verified road-safe/off-screen spawn candidate from the live road system
 - [ ] Validate dedicated gameplay-thread mutation callback in-game
   - [x] Add opt-in read-only GameFrameTick entry probe
@@ -57,6 +60,8 @@ Exit criterion: complete repeatable 1v1 Outrun without loading a stock race.
 
 - [x] Read road-network singleton
 - [x] Read live player current/future WRoadNav segment/lane geometry
+- [x] Read native seek-ahead/far-future positions and occlusion evidence
+- [x] Require verified metric scale before metre-based staging scoring
 - [x] Implement safe staging-candidate scoring/selection rules
 - [ ] Populate staging candidates from the live road network
 - [x] Implement Search -> Reserve -> Approach -> Align state flow
