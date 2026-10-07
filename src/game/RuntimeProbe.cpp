@@ -1557,6 +1557,10 @@ DWORD WINAPI healthThread(LPVOID) {
         g_groundEvidenceObserved.load(
             std::memory_order_relaxed
         );
+    readiness.renderVisibilityEvidenceVerified =
+        g_renderVisibilityEvidenceObserved.load(
+            std::memory_order_relaxed
+        );
 
     // Intentionally false until target-machine calibration/candidate
     // promotion work completes. This keeps construction fail-closed.
@@ -1602,6 +1606,8 @@ DWORD WINAPI healthThread(LPVOID) {
              << (g_worldOcclusionEvidenceObserved.load(
                     std::memory_order_relaxed
                 ) ? 1 : 0)
+             << " renderVisibilityEvidenceVerified="
+             << (readiness.renderVisibilityEvidenceVerified ? 1 : 0)
              << " metricCalibrationVerified=0"
              << " spawnCandidateVerified=0";
 
