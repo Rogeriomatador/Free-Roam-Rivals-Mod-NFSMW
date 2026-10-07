@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.0.14-dev
+
+- Expanded read-only player road-navigation telemetry with:
+  - player position
+  - SeekAheadPosition
+  - FarFuturePosition
+  - FarFutureDirection
+  - segment time
+  - road/avoidable occlusion counters
+  - occluded-from-behind state
+  - lookahead distance and forward projection
+- Renamed raw road width/span/gap values to explicit `WorldUnits` fields.
+- Added `WorldMetricCalibration`.
+  - an unverified numeric scale is rejected
+  - invalid/non-finite scales are rejected
+  - conversion APIs return no value until calibration is explicitly verified
+- SpawnSafety now rejects metric candidates with `DistanceScaleUnverified`.
+- StagingPlanner now rejects candidates whose metre geometry has not been verified.
+- Expanded systems tests for calibration and fail-closed metric use.
+- Added `docs/ROAD_NAV_PROBE.md` with runtime evidence and promotion criteria.
+- No raw road-nav coordinate is promoted to a live spawn/staging candidate yet.
+
+
 ## 0.0.13-dev
 
 - Added the first-spawn experiment lifecycle state machine.

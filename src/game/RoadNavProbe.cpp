@@ -72,6 +72,42 @@ float distance(
     return std::isfinite(result) ? result : 0.0f;
 }
 
+float forwardProjection(
+    const RoadVectorProbe& origin,
+    const RoadVectorProbe& target,
+    const RoadVectorProbe& forward
+) {
+    if (!origin.finite ||
+        !target.finite ||
+        !forward.finite) {
+        return 0.0f;
+    }
+
+    const float dx = target.x - origin.x;
+    const float dy = target.y - origin.y;
+    const float dz = target.z - origin.z;
+
+    const float forwardLength = std::sqrt(
+        forward.x * forward.x +
+        forward.y * forward.y +
+        forward.z * forward.z
+    );
+
+    if (!std::isfinite(forwardLength) ||
+        forwardLength <= 0.0001f) {
+        return 0.0f;
+    }
+
+    const float projection =
+        dx * (forward.x / forwardLength) +
+        dy * (forward.y / forwardLength) +
+        dz * (forward.z / forwardLength);
+
+    return std::isfinite(projection)
+        ? projection
+        : 0.0f;
+}
+
 RoadNavPointProbe probeRoad(
     NFSPluginSDK::MW05::WRoadNav* road
 ) {
@@ -91,10 +127,20 @@ RoadNavPointProbe probeRoad(
             reinterpret_cast<std::uintptr_t>(road);
         out.valid = road->fValid;
         out.deadEnd = road->fDeadEnd != 0;
+        out.occludedFromBehind =
+            road->bOccludedFromBehind;
+
         out.segmentIndex =
             static_cast<std::int32_t>(road->fSegmentInd);
         out.laneIndex =
             static_cast<std::int32_t>(road->fLaneInd);
+
+        out.roadOcclusion =
+            road->nRoadOcclusion;
+        out.avoidableOcclusion =
+            road->nAvoidableOcclusion;
+
+        out.segmentTime = road->fSegTime;
         out.curvature = road->fCurvature;
 
         out.position = copyVector(road->fPosition);
@@ -104,24 +150,25 @@ RoadNavPointProbe probeRoad(
         out.startPosition = copyVector(road->fStartPos);
         out.endPosition = copyVector(road->fEndPos);
 
-        out.roadWidthMeters = distance(
+        out.roadWidthWorldUnits = distance(
             out.leftPosition,
             out.rightPosition
         );
 
-        out.segmentSpanMeters = distance(
+        out.segmentSpanWorldUnits = distance(
             out.startPosition,
             out.endPosition
         );
 
         const bool scalarSane =
+            std::isfinite(out.segmentTime) &&
             std::isfinite(out.curvature) &&
-            std::isfinite(out.roadWidthMeters) &&
-            std::isfinite(out.segmentSpanMeters) &&
-            out.roadWidthMeters >= 0.0f &&
-            out.roadWidthMeters < 100.0f &&
-            out.segmentSpanMeters >= 0.0f &&
-            out.segmentSpanMeters < 5000.0f;
+            std::isfinite(out.roadWidthWorldUnits) &&
+            std::isfinite(out.segmentSpanWorldUnits) &&
+            out.roadWidthWorldUnits >= 0.0f &&
+            out.roadWidthWorldUnits < 1000.0f &&
+            out.segmentSpanWorldUnits >= 0.0f &&
+            out.segmentSpanWorldUnits < 50000.0f;
 
         out.available =
             scalarSane &&
@@ -174,17 +221,68 @@ PlayerRoadNavigationProbe RoadNavProbe::sample(
         out.playerAi =
             reinterpret_cast<std::uintptr_t>(ai);
 
+        out.playerPosition =
+            copyVector(player->GetPosition());
+
         out.current = probeRoad(ai->GetCurrentRoad());
         out.future = probeRoad(ai->GetFutureRoad());
 
-        out.currentToFutureMeters = distance(
+        out.seekAheadPosition =
+            copyVector(ai->GetSeekAheadPosition());
+
+        out.farFuturePosition =
+            copyVector(ai->GetFarFuturePosition());
+
+        out.farFutureDirection =
+            copyVector(ai->GetFarFutureDirection());
+
+        out.currentToFutureWorldUnits = distance(
             out.current.position,
             out.future.position
         );
 
+        out.seekAheadDistanceWorldUnits = distance(
+            out.playerPosition,
+            out.seekAheadPosition
+        );
+
+        out.farFutureDistanceWorldUnits = distance(
+            out.playerPosition,
+            out.farFuturePosition
+        );
+
+        const RoadVectorProbe* projectionForward = nullptr;
+
+        if (out.current.available &&
+            out.current.forward.finite) {
+            projectionForward = &out.current.forward;
+        } else if (out.future.available &&
+                   out.future.forward.finite) {
+            projectionForward = &out.future.forward;
+        }
+
+        if (projectionForward) {
+            out.seekAheadProjectionWorldUnits =
+                forwardProjection(
+                    out.playerPosition,
+                    out.seekAheadPosition,
+                    *projectionForward
+                );
+
+            out.farFutureProjectionWorldUnits =
+                forwardProjection(
+                    out.playerPosition,
+                    out.farFuturePosition,
+                    *projectionForward
+                );
+        }
+
         out.available =
-            out.current.available ||
-            out.future.available;
+            out.playerPosition.finite &&
+            (out.current.available ||
+             out.future.available) &&
+            (out.seekAheadPosition.finite ||
+             out.farFuturePosition.finite);
 #if defined(_MSC_VER)
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         out = PlayerRoadNavigationProbe{};

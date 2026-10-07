@@ -22,6 +22,7 @@ enum class SpawnRejectReason {
     RoadCandidateInvalid,
     GroundInvalid,
     VehicleOverlap,
+    DistanceScaleUnverified,
     TooClose,
     VisiblePopInRisk,
     TooFarWithoutStreamingProof
@@ -56,6 +57,10 @@ struct SpawnCandidateInput {
     bool overlapsLiveVehicle = false;
     bool visibleToPlayer = true;
     bool streamingVerified = false;
+
+    // Must be true only when the adapter has converted engine/world
+    // coordinates through a separately verified world-units-to-metre scale.
+    bool metricDistanceVerified = false;
     float distanceFromPlayerMeters = 0.0f;
 };
 

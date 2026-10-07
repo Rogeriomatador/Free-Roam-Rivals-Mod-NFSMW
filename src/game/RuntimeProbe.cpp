@@ -186,12 +186,23 @@ std::string describe(const RuntimeSnapshot& s) {
                     << s.roadNavigation.current.segmentIndex
                     << ",curLane:"
                     << s.roadNavigation.current.laneIndex
-                    << ",curWidth:"
+                    << ",curWidthWorld:"
                     << std::fixed << std::setprecision(1)
-                    << s.roadNavigation.current.roadWidthMeters
+                    << s.roadNavigation.current.roadWidthWorldUnits
+                    << ",curSpanWorld:"
+                    << s.roadNavigation.current.segmentSpanWorldUnits
+                    << ",curSegTime:"
+                    << std::setprecision(3)
+                    << s.roadNavigation.current.segmentTime
                     << ",curCurve:"
                     << std::setprecision(4)
-                    << s.roadNavigation.current.curvature;
+                    << s.roadNavigation.current.curvature
+                    << ",curRoadOcc:"
+                    << s.roadNavigation.current.roadOcclusion
+                    << ",curAvoidOcc:"
+                    << s.roadNavigation.current.avoidableOcclusion
+                    << ",curOccBehind:"
+                    << (s.roadNavigation.current.occludedFromBehind ? 1 : 0);
             } else {
                 out << ",cur:unavailable";
             }
@@ -201,16 +212,51 @@ std::string describe(const RuntimeSnapshot& s) {
                     << s.roadNavigation.future.segmentIndex
                     << ",futureLane:"
                     << s.roadNavigation.future.laneIndex
-                    << ",futureWidth:"
+                    << ",futureWidthWorld:"
                     << std::fixed << std::setprecision(1)
-                    << s.roadNavigation.future.roadWidthMeters
-                    << ",navGap:"
-                    << s.roadNavigation.currentToFutureMeters;
+                    << s.roadNavigation.future.roadWidthWorldUnits
+                    << ",navGapWorld:"
+                    << s.roadNavigation.currentToFutureWorldUnits
+                    << ",futureRoadOcc:"
+                    << s.roadNavigation.future.roadOcclusion
+                    << ",futureAvoidOcc:"
+                    << s.roadNavigation.future.avoidableOcclusion;
             } else {
                 out << ",future:unavailable";
             }
 
-            out << "]";
+            out << ",seekDistWorld:"
+                << std::fixed << std::setprecision(1)
+                << s.roadNavigation.seekAheadDistanceWorldUnits
+                << ",seekProjWorld:"
+                << s.roadNavigation.seekAheadProjectionWorldUnits
+                << ",farDistWorld:"
+                << s.roadNavigation.farFutureDistanceWorldUnits
+                << ",farProjWorld:"
+                << s.roadNavigation.farFutureProjectionWorldUnits;
+
+            if (s.roadNavigation.playerPosition.finite) {
+                out << ",playerPos:("
+                    << s.roadNavigation.playerPosition.x << ","
+                    << s.roadNavigation.playerPosition.y << ","
+                    << s.roadNavigation.playerPosition.z << ")";
+            }
+
+            if (s.roadNavigation.seekAheadPosition.finite) {
+                out << ",seek:("
+                    << s.roadNavigation.seekAheadPosition.x << ","
+                    << s.roadNavigation.seekAheadPosition.y << ","
+                    << s.roadNavigation.seekAheadPosition.z << ")";
+            }
+
+            if (s.roadNavigation.farFuturePosition.finite) {
+                out << ",far:("
+                    << s.roadNavigation.farFuturePosition.x << ","
+                    << s.roadNavigation.farFuturePosition.y << ","
+                    << s.roadNavigation.farFuturePosition.z << ")";
+            }
+
+            out << ",units:world]";
         } else {
             out << " roadNav=unavailable";
         }

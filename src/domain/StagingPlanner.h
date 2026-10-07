@@ -16,6 +16,10 @@ struct StagingPlannerTuning {
 };
 
 struct StagingCandidate {
+    // This must be true only after engine/world units have been explicitly
+    // calibrated to metres. Raw WRoadNav coordinate deltas are not enough.
+    bool metricGeometryVerified = false;
+
     float distanceAheadMeters = 0.0f;
     float roadWidthMeters = 0.0f;
     float absoluteCurvature = 0.0f;

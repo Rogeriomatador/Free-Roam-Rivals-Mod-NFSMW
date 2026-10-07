@@ -89,6 +89,13 @@ SpawnDecision evaluateSpawnCandidate(
         return {false, SpawnRejectReason::VehicleOverlap};
     }
 
+    if (!candidate.metricDistanceVerified) {
+        return {
+            false,
+            SpawnRejectReason::DistanceScaleUnverified
+        };
+    }
+
     const float minimumDistance =
         std::max(tuning.absoluteMinDistanceMeters, 0.0f);
 
@@ -135,6 +142,7 @@ const char* spawnRejectReasonName(SpawnRejectReason reason) {
         case SpawnRejectReason::RoadCandidateInvalid: return "RoadCandidateInvalid";
         case SpawnRejectReason::GroundInvalid: return "GroundInvalid";
         case SpawnRejectReason::VehicleOverlap: return "VehicleOverlap";
+        case SpawnRejectReason::DistanceScaleUnverified: return "DistanceScaleUnverified";
         case SpawnRejectReason::TooClose: return "TooClose";
         case SpawnRejectReason::VisiblePopInRisk: return "VisiblePopInRisk";
         case SpawnRejectReason::TooFarWithoutStreamingProof: return "TooFarWithoutStreamingProof";
