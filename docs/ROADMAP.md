@@ -26,7 +26,9 @@ Exit criterion: loading the ASI does not alter gameplay and creates a diagnostic
 - [ ] Validate dedicated gameplay-thread mutation callback in-game
   - [x] Add opt-in read-only GameFrameTick entry probe
   - [ ] Confirm callback/thread health on target installation before mutation
-- [ ] Construct/verify/clean up one experimental rival vehicle
+- [x] Encode construct/registry/AI/motion/cleanup experiment as a fail-closed state machine
+- [ ] Wire the state machine to verified engine construction/cleanup calls
+- [ ] Run and pass one controlled construct/verify/clean-up cycle in-game
 - [ ] Attach/verify native roaming AI
 - [x] Progression-aware vanilla vehicle catalog and deterministic selector
 - [x] Persistent-vs-procedural vehicle ownership policy
