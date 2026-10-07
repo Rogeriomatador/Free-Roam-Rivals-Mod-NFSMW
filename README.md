@@ -50,7 +50,7 @@ Support for additional 1.3 executables will be added only after their addresses/
 
 ## Current status
 
-**Pre-alpha / read-only runtime + learned pre-construction vehicle footprints + road/motion/readiness foundations (v0.0.20-dev).**
+**Pre-alpha / read-only runtime + gameplay-thread world-collision evidence + road/spawn-readiness foundations (v0.0.21-dev).**
 
 The ASI validates the supported executable, installs observation hooks, separates Free Roam from stock races, enumerates live IVehicle driver classes, independently cross-checks the player PVehicle, observes the road network, reads career cash/car-count/completion, and validates the configured rival-car catalog without mutating the game.
 
@@ -78,6 +78,8 @@ v0.0.18 adds a typed road-candidate pipeline. `CurrentRoad`, `FutureRoad`, `Seek
 v0.0.19 adds read-only spatial evidence for the live PVehicle registry. Active vehicles are represented as oriented boxes from their rigid-body position, basis vectors and dimensions. Pure-domain SAT tests can verify OBB-vs-OBB overlap when both footprints are known, while runtime road-candidate diagnostics already report whether a candidate point lies inside any live vehicle and the nearest vehicle-box separation. The final `overlapVerified` spawn gate remains fail-closed until the selected rival's own collision footprint can be obtained before construction.
 
 v0.0.20 closes that specific footprint gap without calling an unverified collision-geometry lookup. Live cars now carry their stable `IVehicle::GetVehicleKey()`. Repeated consistent rigid-body dimension samples are learned per model; configured catalog names are resolved to the same pvehicle keys. Once a catalog model has a verified footprint, the runtime can build a road-aligned pre-construction OBB for that model and test the full box against every live vehicle before construction.
+
+v0.0.21 adds an opt-in read-only world-collision query for the exact supported RELOADED 1.3 executable. The `CheckHitWorld @ 0x7854B0` address is independently used by a public MW05 mod that targets the same MD5. Free Roam Rivals never calls it from D3D9: render sampling only queues a request, and the query is consumed from input/gameplay after FrameTick and input thread IDs match. A vertical world-face hit can now prove ground and derive dimensionless road grade; player-to-candidate world/barrier occlusion is logged separately and is **not** treated as camera visibility.
 
 v0.0.9 also adds a tested, independent **Underground Blacklist** domain that unlocks after the vanilla career is completed. It is not a relabel of the original Blacklist: the mod tracks its own ranks, discovery state, qualification requirements, world-hunt eligibility and future portrait/audio asset keys.
 
@@ -120,6 +122,7 @@ docs/
   MOTION_SCALE_CALIBRATION.md
   ROAD_CANDIDATE_PROMOTION.md
   VEHICLE_SPATIAL_EVIDENCE.md
+  WORLD_COLLISION_EVIDENCE.md
   PINK_SLIP_ENGINE_RESEARCH.md
   RIVAL_POPULATION_AND_VEHICLES.md
   UNDERGROUND_BLACKLIST.md
