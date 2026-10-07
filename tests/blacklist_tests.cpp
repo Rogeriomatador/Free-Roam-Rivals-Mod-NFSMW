@@ -95,6 +95,168 @@ int main() {
         "rank masks support future expansion up to 32"
     );
 
+    UndergroundBlacklistProgress events{};
+
+    UndergroundProgressEvent event{};
+    event.kind =
+        UndergroundProgressEventKind::TargetSighted;
+    event.rank = 10;
+
+    auto update =
+        applyUndergroundProgressEvent(events, event);
+
+    require(
+        !update.applied &&
+        update.rejectReason ==
+            UndergroundProgressRejectReason::CareerNotCompleted,
+        "progress events stay locked before career completion"
+    );
+
+    events.careerCompleted = true;
+
+    update =
+        applyUndergroundProgressEvent(events, event);
+
+    require(
+        update.applied &&
+        undergroundRankDiscovered(
+            update.progress.discoveredMask,
+            10
+        ),
+        "sighting current eligible rank records discovery"
+    );
+
+    events = update.progress;
+
+    event.kind =
+        UndergroundProgressEventKind::TargetDefeated;
+
+    update =
+        applyUndergroundProgressEvent(events, event);
+
+    require(
+        update.applied &&
+        undergroundRankDefeated(
+            update.progress.defeatedMask,
+            10
+        ) &&
+        update.previousRank == 10 &&
+        update.currentRank == 9,
+        "defeating current rank advances the ladder"
+    );
+
+    events = update.progress;
+
+    event.kind =
+        UndergroundProgressEventKind::TargetSighted;
+    event.rank = 9;
+
+    update =
+        applyUndergroundProgressEvent(events, event);
+
+    require(
+        !update.applied &&
+        update.rejectReason ==
+            UndergroundProgressRejectReason::RequirementsNotMet,
+        "next rank cannot be discovered before requirements"
+    );
+
+    event.kind =
+        UndergroundProgressEventKind::StreetRepEarned;
+    event.rank = 0;
+    event.amount = 50;
+
+    update =
+        applyUndergroundProgressEvent(events, event);
+    require(
+        update.applied &&
+        update.progress.streetRep == 50,
+        "street rep event updates progress"
+    );
+    events = update.progress;
+
+    event.kind =
+        UndergroundProgressEventKind::QualifierWin;
+    event.amount = 1;
+
+    update =
+        applyUndergroundProgressEvent(events, event);
+    require(
+        update.applied &&
+        update.progress.qualifierWinsCurrentRank == 1,
+        "qualifier win updates current-rank counter"
+    );
+    events = update.progress;
+
+    event.kind =
+        UndergroundProgressEventKind::TargetSighted;
+    event.rank = 9;
+
+    update =
+        applyUndergroundProgressEvent(events, event);
+    require(
+        update.applied &&
+        undergroundRankDiscovered(
+            update.progress.discoveredMask,
+            9
+        ),
+        "rank becomes discoverable after requirements"
+    );
+    events = update.progress;
+
+    event.kind =
+        UndergroundProgressEventKind::TargetDefeated;
+    event.rank = 8;
+
+    update =
+        applyUndergroundProgressEvent(events, event);
+    require(
+        !update.applied &&
+        update.rejectReason ==
+            UndergroundProgressRejectReason::WrongTargetRank,
+        "cannot defeat a future rank out of order"
+    );
+
+    event.kind =
+        UndergroundProgressEventKind::TargetDefeated;
+    event.rank = 9;
+
+    update =
+        applyUndergroundProgressEvent(events, event);
+    require(
+        update.applied &&
+        update.progress.qualifierWinsCurrentRank == 0 &&
+        update.currentRank == 8,
+        "rank defeat resets qualifier wins for next rank"
+    );
+    events = update.progress;
+
+    event.kind =
+        UndergroundProgressEventKind::PinkSlipWin;
+    event.rank = 0;
+    event.amount = 2;
+
+    update =
+        applyUndergroundProgressEvent(events, event);
+    require(
+        update.applied &&
+        update.progress.pinkSlipWins == 2,
+        "pink-slip wins are tracked by progress events"
+    );
+
+    event.kind =
+        UndergroundProgressEventKind::QualifierWin;
+    event.amount = 0;
+
+    update =
+        applyUndergroundProgressEvent(events, event);
+    require(
+        !update.applied &&
+        update.rejectReason ==
+            UndergroundProgressRejectReason::InvalidAmount,
+        "non-positive additive progress is rejected"
+    );
+
     std::cout
         << "Free Roam Rivals underground blacklist tests passed.\n";
     return 0;

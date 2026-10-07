@@ -134,7 +134,9 @@ Exit criterion: repeatable cash wagers that survive save/load without corruption
 - [x] Native FNG frontend feasibility research
 - [x] Bind mod-owned Underground Blacklist persistence to a pseudonymous per-profile key
 - [x] Atomic JSON load/save + malformed-schema fail-closed handling
-- [ ] Commit sighting/qualifier/defeat events into persisted progress
+- [x] Define validated sighting/qualifier/pink-slip/defeat progress events
+- [x] Apply accepted progress events and persist them atomically
+- [ ] Wire live race/encounter result sources into the progress-event API
 - [ ] World Director integration for current ranked target
 - [ ] Native FRR_UndergroundBlacklist.fng screen
 - [ ] Add safe menu entry after vanilla career completion

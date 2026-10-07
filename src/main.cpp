@@ -11,7 +11,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.11-dev";
+constexpr const char* kVersion = "0.0.12-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -96,7 +96,7 @@ int bootstrap() {
     }
 
     log.info(
-        "v0.0.11-dev adds an opt-in read-only GameFrameTick probe so the exact main-loop thread can be compared with the input/render callbacks before any world mutation is allowed. Vehicle creation, AI mutation and frontend mutation remain disabled until their lifecycles are proven."
+        "v0.0.12-dev adds validated Underground Blacklist progress events and atomic event persistence, building on the read-only GameFrameTick/WRoadNav runtime foundation. Vehicle creation, AI mutation and frontend mutation remain disabled until their lifecycles are proven."
     );
 
     return NFSMW_OK;
@@ -106,7 +106,7 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.11-dev",
+    "0.0.12-dev",
     "Rogeriomatador"
 )
 

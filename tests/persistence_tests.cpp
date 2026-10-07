@@ -136,6 +136,55 @@ int main() {
         "loaded persistence matches saved values"
     );
 
+    UndergroundBlacklistProgress eventProgress{};
+    eventProgress.careerCompleted = true;
+
+    UndergroundProgressEvent event{};
+    event.kind =
+        UndergroundProgressEventKind::TargetSighted;
+    event.rank = 10;
+
+    const auto committed =
+        store.applyAndSave(
+            *keyA,
+            eventProgress,
+            event
+        );
+
+    require(
+        committed.update.applied &&
+        committed.persisted,
+        "accepted progress event commits atomically"
+    );
+
+    const auto afterCommit = store.load(*keyA);
+    require(
+        afterCommit.ok &&
+        afterCommit.found &&
+        undergroundRankDiscovered(
+            afterCommit.progress.discoveredMask,
+            10
+        ),
+        "committed event survives reload"
+    );
+
+    event.kind =
+        UndergroundProgressEventKind::TargetDefeated;
+    event.rank = 9;
+
+    const auto rejected =
+        store.applyAndSave(
+            *keyA,
+            eventProgress,
+            event
+        );
+
+    require(
+        !rejected.update.applied &&
+        !rejected.persisted,
+        "rejected progress event never writes"
+    );
+
     {
         std::ofstream corrupt(
             store.pathForProfile(*keyA),

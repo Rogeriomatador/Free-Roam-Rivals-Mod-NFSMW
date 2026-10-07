@@ -340,4 +340,33 @@ bool UndergroundBlacklistStore::save(
     );
 }
 
+UndergroundBlacklistCommitResult
+UndergroundBlacklistStore::applyAndSave(
+    std::uint64_t profileKey,
+    const frr::domain::UndergroundBlacklistProgress& progress,
+    const frr::domain::UndergroundProgressEvent& event
+) const {
+    UndergroundBlacklistCommitResult result{};
+
+    result.update =
+        frr::domain::applyUndergroundProgressEvent(
+            progress,
+            event
+        );
+
+    if (!result.update.applied) {
+        return result;
+    }
+
+    if (!save(
+            profileKey,
+            result.update.progress,
+            &result.error)) {
+        return result;
+    }
+
+    result.persisted = true;
+    return result;
+}
+
 } // namespace frr::persistence

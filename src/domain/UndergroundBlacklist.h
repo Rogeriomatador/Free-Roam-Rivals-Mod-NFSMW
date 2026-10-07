@@ -50,6 +50,47 @@ struct UndergroundBlacklistProgress {
     bool currentTargetPresent = false;
 };
 
+enum class UndergroundProgressEventKind {
+    StreetRepEarned,
+    QualifierWin,
+    PinkSlipWin,
+    TargetSighted,
+    TargetDefeated
+};
+
+enum class UndergroundProgressRejectReason {
+    None,
+    CareerNotCompleted,
+    NoCurrentTarget,
+    WrongTargetRank,
+    InvalidAmount,
+    RequirementsNotMet,
+    TargetNotDiscovered,
+    TargetAlreadyDefeated
+};
+
+struct UndergroundProgressEvent {
+    UndergroundProgressEventKind kind =
+        UndergroundProgressEventKind::StreetRepEarned;
+
+    // Used by target-specific events. A zero rank means "current rank".
+    int rank = 0;
+
+    // Used by additive events (rep/wins). Must be positive.
+    int amount = 1;
+};
+
+struct UndergroundProgressUpdate {
+    bool applied = false;
+    UndergroundProgressRejectReason rejectReason =
+        UndergroundProgressRejectReason::None;
+
+    int previousRank = 0;
+    int currentRank = 0;
+
+    UndergroundBlacklistProgress progress{};
+};
+
 struct UndergroundEntrySnapshot {
     int rank = 0;
     std::string rivalKey;
@@ -117,8 +158,23 @@ std::uint32_t markUndergroundRankDiscovered(
     int rank
 );
 
+UndergroundProgressUpdate applyUndergroundProgressEvent(
+    const std::vector<UndergroundRivalDefinition>& definitions,
+    const UndergroundBlacklistProgress& progress,
+    const UndergroundProgressEvent& event
+);
+
+UndergroundProgressUpdate applyUndergroundProgressEvent(
+    const UndergroundBlacklistProgress& progress,
+    const UndergroundProgressEvent& event
+);
+
 const char* undergroundEntryStateName(
     UndergroundEntryState state
+);
+
+const char* undergroundProgressRejectReasonName(
+    UndergroundProgressRejectReason reason
 );
 
 } // namespace frr::domain
