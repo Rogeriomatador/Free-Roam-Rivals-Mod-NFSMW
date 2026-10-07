@@ -1,6 +1,6 @@
 # Runtime Construction Readiness
 
-v0.0.20 extends the remaining first-spawn prerequisites into one
+v0.0.21 extends the remaining first-spawn prerequisites into one
 fail-closed readiness report.
 
 The report exists so target-machine testing can answer:
@@ -22,8 +22,9 @@ The evaluator checks, in order:
 8. at least one ahead point with exact WRoadNav geometry observed
 9. complete live-vehicle spatial evidence observed
 10. at least one catalog vehicle has a verified learned pre-construction footprint
-11. metric calibration verified
-12. final spawn candidate verified
+11. world-face ground evidence observed on an exact road candidate
+12. metric calibration verified
+13. final spawn candidate verified
 
 Only when every item passes is:
 
@@ -59,6 +60,8 @@ Construction readiness after 8s:
   vehicleSpatialEvidenceObserved=1
   vehicleFootprintVerified=1
   verifiedFootprintVehicleKey=0x...
+  groundEvidenceVerified=1
+  worldOcclusionEvidenceObserved=1
   metricCalibrationVerified=0
   spawnCandidateVerified=0
 ```
@@ -75,6 +78,7 @@ Possible blocker names:
 - `ExactRoadCandidateUnavailable`
 - `VehicleSpatialEvidenceUnavailable`
 - `VehicleFootprintUnavailable`
+- `GroundEvidenceUnavailable`
 - `MetricCalibrationUnverified`
 - `SpawnCandidateUnverified`
 
@@ -106,7 +110,8 @@ The runtime adapter only feeds it:
 - whether road lookahead was observed;
 - whether at least one ahead candidate has exact WRoadNav geometry;
 - whether the active PVehicle set has complete, valid spatial OBB evidence;
-- whether a configured catalog model has enough consistent live samples to build its footprint before construction.
+- whether a configured catalog model has enough consistent live samples to build its footprint before construction;
+- whether an exact road candidate has produced a valid world-face ground hit on the confirmed gameplay thread.
 
 It does not:
 
@@ -118,3 +123,21 @@ It does not:
 - promote a road point automatically.
 
 The actual SpawnExperiment state machine remains a separate later stage.
+
+
+## v0.0.21 world-collision execution rule
+
+`WorldCollisionDiagnosticsEnabled=1` does not by itself permit a collision
+query. The runtime also requires:
+
+```text
+FrameTickProbeEnabled=1
+AND FrameTick hook installed
+AND FrameTick calls observed
+AND input polling observed
+AND FrameTick thread == input thread
+AND current callback thread == input thread
+```
+
+Only then can the input/gameplay callback consume a collision request queued by
+the render sampler. This keeps WCollisionMgr traversal away from EndScene.

@@ -7,6 +7,7 @@ struct RuntimeProbeConfig {
     bool inputProbeEnabled = true;
     bool roadNavDiagnosticsEnabled = true;
     bool frameTickProbeEnabled = false;
+    bool worldCollisionDiagnosticsEnabled = false;
     unsigned sampleEveryFrames = 30;
     unsigned heartbeatFrames = 600;
 

@@ -10,6 +10,7 @@
 #include "domain/StagingStateMachine.h"
 #include "domain/VehicleFootprintLearning.h"
 #include "domain/VehicleSpatialEvidence.h"
+#include "domain/WorldCollisionEvidence.h"
 #include "domain/WorldMetricCalibration.h"
 #include "game/RoadCandidateProbe.h"
 
@@ -462,6 +463,14 @@ int main() {
     readinessReport = evaluateMutationReadiness(readiness);
     require(
         readinessReport.blocker ==
+            MutationReadinessBlocker::GroundEvidenceUnavailable,
+        "readiness requires verified world ground at a candidate"
+    );
+
+    readiness.groundEvidenceVerified = true;
+    readinessReport = evaluateMutationReadiness(readiness);
+    require(
+        readinessReport.blocker ==
             MutationReadinessBlocker::MetricCalibrationUnverified,
         "readiness requires verified metric scale"
     );
@@ -510,6 +519,103 @@ int main() {
     require(
         !challengeEdge.previousDown(),
         "challenge input reset clears held state"
+    );
+
+    WorldCollisionSample flatGroundSample{};
+    flatGroundSample.callAvailable = true;
+    flatGroundSample.callCompleted = true;
+    flatGroundSample.hit = true;
+    flatGroundSample.hitType = 1;
+    flatGroundSample.hitPoint = {10.0f, 4.5f, 20.0f};
+    flatGroundSample.normal = {0.0f, 1.0f, 0.0f};
+
+    const auto flatGround =
+        interpretGroundCollision(
+            {10.0f, 5.0f, 20.0f},
+            flatGroundSample
+        );
+
+    require(
+        flatGround.queryCompleted &&
+        flatGround.groundVerified &&
+        flatGround.groundValid &&
+        flatGround.gradeVerified &&
+        flatGround.absoluteHeightDeltaWorldUnits > 0.49f &&
+        flatGround.absoluteHeightDeltaWorldUnits < 0.51f &&
+        flatGround.absoluteGrade < 0.001f,
+        "world-face collision verifies flat ground and raw height delta"
+    );
+
+    WorldCollisionSample slopeSample =
+        flatGroundSample;
+    slopeSample.normal = {0.0f, 0.8f, 0.6f};
+
+    const auto slopeGround =
+        interpretGroundCollision(
+            {10.0f, 5.0f, 20.0f},
+            slopeSample
+        );
+
+    require(
+        slopeGround.groundVerified &&
+        slopeGround.gradeVerified &&
+        slopeGround.absoluteGrade > 0.74f &&
+        slopeGround.absoluteGrade < 0.76f,
+        "ground normal yields dimensionless absolute grade"
+    );
+
+    WorldCollisionSample barrierGroundSample =
+        flatGroundSample;
+    barrierGroundSample.hitType = 2;
+
+    const auto barrierGround =
+        interpretGroundCollision(
+            {10.0f, 5.0f, 20.0f},
+            barrierGroundSample
+        );
+
+    require(
+        !barrierGround.groundVerified &&
+        !barrierGround.groundValid,
+        "barrier hit cannot masquerade as world-face ground"
+    );
+
+    WorldCollisionSample blockedLine{};
+    blockedLine.callAvailable = true;
+    blockedLine.callCompleted = true;
+    blockedLine.hit = true;
+    blockedLine.hitType = 2;
+    blockedLine.hitPoint = {5.0f, 2.0f, 5.0f};
+
+    const auto blockedOcclusion =
+        interpretWorldOcclusion(blockedLine);
+
+    require(
+        blockedOcclusion.occlusionVerified &&
+        blockedOcclusion.occludedByWorld &&
+        blockedOcclusion.hitType == 2,
+        "completed line query reports world/barrier occlusion"
+    );
+
+    blockedLine.hit = false;
+    blockedLine.hitType = 0;
+
+    const auto clearOcclusion =
+        interpretWorldOcclusion(blockedLine);
+
+    require(
+        clearOcclusion.occlusionVerified &&
+        !clearOcclusion.occludedByWorld,
+        "completed no-hit line query verifies clear world line"
+    );
+
+    blockedLine.callCompleted = false;
+    const auto failedOcclusion =
+        interpretWorldOcclusion(blockedLine);
+
+    require(
+        !failedOcclusion.occlusionVerified,
+        "failed collision call remains unverified"
     );
 
     WorldMetricCalibration rawScale{};

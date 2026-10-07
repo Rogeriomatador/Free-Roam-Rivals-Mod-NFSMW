@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.0.21-dev
+
+- Added opt-in `WorldCollisionDiagnosticsEnabled` (disabled by default).
+- Verified `WCollisionMgr::CheckHitWorld @ 0x7854B0` against a public MW05 mod that explicitly targets the same RELOADED 1.3 MD5 used by Free Roam Rivals.
+- Added a conservative raw `WorldCollisionInfo` layout matching the reconstructed 0x58-byte MW05 structure instead of relying on a conflicting abbreviated SDK declaration.
+- World-collision calls never run from D3D9 EndScene.
+- Added an SRW-lock mailbox:
+  - render sampling queues an exact road candidate
+  - input/gameplay consumes it only after FrameTick and input thread IDs match
+- Added vertical primitive-mask-1 world-face probing based on the reconstructed MW05 rigorous-ground fallback.
+- Added pure ground interpretation:
+  - ground hit verification
+  - raw candidate-to-ground height delta
+  - normalized collision normal
+  - dimensionless absolute grade
+- Added world/barrier line occlusion probing with primitive mask 3.
+- World occlusion is deliberately **not** promoted to camera visibility.
+- Added `GroundEvidenceUnavailable` to construction readiness.
+- Added systems tests for flat ground, sloped ground, barrier rejection, blocked/clear world lines and failed-query fail-closed behavior.
+- Camera visibility and streaming remain unresolved and fail-closed.
+- Runtime vehicle construction remains disabled.
+
+
 ## 0.0.20-dev
 
 - Added stable per-model footprint identity through `IVehicle::GetVehicleKey()`.

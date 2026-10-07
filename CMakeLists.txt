@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.20
+    VERSION 0.0.21
     LANGUAGES C CXX
 )
 
@@ -83,6 +83,7 @@ set(FRR_DOMAIN_SOURCES
     src/domain/VehicleSelection.cpp
     src/domain/VehicleFootprintLearning.cpp
     src/domain/VehicleSpatialEvidence.cpp
+    src/domain/WorldCollisionEvidence.cpp
     src/domain/WorldMetricCalibration.cpp
 )
 
@@ -101,6 +102,7 @@ nfsmw_add_plugin(FreeRoamRivals
         src/game/RuntimeProbe.cpp
         src/game/VehicleCatalogProbe.cpp
         src/game/VehicleSpatialProbe.cpp
+        src/game/WorldCollisionProbe.cpp
         src/persistence/UndergroundBlacklistStore.cpp
         ${FRR_DOMAIN_SOURCES}
 )

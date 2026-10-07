@@ -5,6 +5,7 @@
 #include "RoadCandidateProbe.h"
 #include "VehicleCatalogProbe.h"
 #include "VehicleSpatialProbe.h"
+#include "WorldCollisionProbe.h"
 #include "../core/Log.h"
 #include "../domain/MotionScaleObserver.h"
 #include "../domain/MutationReadiness.h"
@@ -15,6 +16,7 @@
 #include "../domain/VehicleFootprintLearning.h"
 #include "../domain/VehicleSelection.h"
 #include "../domain/VehicleSpatialEvidence.h"
+#include "../domain/WorldCollisionEvidence.h"
 #include "../persistence/UndergroundBlacklistStore.h"
 
 #include <nfsmw_sdk/d3d9_hooks.h>
@@ -31,6 +33,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace frr::game {
 namespace {
@@ -54,9 +57,33 @@ std::atomic<bool> g_roadLookaheadObserved{false};
 std::atomic<bool> g_exactRoadCandidateObserved{false};
 std::atomic<bool> g_vehicleSpatialEvidenceObserved{false};
 std::atomic<bool> g_vehicleFootprintVerified{false};
+std::atomic<bool> g_groundEvidenceObserved{false};
+std::atomic<bool> g_worldOcclusionEvidenceObserved{false};
 std::atomic<std::uint32_t> g_verifiedFootprintVehicleKey{0};
 
 frr::domain::VehicleFootprintLearner g_vehicleFootprintLearner{};
+
+struct WorldCollisionRequest {
+    bool pending = false;
+    std::uint64_t id = 0;
+    frr::domain::SpatialVector3 candidate{};
+    frr::domain::SpatialVector3 lineOrigin{};
+    frr::domain::SpatialVector3 lineTarget{};
+    bool lineAvailable = false;
+};
+
+struct WorldCollisionResult {
+    bool available = false;
+    std::uint64_t id = 0;
+    frr::domain::SpatialVector3 candidate{};
+    frr::domain::GroundEvidence ground{};
+    frr::domain::WorldOcclusionEvidence occlusion{};
+};
+
+SRWLOCK g_worldCollisionLock = SRWLOCK_INIT;
+WorldCollisionRequest g_worldCollisionRequest{};
+WorldCollisionResult g_worldCollisionResult{};
+std::uint64_t g_worldCollisionNextRequestId = 1;
 
 bool g_vehicleCatalogValidated = false;
 
@@ -108,6 +135,201 @@ std::uint32_t findFirstVerifiedCatalogFootprintKey() {
     }
 
     return 0;
+}
+
+bool collisionGameplayThreadConfirmed() {
+    if (!g_config.worldCollisionDiagnosticsEnabled ||
+        !g_config.frameTickProbeEnabled ||
+        !g_frameTickProbeInstalled.load(
+            std::memory_order_relaxed)) {
+        return false;
+    }
+
+    const DWORD frameThread =
+        g_frameTickThreadId.load(
+            std::memory_order_relaxed
+        );
+    const DWORD inputThread =
+        g_inputThreadId.load(
+            std::memory_order_relaxed
+        );
+
+    return
+        frameThread != 0 &&
+        inputThread != 0 &&
+        frameThread == inputThread &&
+        GetCurrentThreadId() == inputThread;
+}
+
+void queueWorldCollisionRequest(
+    const std::vector<
+        frr::domain::RoadCandidateObservation
+    >& roadCandidates,
+    const RuntimeSnapshot& current
+) {
+    if (!g_config.worldCollisionDiagnosticsEnabled ||
+        !g_config.frameTickProbeEnabled ||
+        current.mode != WorldProbeMode::FreeRoamCandidate ||
+        !current.capabilities.canClassifyFreeRoam) {
+        return;
+    }
+
+    const frr::domain::RoadCandidateObservation*
+        selected = nullptr;
+
+    for (const auto& candidate : roadCandidates) {
+        if (frr::domain::inspectRoadCandidate(candidate) ==
+            frr::domain::RoadCandidateBlocker::None &&
+            candidate.position.finite) {
+            selected = &candidate;
+            break;
+        }
+    }
+
+    if (!selected) {
+        return;
+    }
+
+    WorldCollisionRequest request{};
+    request.candidate = {
+        selected->position.x,
+        selected->position.y,
+        selected->position.z
+    };
+
+    if (current.playerMotion.position.finite) {
+        request.lineAvailable = true;
+        request.lineOrigin = {
+            current.playerMotion.position.x,
+            current.playerMotion.position.y,
+            current.playerMotion.position.z
+        };
+
+        request.lineTarget = request.candidate;
+
+        const std::uint32_t footprintKey =
+            g_verifiedFootprintVehicleKey.load(
+                std::memory_order_relaxed
+            );
+
+        if (footprintKey != 0) {
+            const auto estimate =
+                g_vehicleFootprintLearner.estimate(
+                    footprintKey
+                );
+
+            if (estimate.verified) {
+                request.lineTarget.y +=
+                    estimate.meanHalfExtents.y;
+            }
+        }
+    }
+
+    AcquireSRWLockExclusive(
+        &g_worldCollisionLock
+    );
+
+    if (!g_worldCollisionRequest.pending) {
+        request.pending = true;
+        request.id =
+            g_worldCollisionNextRequestId++;
+        g_worldCollisionRequest = request;
+    }
+
+    ReleaseSRWLockExclusive(
+        &g_worldCollisionLock
+    );
+}
+
+void processWorldCollisionRequest() {
+    if (!collisionGameplayThreadConfirmed()) {
+        return;
+    }
+
+    WorldCollisionRequest request{};
+
+    AcquireSRWLockExclusive(
+        &g_worldCollisionLock
+    );
+
+    if (g_worldCollisionRequest.pending) {
+        request = g_worldCollisionRequest;
+        g_worldCollisionRequest.pending = false;
+    }
+
+    ReleaseSRWLockExclusive(
+        &g_worldCollisionLock
+    );
+
+    if (request.id == 0) {
+        return;
+    }
+
+    const auto groundSample =
+        WorldCollisionProbe::sampleGround(
+            request.candidate
+        );
+
+    WorldCollisionResult result{};
+    result.available = true;
+    result.id = request.id;
+    result.candidate = request.candidate;
+    result.ground =
+        frr::domain::interpretGroundCollision(
+            request.candidate,
+            groundSample
+        );
+
+    if (request.lineAvailable) {
+        const auto occlusionSample =
+            WorldCollisionProbe::
+                sampleWorldOcclusion(
+                    request.lineOrigin,
+                    request.lineTarget
+                );
+
+        result.occlusion =
+            frr::domain::interpretWorldOcclusion(
+                occlusionSample
+            );
+    }
+
+    if (result.ground.groundVerified &&
+        result.ground.groundValid) {
+        g_groundEvidenceObserved.store(
+            true,
+            std::memory_order_relaxed
+        );
+    }
+
+    if (result.occlusion.occlusionVerified) {
+        g_worldOcclusionEvidenceObserved.store(
+            true,
+            std::memory_order_relaxed
+        );
+    }
+
+    AcquireSRWLockExclusive(
+        &g_worldCollisionLock
+    );
+    g_worldCollisionResult = result;
+    ReleaseSRWLockExclusive(
+        &g_worldCollisionLock
+    );
+}
+
+WorldCollisionResult latestWorldCollisionResult() {
+    WorldCollisionResult result{};
+
+    AcquireSRWLockShared(
+        &g_worldCollisionLock
+    );
+    result = g_worldCollisionResult;
+    ReleaseSRWLockShared(
+        &g_worldCollisionLock
+    );
+
+    return result;
 }
 
 bool sameMeaningfulState(
@@ -766,6 +988,11 @@ void sampleAndLog(
         );
     }
 
+    queueWorldCollisionRequest(
+        roadCandidates,
+        current
+    );
+
     updateRuntimeSessionAndSpawnPreflight(current);
     updateUndergroundBlacklistDiagnostic(current);
 
@@ -981,6 +1208,63 @@ void sampleAndLog(
     }
 
     if (heartbeat &&
+        g_config.worldCollisionDiagnosticsEnabled) {
+        const auto collision =
+            latestWorldCollisionResult();
+
+        std::ostringstream line;
+        line << "World-collision evidence:"
+             << " addressAvailable="
+             << (WorldCollisionProbe::addressAvailable()
+                 ? 1
+                 : 0)
+             << " gameplayThreadConfirmed="
+             << (g_frameTickThreadId.load(
+                    std::memory_order_relaxed
+                 ) != 0 &&
+                 g_frameTickThreadId.load(
+                    std::memory_order_relaxed
+                 ) ==
+                 g_inputThreadId.load(
+                    std::memory_order_relaxed
+                 )
+                 ? 1
+                 : 0);
+
+        if (collision.available) {
+            line << " requestId="
+                 << collision.id
+                 << " ground="
+                 << (collision.ground.groundVerified
+                     ? (collision.ground.groundValid
+                        ? "valid"
+                        : "invalid")
+                     : "unverified")
+                 << " groundDeltaWorld="
+                 << std::fixed << std::setprecision(3)
+                 << collision.ground
+                        .absoluteHeightDeltaWorldUnits
+                 << " grade="
+                 << (collision.ground.gradeVerified
+                     ? collision.ground.absoluteGrade
+                     : -1.0f)
+                 << " playerLineWorldOcclusion="
+                 << (collision.occlusion.occlusionVerified
+                     ? (collision.occlusion.occludedByWorld
+                        ? "blocked"
+                        : "clear")
+                     : "unverified");
+        } else {
+            line << " result=pending_or_unavailable";
+        }
+
+        line << " cameraVisibilityVerified=0"
+             << " streamingVerified=0";
+
+        Log::instance().info(line.str());
+    }
+
+    if (heartbeat &&
         (g_motionScaleSnapshot.acceptedSamples > 0 ||
          g_motionScaleSnapshot.rejectedSamples > 0)) {
         std::ostringstream line;
@@ -1048,6 +1332,10 @@ void onInputPoll() {
     rememberThread(g_inputThreadId);
     ChallengeInputProbe::onPoll();
     ++g_inputPolls;
+
+    // WCollisionMgr world traversal is intentionally executed only from the
+    // game/input thread after FrameTick and input thread IDs match.
+    processWorldCollisionRequest();
 }
 
 DWORD WINAPI healthThread(LPVOID) {
@@ -1122,6 +1410,10 @@ DWORD WINAPI healthThread(LPVOID) {
         g_vehicleFootprintVerified.load(
             std::memory_order_relaxed
         );
+    readiness.groundEvidenceVerified =
+        g_groundEvidenceObserved.load(
+            std::memory_order_relaxed
+        );
 
     // Intentionally false until target-machine calibration/candidate
     // promotion work completes. This keeps construction fail-closed.
@@ -1161,6 +1453,12 @@ DWORD WINAPI healthThread(LPVOID) {
                     std::memory_order_relaxed
                 )
              << std::dec
+             << " groundEvidenceVerified="
+             << (readiness.groundEvidenceVerified ? 1 : 0)
+             << " worldOcclusionEvidenceObserved="
+             << (g_worldOcclusionEvidenceObserved.load(
+                    std::memory_order_relaxed
+                ) ? 1 : 0)
              << " metricCalibrationVerified=0"
              << " spawnCandidateVerified=0";
 
@@ -1214,6 +1512,22 @@ RuntimeProbeInstallResult RuntimeProbe::install(
              << std::dec
              << " (edge-triggered, read-only).";
         Log::instance().info(line.str());
+    }
+
+    if (config.worldCollisionDiagnosticsEnabled) {
+        if (!config.frameTickProbeEnabled) {
+            Log::instance().warn(
+                "WorldCollisionDiagnosticsEnabled requires FrameTickProbeEnabled=1. Collision calls remain blocked until the gameplay thread is confirmed."
+            );
+        } else if (!WorldCollisionProbe::addressAvailable()) {
+            Log::instance().warn(
+                "Verified CheckHitWorld address is not executable in this process. World-collision diagnostics remain fail-closed."
+            );
+        } else {
+            Log::instance().info(
+                "World-collision diagnostics armed. Queries will execute only after FrameTick and input polling are observed on the same gameplay thread."
+            );
+        }
     }
 
     if (config.useHornToChallenge) {

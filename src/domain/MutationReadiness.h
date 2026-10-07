@@ -16,6 +16,7 @@ enum class MutationReadinessBlocker {
     ExactRoadCandidateUnavailable,
     VehicleSpatialEvidenceUnavailable,
     VehicleFootprintUnavailable,
+    GroundEvidenceUnavailable,
     MetricCalibrationUnverified,
     SpawnCandidateUnverified
 };
@@ -35,6 +36,7 @@ struct MutationReadinessInput {
     bool exactRoadCandidateObserved = false;
     bool vehicleSpatialEvidenceObserved = false;
     bool vehicleFootprintVerified = false;
+    bool groundEvidenceVerified = false;
     bool metricCalibrationVerified = false;
     bool spawnCandidateVerified = false;
 };

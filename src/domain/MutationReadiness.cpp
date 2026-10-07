@@ -72,6 +72,12 @@ MutationReadinessReport evaluateMutationReadiness(
         return out;
     }
 
+    if (!input.groundEvidenceVerified) {
+        out.blocker =
+            MutationReadinessBlocker::GroundEvidenceUnavailable;
+        return out;
+    }
+
     if (!input.metricCalibrationVerified) {
         out.blocker =
             MutationReadinessBlocker::MetricCalibrationUnverified;
@@ -115,6 +121,8 @@ const char* mutationReadinessBlockerName(
             return "VehicleSpatialEvidenceUnavailable";
         case MutationReadinessBlocker::VehicleFootprintUnavailable:
             return "VehicleFootprintUnavailable";
+        case MutationReadinessBlocker::GroundEvidenceUnavailable:
+            return "GroundEvidenceUnavailable";
         case MutationReadinessBlocker::MetricCalibrationUnverified:
             return "MetricCalibrationUnverified";
         case MutationReadinessBlocker::SpawnCandidateUnverified:
