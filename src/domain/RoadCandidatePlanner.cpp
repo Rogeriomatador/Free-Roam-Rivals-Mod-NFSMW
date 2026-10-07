@@ -43,17 +43,12 @@ RoadCandidateBlocker commonExternalEvidenceBlocker(
         return RoadCandidateBlocker::StreamingUnverified;
     }
 
-    if (!evidence.groundVerified ||
-        !evidence.groundValid) {
+    if (!evidence.groundVerified) {
         return RoadCandidateBlocker::GroundUnverified;
     }
 
-    if (!evidence.visibilityVerified) {
-        return RoadCandidateBlocker::VisibilityUnverified;
-    }
-
-    if (evidence.visibleToPlayer) {
-        return RoadCandidateBlocker::VisibleToPlayer;
+    if (!evidence.groundValid) {
+        return RoadCandidateBlocker::GroundInvalid;
     }
 
     if (!evidence.overlapVerified) {
@@ -62,6 +57,20 @@ RoadCandidateBlocker commonExternalEvidenceBlocker(
 
     if (evidence.overlapsLiveVehicle) {
         return RoadCandidateBlocker::VehicleOverlap;
+    }
+
+    return RoadCandidateBlocker::None;
+}
+
+RoadCandidateBlocker spawnVisibilityBlocker(
+    const RoadCandidateEvidence& evidence
+) {
+    if (!evidence.visibilityVerified) {
+        return RoadCandidateBlocker::VisibilityUnverified;
+    }
+
+    if (evidence.visibleToPlayer) {
+        return RoadCandidateBlocker::VisibleToPlayer;
     }
 
     return RoadCandidateBlocker::None;
@@ -160,6 +169,13 @@ RoadSpawnPromotion promoteRoadCandidateForSpawn(
 
     out.blocker =
         commonExternalEvidenceBlocker(evidence);
+
+    if (out.blocker != RoadCandidateBlocker::None) {
+        return out;
+    }
+
+    out.blocker =
+        spawnVisibilityBlocker(evidence);
 
     if (out.blocker != RoadCandidateBlocker::None) {
         return out;
@@ -325,6 +341,8 @@ const char* roadCandidateBlockerName(
             return "StreamingUnverified";
         case RoadCandidateBlocker::GroundUnverified:
             return "GroundUnverified";
+        case RoadCandidateBlocker::GroundInvalid:
+            return "GroundInvalid";
         case RoadCandidateBlocker::VisibilityUnverified:
             return "VisibilityUnverified";
         case RoadCandidateBlocker::VisibleToPlayer:
