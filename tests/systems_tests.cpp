@@ -4,6 +4,7 @@
 #include "domain/SpawnSafety.h"
 #include "domain/StagingPlanner.h"
 #include "domain/StagingStateMachine.h"
+#include "domain/WorldMetricCalibration.h"
 
 #include <cstdlib>
 #include <iostream>
@@ -22,6 +23,37 @@ void require(bool value, const char* message) {
 
 int main() {
     using namespace frr::domain;
+
+    WorldMetricCalibration rawScale{};
+    rawScale.verified = false;
+    rawScale.worldUnitsPerMeter = 1.0f;
+
+    require(
+        !worldUnitsToMeters(100.0f, rawScale).has_value(),
+        "numeric world-unit scale is unusable until explicitly verified"
+    );
+
+    WorldMetricCalibration verifiedScale{};
+    verifiedScale.verified = true;
+    verifiedScale.worldUnitsPerMeter = 2.0f;
+
+    const auto meters =
+        worldUnitsToMeters(100.0f, verifiedScale);
+
+    require(
+        meters.has_value() &&
+        *meters == 50.0f,
+        "verified world-unit scale converts to metres"
+    );
+
+    const auto worldUnits =
+        metersToWorldUnits(50.0f, verifiedScale);
+
+    require(
+        worldUnits.has_value() &&
+        *worldUnits == 100.0f,
+        "verified metric conversion round-trips"
+    );
 
     RuntimeSessionTracker sessions;
     RuntimeSessionObservation obs{};
