@@ -27,6 +27,8 @@ bool g_haveLast = false;
 std::atomic<std::uint64_t> g_renderFrames{0};
 std::atomic<std::uint64_t> g_inputPolls{0};
 std::atomic<std::uint64_t> g_samples{0};
+std::atomic<std::uint32_t> g_renderThreadId{0};
+std::atomic<std::uint32_t> g_inputThreadId{0};
 bool g_vehicleCatalogValidated = false;
 
 frr::domain::RuntimeSessionTracker g_runtimeSession{};
@@ -427,6 +429,14 @@ void sampleAndLog(
 }
 
 void onRenderFrame(void*) {
+    const std::uint32_t threadId =
+        static_cast<std::uint32_t>(GetCurrentThreadId());
+    std::uint32_t expectedRenderThread = 0;
+    g_renderThreadId.compare_exchange_strong(
+        expectedRenderThread,
+        threadId
+    );
+
     const std::uint64_t frame = ++g_renderFrames;
 
     if (g_config.sampleEveryFrames == 0 ||
@@ -437,6 +447,14 @@ void onRenderFrame(void*) {
 }
 
 void onInputPoll() {
+    const std::uint32_t threadId =
+        static_cast<std::uint32_t>(GetCurrentThreadId());
+    std::uint32_t expectedInputThread = 0;
+    g_inputThreadId.compare_exchange_strong(
+        expectedInputThread,
+        threadId
+    );
+
     ++g_inputPolls;
 }
 
@@ -449,7 +467,14 @@ DWORD WINAPI healthThread(LPVOID) {
     out << "Runtime hook health after 8s:"
         << " renderFrames=" << g_renderFrames.load()
         << " inputPolls=" << g_inputPolls.load()
-        << " samples=" << g_samples.load();
+        << " samples=" << g_samples.load()
+        << " renderThread=" << g_renderThreadId.load()
+        << " inputThread=" << g_inputThreadId.load()
+        << " sameThread="
+        << ((g_renderThreadId.load() != 0 &&
+             g_renderThreadId.load() == g_inputThreadId.load())
+                ? 1
+                : 0);
 
     Log::instance().info(out.str());
 
