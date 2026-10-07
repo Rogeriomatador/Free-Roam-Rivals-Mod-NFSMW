@@ -1512,6 +1512,22 @@ RuntimeProbeInstallResult RuntimeProbe::install(
         Log::instance().info(line.str());
     }
 
+    if (config.worldCollisionDiagnosticsEnabled) {
+        if (!config.frameTickProbeEnabled) {
+            Log::instance().warn(
+                "WorldCollisionDiagnosticsEnabled requires FrameTickProbeEnabled=1. Collision calls remain blocked until the gameplay thread is confirmed."
+            );
+        } else if (!WorldCollisionProbe::addressAvailable()) {
+            Log::instance().warn(
+                "Verified CheckHitWorld address is not executable in this process. World-collision diagnostics remain fail-closed."
+            );
+        } else {
+            Log::instance().info(
+                "World-collision diagnostics armed. Queries will execute only after FrameTick and input polling are observed on the same gameplay thread."
+            );
+        }
+    }
+
     if (config.useHornToChallenge) {
         Log::instance().warn(
             "UseHornToChallenge requested, but the verified MW05 action map exposes no native HORN/HONK action yet. The configured fallback key remains the only active challenge input."
