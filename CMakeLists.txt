@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.22
+    VERSION 0.0.23
     LANGUAGES C CXX
 )
 
@@ -63,6 +63,7 @@ set(NFSMW__MINHOOK_SRCS
 )
 
 set(FRR_DOMAIN_SOURCES
+    src/domain/CameraFrustumEvidence.cpp
     src/domain/ChallengeInput.cpp
     src/domain/EncounterStateMachine.cpp
     src/domain/MotionScaleObserver.cpp
@@ -96,6 +97,7 @@ nfsmw_add_plugin(FreeRoamRivals
         src/core/Log.cpp
         src/core/ProfileKey.cpp
         src/core/VersionGuard.cpp
+        src/game/CameraFrustumProbe.cpp
         src/game/ChallengeInputProbe.cpp
         src/game/GameBridge.cpp
         src/game/PlayerMotionProbe.cpp
@@ -229,3 +231,7 @@ add_test(
 add_executable(FreeRoamRivalsEvidenceTests tests/evidence_tests.cpp ${FRR_DOMAIN_SOURCES})
 target_include_directories(FreeRoamRivalsEvidenceTests PRIVATE src)
 add_test(NAME FreeRoamRivalsEvidenceTests COMMAND FreeRoamRivalsEvidenceTests)
+
+add_executable(FreeRoamRivalsCameraTests tests/camera_tests.cpp src/domain/CameraFrustumEvidence.cpp src/domain/VehicleSpatialEvidence.cpp)
+target_include_directories(FreeRoamRivalsCameraTests PRIVATE src)
+add_test(NAME FreeRoamRivalsCameraTests COMMAND FreeRoamRivalsCameraTests)

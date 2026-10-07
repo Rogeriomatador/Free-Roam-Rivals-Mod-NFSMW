@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.0.23-dev
+
+- Added opt-in `CameraFrustumDiagnosticsEnabled`, disabled by default, using guarded reads from the already pinned MWSDK primary-camera API.
+- Established simulation-to-render mapping `(z, -x, y)` from the MW05 reconstruction; no platform-specific reconstruction addresses are imported.
+- Added coherent-matrix guards: active primary view, rigid view basis, perspective shape, eye/view agreement and View * Projection cross-check.
+- Added six-plane whole-OBB classification; plane contact and partial intersection remain potentially visible.
+- Added camera tests for all six planes, rotated/partial/contact boxes, translated cameras, invalid matrices, mapping, identity and inactive-view rejection.
+- Logged primary-camera diagnostics separately from complete spawn visibility, which remains unverified pending mirror coverage, visual bounds and target-machine validation.
+- Documented concrete streaming leads and the missing exact-PC section/activation proof. No streaming approximation or raw unverified function call is introduced.
+- Updated package/release metadata to v0.0.23-dev. Vehicle construction remains blocked.
+
 ## 0.0.22-dev
 
 - Bound pre-construction SAT evidence to one selected pending procedural rival and its exact runtime model key. Selection does not reroll to find an already learned model.

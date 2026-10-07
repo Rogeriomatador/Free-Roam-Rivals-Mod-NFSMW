@@ -11,7 +11,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.22-dev";
+constexpr const char* kVersion = "0.0.23-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -71,6 +71,7 @@ int bootstrap() {
         config.frameTickProbeEnabled;
     probeConfig.worldCollisionDiagnosticsEnabled =
         config.worldCollisionDiagnosticsEnabled;
+    probeConfig.cameraFrustumDiagnosticsEnabled = config.cameraFrustumDiagnosticsEnabled;
     probeConfig.sampleEveryFrames =
         config.runtimeSampleEveryFrames;
     probeConfig.heartbeatFrames =
@@ -102,7 +103,7 @@ int bootstrap() {
     }
 
     log.info(
-        "v0.0.22-dev binds overlap to the selected rival model and expires world-collision requests on age, identity or generation changes. Construction remains blocked."
+        "v0.0.23-dev adds opt-in read-only primary-camera OBB frustum diagnostics with engine coordinate mapping and coherent-matrix guards. Complete spawn visibility remains unverified."
     );
 
     return NFSMW_OK;
@@ -112,7 +113,7 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.22-dev",
+    "0.0.23-dev",
     "Rogeriomatador"
 )
 
