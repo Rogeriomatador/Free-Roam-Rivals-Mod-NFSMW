@@ -379,9 +379,12 @@ int main() {
     require(
         roadSpawn.promotable &&
         roadSpawn.metric.available &&
+        roadSpawn.transform.available &&
+        roadSpawn.transform.position.x == 800.0f &&
+        roadSpawn.transform.forward.x == 1.0f &&
         roadSpawn.metric.distanceMeters == 400.0f &&
         roadSpawn.metric.roadWidthMeters == 8.0f,
-        "fully evidenced future road promotes into metric spawn input"
+        "fully evidenced future road promotes with metric input and exact transform"
     );
 
     SpawnEnvironmentInput promotedSpawnEnv{};
@@ -442,11 +445,13 @@ int main() {
 
     require(
         roadStaging.promotable &&
+        roadStaging.transform.available &&
+        roadStaging.transform.position.x == 800.0f &&
         roadStaging.candidate.metricGeometryVerified &&
         scoreStagingCandidate(
             roadStaging.candidate
         ).eligible,
-        "visible but otherwise safe road candidate can enter staging scorer"
+        "visible but otherwise safe road candidate keeps transform and enters staging scorer"
     );
 
     RuntimeSessionTracker sessions;
