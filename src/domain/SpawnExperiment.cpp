@@ -104,14 +104,18 @@ SpawnExperimentUpdate SpawnExperiment::tick(
     stateTimeSeconds_ +=
         std::max(input.deltaSeconds, 0.0f);
 
+    bool preconditionFailed = false;
+
     if (!input.generationValid) {
         requestFailure(
             SpawnExperimentFailure::GenerationChanged
         );
+        preconditionFailed = true;
     } else if (!input.worldSafe) {
         requestFailure(
             SpawnExperimentFailure::PreconditionsLost
         );
+        preconditionFailed = true;
     } else if (
         state_ == SpawnExperimentState::AwaitConstruction &&
         !input.candidateValid
@@ -119,6 +123,11 @@ SpawnExperimentUpdate SpawnExperiment::tick(
         requestFailure(
             SpawnExperimentFailure::PreconditionsLost
         );
+        preconditionFailed = true;
+    }
+
+    if (preconditionFailed) {
+        return makeUpdate(before, false, false);
     }
 
     bool requestConstruct = false;
@@ -211,10 +220,16 @@ SpawnExperimentUpdate SpawnExperiment::tick(
             break;
 
         case SpawnExperimentState::VerifyRemoval:
+            const unsigned requiredRemovalSamples =
+                std::max(
+                    tuning_.removalConfirmSamples,
+                    1u
+                );
+
             if (!input.pvehicleRegistered &&
                 !input.liveVehicleRegistered) {
                 if (removalConfirmSamples_ <
-                    tuning_.removalConfirmSamples) {
+                    requiredRemovalSamples) {
                     ++removalConfirmSamples_;
                 }
             } else {
@@ -222,9 +237,7 @@ SpawnExperimentUpdate SpawnExperiment::tick(
             }
 
             if (removalConfirmSamples_ >=
-                std::max(
-                    tuning_.removalConfirmSamples,
-                    1u)) {
+                requiredRemovalSamples) {
                 finishRemoval();
             } else if (timeoutReached(
                            stateTimeSeconds_,
