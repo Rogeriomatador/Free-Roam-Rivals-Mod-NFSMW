@@ -1,6 +1,7 @@
 #include "domain/EncounterStateMachine.h"
 #include "domain/Progression.h"
 #include "domain/StakeRules.h"
+#include "domain/VehicleSelection.h"
 
 #include <cstdlib>
 #include <iostream>
@@ -122,6 +123,103 @@ int main() {
         encounter.tick(input) == EncounterState::Roaming,
         "cooldown returns to roaming"
     );
+
+    const auto& catalog = defaultVehicleCatalog();
+    require(catalog.size() >= 30, "default vehicle catalog populated");
+
+    VehicleSelectionContext earlyCars{};
+    earlyCars.minimumTier = 1;
+    earlyCars.maximumTier = 2;
+    earlyCars.district = DistrictRosewood;
+    earlyCars.seed = 12345;
+
+    const auto earlyCar = selectVehicle(catalog, earlyCars);
+    require(earlyCar.has_value(), "early vehicle selection exists");
+    require(
+        catalog[earlyCar->index].tier >= 1 &&
+        catalog[earlyCar->index].tier <= 2,
+        "early selection obeys tier ceiling"
+    );
+    require(
+        !catalog[earlyCar->index].legendary &&
+        !catalog[earlyCar->index].special,
+        "ordinary early selection excludes special cars"
+    );
+
+    VehicleSelectionContext legendaryBlocked{};
+    legendaryBlocked.minimumTier = 5;
+    legendaryBlocked.maximumTier = 5;
+    legendaryBlocked.allowLegendary = false;
+    legendaryBlocked.allowSpecial = false;
+    legendaryBlocked.seed = 998877;
+
+    for (int i = 0; i < 200; ++i) {
+        legendaryBlocked.seed =
+            998877ull + static_cast<std::uint64_t>(i);
+
+        const auto picked =
+            selectVehicle(catalog, legendaryBlocked);
+
+        require(
+            picked.has_value(),
+            "tier-5 normal selection exists"
+        );
+
+        require(
+            !catalog[picked->index].legendary &&
+            !catalog[picked->index].special,
+            "legendary/special excluded unless explicitly allowed"
+        );
+    }
+
+    VehicleSelectionContext deterministic{};
+    deterministic.minimumTier = 1;
+    deterministic.maximumTier = 5;
+    deterministic.district = DistrictCamden;
+    deterministic.seed = 424242;
+
+    const auto first = selectVehicle(catalog, deterministic);
+    const auto second = selectVehicle(catalog, deterministic);
+
+    require(first.has_value() && second.has_value(),
+            "deterministic selection exists");
+    require(first->index == second->index,
+            "same seed gives same vehicle");
+
+    VehicleSelectionContext noImmediateRepeat = deterministic;
+    noImmediateRepeat.avoidKey =
+        catalog[first->index].key;
+
+    const auto different =
+        selectVehicle(catalog, noImmediateRepeat);
+
+    require(different.has_value(),
+            "anti-repeat selection exists");
+    require(
+        catalog[different->index].key !=
+            catalog[first->index].key,
+        "soft anti-repeat avoids previous model when alternatives exist"
+    );
+
+    VehicleSelectionContext legend{};
+    legend.minimumTier = 5;
+    legend.maximumTier = 5;
+    legend.allowLegendary = true;
+    legend.allowSpecial = true;
+
+    bool sawLegendary = false;
+    for (std::uint64_t seed = 1; seed < 5000; ++seed) {
+        legend.seed = seed;
+        const auto picked = selectVehicle(catalog, legend);
+        if (picked &&
+            catalog[picked->index].legendary) {
+            sawLegendary = true;
+            break;
+        }
+    }
+
+    require(sawLegendary,
+            "legendary pool becomes reachable when explicitly enabled");
 
     std::cout << "Free Roam Rivals domain tests passed.\n";
     return 0;
