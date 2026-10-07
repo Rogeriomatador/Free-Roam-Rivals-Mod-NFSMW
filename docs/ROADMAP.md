@@ -23,7 +23,9 @@ Exit criterion: loading the ASI does not alter gameplay and creates a diagnostic
 - [x] Add generation-scoped rival runtime-handle model
 - [x] Add read-only spawn preflight diagnostics
 - [ ] Extract a verified road-safe/off-screen spawn candidate from the live road system
-- [ ] Install a dedicated gameplay-thread mutation callback
+- [ ] Validate dedicated gameplay-thread mutation callback in-game
+  - [x] Add opt-in read-only GameFrameTick entry probe
+  - [ ] Confirm callback/thread health on target installation before mutation
 - [ ] Construct/verify/clean up one experimental rival vehicle
 - [ ] Attach/verify native roaming AI
 - [x] Progression-aware vanilla vehicle catalog and deterministic selector

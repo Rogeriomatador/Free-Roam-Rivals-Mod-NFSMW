@@ -179,3 +179,33 @@ ExperimentalGarageWritesEnabled=0
 ~~~
 
 A future build enables one capability at a time after the preceding read-only validation passes.
+
+
+## Main-loop validation probe
+
+v0.0.11 adds a deliberately read-only diagnostic at the verified top-level
+`GameFrameTick @ 0x663D30`.
+
+The hook uses the nfsmw-2005-sdk register-preserving mid-hook backend, so Free
+Roam Rivals does not need to guess the function calling convention simply to
+observe entry into the game loop.
+
+It records only:
+
+- call count
+- first observed Windows thread ID
+- whether that ID matches the existing input-poll callback
+- whether that ID matches the D3D9 EndScene callback
+
+The feature is opt-in:
+
+```ini
+[Diagnostics]
+FrameTickProbeEnabled=0
+```
+
+This probe does not construct vehicles, move cars, write input, edit career
+state or mutate AI. A successful build is not enough to promote it to a
+gameplay-mutation callback. Promotion still requires target-machine runtime
+logs showing stable per-frame operation and clean coexistence with the current
+ASI stack.

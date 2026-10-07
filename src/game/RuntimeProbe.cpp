@@ -9,7 +9,9 @@
 #include "../persistence/UndergroundBlacklistStore.h"
 
 #include <nfsmw_sdk/d3d9_hooks.h>
+#include <nfsmw_sdk/functions.h>
 #include <nfsmw_sdk/input.h>
+#include <nfsmw_sdk/midhook.h>
 
 #include <windows.h>
 
@@ -28,7 +30,12 @@ bool g_haveLast = false;
 
 std::atomic<std::uint64_t> g_renderFrames{0};
 std::atomic<std::uint64_t> g_inputPolls{0};
+std::atomic<std::uint64_t> g_frameTicks{0};
 std::atomic<std::uint64_t> g_samples{0};
+
+std::atomic<DWORD> g_renderThreadId{0};
+std::atomic<DWORD> g_inputThreadId{0};
+std::atomic<DWORD> g_frameTickThreadId{0};
 bool g_vehicleCatalogValidated = false;
 
 bool g_haveBlacklistDiagnostic = false;
@@ -517,7 +524,23 @@ void sampleAndLog(
     g_haveLast = true;
 }
 
+void rememberThread(
+    std::atomic<DWORD>& slot
+) {
+    DWORD expected = 0;
+    slot.compare_exchange_strong(
+        expected,
+        GetCurrentThreadId()
+    );
+}
+
+void NFSMW_CDECL onFrameTickProbe(nfsmw_regs*) {
+    rememberThread(g_frameTickThreadId);
+    ++g_frameTicks;
+}
+
 void onRenderFrame(void*) {
+    rememberThread(g_renderThreadId);
     const std::uint64_t frame = ++g_renderFrames;
 
     if (g_config.sampleEveryFrames == 0 ||
@@ -528,6 +551,7 @@ void onRenderFrame(void*) {
 }
 
 void onInputPoll() {
+    rememberThread(g_inputThreadId);
     ++g_inputPolls;
 }
 
@@ -537,10 +561,28 @@ DWORD WINAPI healthThread(LPVOID) {
     Sleep(8000);
 
     std::ostringstream out;
+    const DWORD renderThread = g_renderThreadId.load();
+    const DWORD inputThread = g_inputThreadId.load();
+    const DWORD frameThread = g_frameTickThreadId.load();
+
     out << "Runtime hook health after 8s:"
         << " renderFrames=" << g_renderFrames.load()
         << " inputPolls=" << g_inputPolls.load()
-        << " samples=" << g_samples.load();
+        << " frameTicks=" << g_frameTicks.load()
+        << " samples=" << g_samples.load()
+        << " renderThread=" << renderThread
+        << " inputThread=" << inputThread
+        << " frameTickThread=" << frameThread;
+
+    if (frameThread != 0 && inputThread != 0) {
+        out << " frameTickEqualsInput="
+            << (frameThread == inputThread ? 1 : 0);
+    }
+
+    if (frameThread != 0 && renderThread != 0) {
+        out << " frameTickEqualsRender="
+            << (frameThread == renderThread ? 1 : 0);
+    }
 
     Log::instance().info(out.str());
 
@@ -553,6 +595,13 @@ DWORD WINAPI healthThread(LPVOID) {
     if (g_inputPolls.load() == 0) {
         Log::instance().warn(
             "Input-poll diagnostic hook has not fired yet."
+        );
+    }
+
+    if (g_config.frameTickProbeEnabled &&
+        g_frameTicks.load() == 0) {
+        Log::instance().warn(
+            "Opt-in FrameTick diagnostic probe has not fired yet."
         );
     }
 
@@ -590,6 +639,26 @@ RuntimeProbeInstallResult RuntimeProbe::install(
         } else {
             Log::instance().warn(
                 "Input-poll diagnostic hook failed to install."
+            );
+        }
+    }
+
+    if (config.frameTickProbeEnabled) {
+        static nfsmw::MidHook frameTickHook(
+            NFSMW_FN_GameFrameTick_MainLoopUpdate,
+            &onFrameTickProbe
+        );
+
+        result.frameTickProbeInstalled =
+            frameTickHook.installed();
+
+        if (result.frameTickProbeInstalled) {
+            Log::instance().info(
+                "Opt-in GameFrameTick diagnostic mid-hook installed (read-only register-preserving probe)."
+            );
+        } else {
+            Log::instance().warn(
+                "GameFrameTick diagnostic probe failed to install; no gameplay mutation will use this path."
             );
         }
     }

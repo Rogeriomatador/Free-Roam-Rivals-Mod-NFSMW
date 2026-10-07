@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.0.11-dev
+
+- Added an opt-in, read-only mid-hook at verified `GameFrameTick @ 0x663D30`.
+- The probe preserves register state and resumes through the SDK/MinHook trampoline.
+- Added first-observed thread IDs for:
+  - GameFrameTick
+  - input polling
+  - D3D9 EndScene
+- Runtime health logging now reports callback counts and whether FrameTick shares a thread with input/render.
+- The probe is disabled by default with `FrameTickProbeEnabled=0`.
+- Failure to install is non-fatal and never enables gameplay mutation.
+- This is a validation bridge only: spawning/AI still stay disabled until the callback is proven on the target installation.
+
+
 ## 0.0.10-dev
 
 - Added a read-only player WRoadNav probe through the validated PVehicle/IVehicleAI path.
