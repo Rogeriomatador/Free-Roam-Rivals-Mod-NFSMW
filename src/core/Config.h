@@ -23,6 +23,9 @@ struct Config {
     float challengeRadiusMeters = 20.0f;
     float challengeTimeoutSeconds = 12.0f;
 
+    bool useHornToChallenge = true;
+    unsigned fallbackChallengeVirtualKey = 0x47u;
+
     bool outrunEnabled = false;
     float outrunWinLeadMeters = 300.0f;
     float outrunLeadHoldSeconds = 3.0f;
