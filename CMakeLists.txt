@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.7
+    VERSION 0.0.8
     LANGUAGES C CXX
 )
 
@@ -66,10 +66,16 @@ set(NFSMW__MINHOOK_SRCS
 
 set(FRR_DOMAIN_SOURCES
     src/domain/EncounterStateMachine.cpp
+    src/domain/OutrunRace.cpp
     src/domain/Progression.cpp
     src/domain/RivalGarage.cpp
     src/domain/RivalPopulation.cpp
+    src/domain/RivalRuntimeHandle.cpp
+    src/domain/RuntimeSession.cpp
+    src/domain/SpawnSafety.cpp
     src/domain/StakeRules.cpp
+    src/domain/StagingPlanner.cpp
+    src/domain/StagingStateMachine.cpp
     src/domain/VehicleSelection.cpp
 )
 
@@ -125,4 +131,20 @@ endif()
 add_test(
     NAME FreeRoamRivalsDomainTests
     COMMAND FreeRoamRivalsDomainTests
+)
+
+add_executable(FreeRoamRivalsSystemsTests
+    tests/systems_tests.cpp
+    ${FRR_DOMAIN_SOURCES}
+)
+
+target_include_directories(FreeRoamRivalsSystemsTests PRIVATE src)
+
+if(MSVC)
+    target_compile_options(FreeRoamRivalsSystemsTests PRIVATE /W4)
+endif()
+
+add_test(
+    NAME FreeRoamRivalsSystemsTests
+    COMMAND FreeRoamRivalsSystemsTests
 )

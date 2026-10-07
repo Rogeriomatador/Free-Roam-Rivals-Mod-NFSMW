@@ -3,6 +3,8 @@
 #include "GameBridge.h"
 #include "VehicleCatalogProbe.h"
 #include "../core/Log.h"
+#include "../domain/RuntimeSession.h"
+#include "../domain/SpawnSafety.h"
 
 #include <nfsmw_sdk/d3d9_hooks.h>
 #include <nfsmw_sdk/input.h>
@@ -26,6 +28,11 @@ std::atomic<std::uint64_t> g_renderFrames{0};
 std::atomic<std::uint64_t> g_inputPolls{0};
 std::atomic<std::uint64_t> g_samples{0};
 bool g_vehicleCatalogValidated = false;
+
+frr::domain::RuntimeSessionTracker g_runtimeSession{};
+bool g_haveSpawnPreflight = false;
+frr::domain::SpawnRejectReason g_lastSpawnPreflightReason =
+    frr::domain::SpawnRejectReason::ExperimentalFeatureDisabled;
 
 bool sameMeaningfulState(
     const RuntimeSnapshot& a,
@@ -136,11 +143,95 @@ std::string describe(const RuntimeSnapshot& s) {
     return out.str();
 }
 
+void updateRuntimeSessionAndSpawnPreflight(
+    const RuntimeSnapshot& current
+) {
+    frr::domain::RuntimeSessionObservation observation{};
+    observation.safeFreeRoam =
+        current.mode == WorldProbeMode::FreeRoamCandidate &&
+        current.capabilities.canClassifyFreeRoam &&
+        current.capabilities.roadNetworkAvailable;
+    observation.playerIdentity =
+        current.vehicles.playerIVehicle;
+    observation.roadNetworkIdentity =
+        current.roadNetwork;
+
+    const auto session = g_runtimeSession.tick(observation);
+
+    if (session.newGeneration) {
+        std::ostringstream line;
+        line << "Free Roam world generation "
+             << session.generation
+             << " started; runtime rival handles from older generations are invalid.";
+        Log::instance().info(line.str());
+    }
+
+    if (!g_config.experimentalSpawnEnabled) {
+        return;
+    }
+
+    frr::domain::SpawnEnvironmentInput environment{};
+    environment.experimentalFeatureEnabled = true;
+    environment.supportedExecutable = true;
+    environment.freeRoamCandidate =
+        current.mode == WorldProbeMode::FreeRoamCandidate;
+    environment.loading = current.raceStatusLoading;
+    environment.inNIS = current.inNIS;
+    environment.fade = current.fadeScreen;
+    environment.playerAvailable =
+        current.vehicles.playerIVehicle != 0;
+    environment.independentPlayerCrossCheck =
+        current.vehicles.independentPlayerCrossCheck;
+    environment.roadNetworkAvailable =
+        current.roadNetwork != 0;
+    environment.stableFreeRoamSamples =
+        session.stableSamples;
+    environment.liveRivals =
+        static_cast<int>(current.vehicles.racerVehicles);
+    environment.maxLiveRivals =
+        g_config.maxActiveRivals;
+
+    frr::domain::SpawnSafetyTuning tuning{};
+    tuning.requiredStableSamples =
+        g_config.stableFreeRoamSamplesBeforeSpawn;
+
+    const auto decision =
+        frr::domain::evaluateSpawnEnvironment(
+            environment,
+            tuning
+        );
+
+    if (!g_haveSpawnPreflight ||
+        decision.reason != g_lastSpawnPreflightReason) {
+        std::ostringstream line;
+        line << "Experimental spawn preflight: ";
+
+        if (decision.allowed) {
+            line << "READY"
+                 << " generation=" << session.generation
+                 << " stableSamples=" << session.stableSamples
+                 << ". Road-candidate planning and vehicle construction remain disabled in this build.";
+            Log::instance().info(line.str());
+        } else {
+            line << "BLOCKED reason="
+                 << frr::domain::spawnRejectReasonName(decision.reason)
+                 << " generation=" << session.generation
+                 << " stableSamples=" << session.stableSamples;
+            Log::instance().warn(line.str());
+        }
+
+        g_haveSpawnPreflight = true;
+        g_lastSpawnPreflightReason = decision.reason;
+    }
+}
+
 void sampleAndLog(
     std::uint64_t renderFrame
 ) {
     const RuntimeSnapshot current = GameBridge::sample();
     ++g_samples;
+
+    updateRuntimeSessionAndSpawnPreflight(current);
 
     if (!g_vehicleCatalogValidated &&
         current.mode == WorldProbeMode::FreeRoamCandidate &&
@@ -232,7 +323,7 @@ DWORD WINAPI healthThread(LPVOID) {
 
     if (g_inputPolls.load() == 0) {
         Log::instance().warn(
-            "Input-poll callback has not fired yet; it is diagnostic-only in v0.0.5-dev."
+            "Input-poll diagnostic hook has not fired yet."
         );
     }
 

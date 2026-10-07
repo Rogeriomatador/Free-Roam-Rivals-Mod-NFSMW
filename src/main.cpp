@@ -11,7 +11,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.7-dev";
+constexpr const char* kVersion = "0.0.8-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -69,6 +69,12 @@ int bootstrap() {
         config.runtimeSampleEveryFrames;
     probeConfig.heartbeatFrames =
         config.runtimeProbeHeartbeatFrames;
+    probeConfig.experimentalSpawnEnabled =
+        config.experimentalSpawnEnabled;
+    probeConfig.stableFreeRoamSamplesBeforeSpawn =
+        config.stableFreeRoamSamplesBeforeSpawn;
+    probeConfig.maxActiveRivals =
+        config.maxActiveRivals;
 
     const auto installed =
         game::RuntimeProbe::install(probeConfig);
@@ -81,7 +87,7 @@ int bootstrap() {
     }
 
     log.info(
-        "v0.0.7-dev adds deterministic procedural rival identities, personalities, garages/population budgets and live catalog validation; rival spawning, AI control, economy writes, garage writes and pink-slip transfers remain disabled."
+        "v0.0.8-dev adds executable spawn-safety gates, world-generation tracking, runtime rival-handle rules, Outrun race logic and cinematic-staging state/planner foundations. Vehicle creation and AI mutation remain disabled until a road-safe spawn candidate and gameplay-thread lifecycle are proven."
     );
 
     return NFSMW_OK;
@@ -91,7 +97,7 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.7-dev",
+    "0.0.8-dev",
     "Rogeriomatador"
 )
 
