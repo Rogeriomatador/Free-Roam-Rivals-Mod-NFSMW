@@ -23,6 +23,7 @@
 #include "../domain/VehicleSelection.h"
 #include "../domain/VehicleSpatialEvidence.h"
 #include "../domain/WorldCollisionEvidence.h"
+#include "../domain/WorldMetricCalibration.h"
 #include "../persistence/UndergroundBlacklistStore.h"
 
 
@@ -112,6 +113,15 @@ frr::domain::RuntimeSessionTracker g_runtimeSession{};
 
 frr::domain::MotionScaleObserver g_motionScaleObserver{};
 frr::domain::MotionScaleSnapshot g_motionScaleSnapshot{};
+
+// Reconstructed MW05 source converts GetSpeedometer() with MPS2MPH and
+// compares GetAbsoluteSpeed() against MPH2MPS thresholds. This is independent
+// source evidence that the absolute-speed channel is metres/second.
+constexpr bool kAbsoluteSpeedMetersPerSecondSourceVerified = true;
+std::atomic<bool> g_metricCalibrationVerified{false};
+std::atomic<float> g_metricWorldUnitsPerMeter{0.0f};
+bool g_loggedMetricCalibration = false;
+
 bool g_haveMotionClock = false;
 std::chrono::steady_clock::time_point g_lastMotionClock{};
 bool g_loggedStableMotionScale = false;
@@ -123,6 +133,22 @@ std::uint64_t g_motionCohortId = 0;
 bool g_haveSpawnPreflight = false;
 frr::domain::SpawnRejectReason g_lastSpawnPreflightReason =
     frr::domain::SpawnRejectReason::ExperimentalFeatureDisabled;
+
+frr::domain::WorldMetricCalibration metricCalibrationSnapshot() {
+    frr::domain::WorldMetricCalibration out{};
+    out.verified =
+        g_metricCalibrationVerified.load(
+            std::memory_order_acquire
+        );
+    out.worldUnitsPerMeter =
+        g_metricWorldUnitsPerMeter.load(
+            std::memory_order_relaxed
+        );
+
+    return frr::domain::validWorldMetricCalibration(out)
+        ? out
+        : frr::domain::WorldMetricCalibration{};
+}
 
 frr::domain::RuntimeEvidenceStamp evidenceStamp(
     const RuntimeSnapshot& current,
@@ -926,6 +952,42 @@ void sampleAndLog(
             motionDeltaSeconds
         );
 
+    if (!g_metricCalibrationVerified.load(
+            std::memory_order_acquire)) {
+        const auto candidateCalibration =
+            frr::domain::promoteMotionScaleToWorldMetric(
+                g_motionScaleSnapshot,
+                kAbsoluteSpeedMetersPerSecondSourceVerified
+            );
+
+        if (candidateCalibration.verified) {
+            g_metricWorldUnitsPerMeter.store(
+                candidateCalibration.worldUnitsPerMeter,
+                std::memory_order_relaxed
+            );
+            g_metricCalibrationVerified.store(
+                true,
+                std::memory_order_release
+            );
+
+            if (!g_loggedMetricCalibration) {
+                std::ostringstream line;
+                line << "World metric calibration verified: source=MW05_GetAbsoluteSpeed_mps"
+                     << " worldUnitsPerMeter="
+                     << std::fixed << std::setprecision(5)
+                     << candidateCalibration.worldUnitsPerMeter
+                     << " window=" << g_motionScaleSnapshot.windowSamples
+                     << " cv=" << g_motionScaleSnapshot.coefficientOfVariation
+                     << ". Metric thresholds may now consume this scale; spawn remains separately gated.";
+                Log::instance().info(line.str());
+                g_loggedMetricCalibration = true;
+            }
+        }
+    }
+
+    const auto metricCalibration =
+        metricCalibrationSnapshot();
+
     if (g_config.motionCaptureEnabled) {
         std::ostringstream line;
         line << std::setprecision(std::numeric_limits<float>::max_digits10)
@@ -953,7 +1015,12 @@ void sampleAndLog(
              << " ratio=" << g_motionScaleSnapshot.meanWorldUnitsPerSpeedUnitSecond
              << " cv=" << g_motionScaleSnapshot.coefficientOfVariation
              << " stable=" << (g_motionScaleSnapshot.stable ? 1 : 0)
-             << " metricVerified=0";
+             << " metricVerified="
+             << (metricCalibration.verified ? 1 : 0)
+             << " worldUnitsPerMeter="
+             << (metricCalibration.verified
+                 ? metricCalibration.worldUnitsPerMeter
+                 : 0.0f);
         Log::instance().info(line.str());
     }
 
@@ -980,7 +1047,13 @@ void sampleAndLog(
              << " speedToLinearRatio="
              << g_motionScaleSnapshot
                     .meanSpeedToLinearVelocityRatio
-             << ". This is consistency evidence only; metric calibration remains unverified.";
+             << ". Source-backed absolute speed is metres/second; metricVerified="
+             << (metricCalibration.verified ? 1 : 0)
+             << " worldUnitsPerMeter="
+             << (metricCalibration.verified
+                 ? metricCalibration.worldUnitsPerMeter
+                 : 0.0f)
+             << ".";
 
         Log::instance().info(line.str());
         g_loggedStableMotionScale = true;
@@ -1198,7 +1271,8 @@ void sampleAndLog(
                 // Feed the actual selected model's SAT result into the existing
                 // promotion contract. Unresolved evidence retains safe defaults.
                 const auto promotion = frr::domain::promoteRoadCandidateForSpawn(
-                    candidate, selectedOverlap.evidence, {}, g_selectedRivalVehicle.vehicleKey != 0);
+                    candidate, selectedOverlap.evidence, metricCalibration,
+                    g_selectedRivalVehicle.vehicleKey != 0);
                 line << ",selectedRivalId=" << g_selectedRivalVehicle.rivalId
                      << ",selectedVehicleKey=0x" << std::hex << g_selectedRivalVehicle.vehicleKey << std::dec
                      << ",preconstructionOverlap="
@@ -1298,7 +1372,12 @@ void sampleAndLog(
                     .meanSpeedToLinearVelocityRatio
              << " stable="
              << (g_motionScaleSnapshot.stable ? 1 : 0)
-             << " metricVerified=0";
+             << " metricVerified="
+             << (metricCalibration.verified ? 1 : 0)
+             << " worldUnitsPerMeter="
+             << (metricCalibration.verified
+                 ? metricCalibration.worldUnitsPerMeter
+                 : 0.0f);
 
         Log::instance().info(line.str());
     }
@@ -1450,9 +1529,12 @@ DWORD WINAPI healthThread(LPVOID) {
         readiness.groundEvidenceVerified = healthCollision.available &&
             healthCollision.ground.groundVerified && healthCollision.ground.groundValid;
 
-        // Intentionally false until target-machine calibration/candidate
-        // promotion work completes. This keeps construction fail-closed.
-        readiness.metricCalibrationVerified = false;
+        const auto healthMetricCalibration =
+            metricCalibrationSnapshot();
+        readiness.metricCalibrationVerified =
+            healthMetricCalibration.verified;
+        // Final candidate proof still requires selected footprint, corrected
+        // ground/visibility/streaming evidence and remains fail-closed.
         readiness.spawnCandidateVerified = false;
 
         const auto readinessReport =
@@ -1494,7 +1576,12 @@ DWORD WINAPI healthThread(LPVOID) {
                  << (g_worldOcclusionEvidenceObserved.load(
                         std::memory_order_relaxed
                     ) ? 1 : 0)
-                 << " metricCalibrationVerified=0"
+                 << " metricCalibrationVerified="
+                 << (readiness.metricCalibrationVerified ? 1 : 0)
+                 << " worldUnitsPerMeter="
+                 << (readiness.metricCalibrationVerified
+                     ? healthMetricCalibration.worldUnitsPerMeter
+                     : 0.0f)
                  << " spawnCandidateVerified=0";
 
             Log::instance().info(line.str());

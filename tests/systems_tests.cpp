@@ -13,6 +13,7 @@
 #include "domain/WorldCollisionEvidence.h"
 #include "domain/WorldMetricCalibration.h"
 #include "game/RoadCandidateProbe.h"
+#include "game/NfsPluginCoordinateAdapter.h"
 
 #include <cstdlib>
 #include <iostream>
@@ -31,6 +32,27 @@ void require(bool value, const char* message) {
 
 int main() {
     using namespace frr::domain;
+
+    struct FakeNfsPluginVector3 {
+        float y = 0.0f;
+        float z = 0.0f;
+        float x = 0.0f;
+    };
+
+    FakeNfsPluginVector3 sdkVector{};
+    sdkVector.y = 11.0f;
+    sdkVector.z = 22.0f;
+    sdkVector.x = 33.0f;
+
+    const auto canonical =
+        frr::game::canonicalMwVector(sdkVector);
+
+    require(
+        canonical.x == 11.0f &&
+        canonical.y == 22.0f &&
+        canonical.z == 33.0f,
+        "NFSPluginSDK vector fields canonicalize to MW X/Y-up/Z"
+    );
 
     VehicleOrientedBox parked{};
     parked.valid = true;
@@ -647,6 +669,45 @@ int main() {
         worldUnits.has_value() &&
         *worldUnits == 100.0f,
         "verified metric conversion round-trips"
+    );
+
+    MotionScaleSnapshot metricObservation{};
+    metricObservation.stable = true;
+    metricObservation.windowSamples = 24;
+    metricObservation.meanWorldUnitsPerSpeedUnitSecond = 0.998f;
+    metricObservation.coefficientOfVariation = 0.01f;
+    metricObservation.meanAbsoluteToEngineSpeedRatio = 1.0f;
+    metricObservation.meanSpeedToLinearVelocityRatio = 1.0f;
+    metricObservation.meanSpeedToLocalVelocityRatio = 1.0f;
+
+    const auto promotedMetric =
+        promoteMotionScaleToWorldMetric(
+            metricObservation,
+            true
+        );
+
+    require(
+        promotedMetric.verified &&
+        promotedMetric.worldUnitsPerMeter > 0.997f &&
+        promotedMetric.worldUnitsPerMeter < 0.999f,
+        "stable target motion plus source-backed m/s speed promotes a metric scale"
+    );
+
+    require(
+        !promoteMotionScaleToWorldMetric(
+            metricObservation,
+            false
+        ).verified,
+        "motion consistency alone cannot invent metre semantics"
+    );
+
+    metricObservation.coefficientOfVariation = 0.08f;
+    require(
+        !promoteMotionScaleToWorldMetric(
+            metricObservation,
+            true
+        ).verified,
+        "noisy motion cannot promote metric calibration"
     );
 
     frr::game::PlayerRoadNavigationProbe roadProbe{};

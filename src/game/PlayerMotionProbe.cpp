@@ -1,4 +1,5 @@
 #include "PlayerMotionProbe.h"
+#include "NfsPluginCoordinateAdapter.h"
 
 #include <windows.h>
 
@@ -13,10 +14,11 @@ namespace {
 
 template <typename V>
 MotionVectorProbe copyVector(const V& value) {
+    const auto canonical = canonicalMwVector(value);
     MotionVectorProbe out{};
-    out.x = value.x;
-    out.y = value.y;
-    out.z = value.z;
+    out.x = canonical.x;
+    out.y = canonical.y;
+    out.z = canonical.z;
     out.finite =
         std::isfinite(out.x) &&
         std::isfinite(out.y) &&

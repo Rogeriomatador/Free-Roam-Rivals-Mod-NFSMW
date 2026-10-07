@@ -10,13 +10,13 @@
 namespace frr::game {
 namespace {
 
-// NFSPluginSDK's MW05 UMath vectors expose logical x/y/z fields but their
-// physical memory order is y,z,x. CheckHitWorld receives UMath::Vector4 bytes,
-// so this raw ABI mirror must preserve that storage order exactly.
+// CheckHitWorld is an engine ABI call, not an NFSPluginSDK object access.
+// Reconstructed MW05 PC UMath::Vector4 is x,y,z,w. FRR inputs are already
+// canonical MW simulation coordinates at this boundary.
 struct RawVector4 {
+    float x;
     float y;
     float z;
-    float x;
     float w;
 };
 
@@ -41,9 +41,9 @@ struct RawWCollisionMgr {
 };
 
 static_assert(sizeof(RawVector4) == 0x10);
-static_assert(offsetof(RawVector4, y) == 0x00);
-static_assert(offsetof(RawVector4, z) == 0x04);
-static_assert(offsetof(RawVector4, x) == 0x08);
+static_assert(offsetof(RawVector4, x) == 0x00);
+static_assert(offsetof(RawVector4, y) == 0x04);
+static_assert(offsetof(RawVector4, z) == 0x08);
 static_assert(offsetof(RawVector4, w) == 0x0C);
 
 static_assert(

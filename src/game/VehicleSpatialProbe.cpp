@@ -1,4 +1,5 @@
 #include "VehicleSpatialProbe.h"
+#include "NfsPluginCoordinateAdapter.h"
 
 #include <windows.h>
 
@@ -17,20 +18,22 @@ constexpr std::uint32_t kVehicleCountHardLimit = 512u;
 frr::domain::SpatialVector3 copyVector(
     const NFSPluginSDK::MW05::UMath::Vector3& value
 ) {
+    const auto canonical = canonicalMwVector(value);
     return {
-        value.x,
-        value.y,
-        value.z
+        canonical.x,
+        canonical.y,
+        canonical.z
     };
 }
 
 bool finiteVector(
     const NFSPluginSDK::MW05::UMath::Vector3& value
 ) {
+    const auto canonical = canonicalMwVector(value);
     return
-        std::isfinite(value.x) &&
-        std::isfinite(value.y) &&
-        std::isfinite(value.z);
+        std::isfinite(canonical.x) &&
+        std::isfinite(canonical.y) &&
+        std::isfinite(canonical.z);
 }
 
 enum class SlotReadKind : std::uint8_t {
@@ -111,14 +114,17 @@ SlotReadResult readLiveVehicle(void* liveInterface) {
         rigidBody->GetForwardVector(forward);
         rigidBody->GetDimension(dimension);
 
+        const auto canonicalDimension =
+            canonicalMwVector(dimension);
+
         if (!finiteVector(position) ||
             !finiteVector(right) ||
             !finiteVector(up) ||
             !finiteVector(forward) ||
             !finiteVector(dimension) ||
-            dimension.x <= 0.0f ||
-            dimension.y <= 0.0f ||
-            dimension.z <= 0.0f) {
+            canonicalDimension.x <= 0.0f ||
+            canonicalDimension.y <= 0.0f ||
+            canonicalDimension.z <= 0.0f) {
             out.kind = SlotReadKind::Invalid;
             return out;
         }
@@ -131,7 +137,11 @@ SlotReadResult readLiveVehicle(void* liveInterface) {
                 copyVector(right),
                 copyVector(up),
                 copyVector(forward),
-                copyVector(dimension)
+                {
+                    canonicalDimension.x,
+                    canonicalDimension.y,
+                    canonicalDimension.z
+                }
             );
 
         out.kind = out.box.valid

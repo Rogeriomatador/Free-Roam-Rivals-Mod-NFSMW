@@ -11,7 +11,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.28-dev";
+constexpr const char* kVersion = "0.0.29-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -115,7 +115,7 @@ int bootstrap() {
     }
 
     log.info(
-        "v0.0.28-dev fixes the MW05 UMath collision ABI byte order and samples spatial occupancy from the verified live IVehicle list. Construction remains disabled pending target validation."
+        "v0.0.29-dev canonicalizes NFSPluginSDK vectors to MW X/Y-up/Z, repairs vertical collision/OBB semantics, and can promote a source-backed target metric scale. Construction remains disabled pending full candidate proof."
     );
 
     return NFSMW_OK;
@@ -125,7 +125,7 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.28-dev",
+    "0.0.29-dev",
     "Rogeriomatador"
 )
 

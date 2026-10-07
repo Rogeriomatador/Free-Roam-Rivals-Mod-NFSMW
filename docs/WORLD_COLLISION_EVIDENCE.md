@@ -170,3 +170,28 @@ The v0.0.27 capture also proved the call address and gameplay-thread ownership:
 queries completed without SEH failure and world-line occlusion could be
 interpreted, while every ground sample remained unverified. The next target run
 must confirm `ground=valid` before this evidence is promoted any further.
+
+
+## v0.0.29 coordinate correction
+
+The v0.0.28 target run confirmed that the live collision call can return a
+world-face hit, but the logged ground result had an implausible
+`groundDeltaWorld=6.288` and `grade=20.567`.
+
+A second source audit resolved the contradiction:
+
+- reconstructed MW05 PC `UMath::Vector3/Vector4` uses `x,y,z,(w)`, with Y
+  as the vertical axis;
+- the pinned NFSPluginSDK wrapper declares vector members in `y,z,x` order.
+
+Engine calls writing X/Y/Z bytes into an NFSPluginSDK vector therefore appear
+through those field names as `value.y/value.z/value.x`. v0.0.29 canonicalizes
+that wrapper representation immediately at every NFSPlugin probe boundary.
+Domain geometry is now always MW simulation X/Y-up/Z.
+
+The v0.0.28 raw collision shim happened to emit correct engine bytes because
+both the input domain vector and the raw mirror were permuted. v0.0.29 removes
+that double permutation: canonical domain X/Y/Z enters a conventional raw
+x/y/z/w engine vector. This preserves the successful byte-level call while
+making vertical ground queries, normals, OBB axes/extents and camera mapping
+semantically correct.

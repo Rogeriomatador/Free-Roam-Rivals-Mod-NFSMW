@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.0.29-dev
+
+- Confirm the v0.0.28 live-IVehicle spatial fix on target: safe Free Roam samples track the actual live vehicle count with zero failed spatial reads.
+- Correct the remaining coordinate semantic mismatch. NFSPluginSDK exposes MW vectors through y,z,x member declarations while reconstructed MW05 PC UMath uses x,y,z with Y vertical.
+- Canonicalize player motion, road navigation, live-vehicle positions/bases and rigid-body dimensions at the SDK boundary into MW X/Y-up/Z.
+- Restore the raw CheckHitWorld engine mirror to x,y,z,w. Vertical ground queries, grade normals, OBB axes/extents and the camera swizzle now share one simulation convention.
+- Add fail-closed world-metric promotion. Source-backed MW05 speed semantics establish GetAbsoluteSpeed as metres/second; target motion still needs at least 20 stable samples, <=2% CV and 0.98-1.02 cross-channel agreement.
+- Feed verified metric scale into road-candidate diagnostics and mutation-readiness reporting. Final spawn-candidate proof remains false.
+- Keep selected rival model proof strict: Rico's selected GTI footprint is not substituted with another learned model.
+- Construction, AI takeover, economy and garage writes remain disabled.
+
 ## 0.0.28-dev
 
 - Audited the all-diagnostics v0.0.27 target run: gameplay/render hooks remained healthy for more than five minutes, 24 fallback-key edges were captured, motion telemetry survived four Free Roam generations, and the game stayed fail-closed through transitions.

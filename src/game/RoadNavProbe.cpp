@@ -1,4 +1,5 @@
 #include "RoadNavProbe.h"
+#include "NfsPluginCoordinateAdapter.h"
 
 #include <windows.h>
 
@@ -42,10 +43,11 @@ bool isReadable(std::uintptr_t address, std::size_t size) {
 
 template <typename V>
 RoadVectorProbe copyVector(const V& value) {
+    const auto canonical = canonicalMwVector(value);
     RoadVectorProbe out{};
-    out.x = value.x;
-    out.y = value.y;
-    out.z = value.z;
+    out.x = canonical.x;
+    out.y = canonical.y;
+    out.z = canonical.z;
     out.finite =
         std::isfinite(out.x) &&
         std::isfinite(out.y) &&
