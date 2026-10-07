@@ -27,6 +27,7 @@ enum class RoadCandidateBlocker {
     MetricConversionFailed,
     StreamingUnverified,
     GroundUnverified,
+    GroundInvalid,
     VisibilityUnverified,
     VisibleToPlayer,
     OverlapUnverified,
