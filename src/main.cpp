@@ -79,6 +79,10 @@ int bootstrap() {
         config.stableFreeRoamSamplesBeforeSpawn;
     probeConfig.maxActiveRivals =
         config.maxActiveRivals;
+    probeConfig.useHornToChallenge =
+        config.useHornToChallenge;
+    probeConfig.fallbackChallengeVirtualKey =
+        config.fallbackChallengeVirtualKey;
     probeConfig.undergroundBlacklistEnabled =
         config.undergroundBlacklistEnabled;
     probeConfig.undergroundBlacklistPersistence =
