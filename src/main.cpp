@@ -11,7 +11,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.17-dev";
+constexpr const char* kVersion = "0.0.18-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -100,7 +100,7 @@ int bootstrap() {
     }
 
     log.info(
-        "v0.0.17-dev adds read-only player motion telemetry and statistical world-unit/speed-unit consistency observation. Metric calibration remains deliberately unverified until target-machine evidence proves the physical speed semantics."
+        "v0.0.18-dev adds a typed road-candidate promotion pipeline separating observed lookahead points from spawn/staging authorization. Exact WRoadNav geometry, verified metric scale and independent safety evidence remain mandatory before promotion."
     );
 
     return NFSMW_OK;
@@ -110,7 +110,7 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.17-dev",
+    "0.0.18-dev",
     "Rogeriomatador"
 )
 
