@@ -15,9 +15,10 @@ A normal free-roam session should be able to produce a story like this:
 5. Both cars stop side-by-side.
 6. A real-time cinematic introduces the rival and wager.
 7. The player chooses cash, reputation, or — when eligible — a pink-slip race.
-8. The race starts without loading or leaving free roam.
-9. Police may become involved and the race continues.
-10. The result persists. A rival who wins the player's car may later be seen driving it.
+8. The player confirms, both engines rev and the countdown runs.
+9. The race starts without loading or leaving free roam.
+10. Police may become involved and the race continues.
+11. The result persists. A rival who wins the player's car may later be seen driving it.
 
 The project is deliberately designed as a **world system**, not a collection of fixed races.
 
@@ -48,15 +49,28 @@ Support for additional 1.3 executables will be added only after their addresses/
 
 ## Current status
 
-**Pre-alpha / read-only runtime + population foundation (v0.0.7-dev).**
+**Pre-alpha / read-only runtime + executable gameplay-system foundations (v0.0.8-dev).**
 
-The ASI validates the supported executable, installs observation hooks, separates Free Roam from stock races, enumerates live IVehicle driver classes, independently cross-checks the player PVehicle, observes the road network, reads career cash/car-count/completion, and validates the configured rival-car catalog without mutating the game. The population layer now distinguishes authored persistent rivals, deterministic procedural locals with stable names/personality/vehicle identity, legendary condition-based rivals, and untouched vanilla traffic.
+The ASI validates the supported executable, installs observation hooks, separates Free Roam from stock races, enumerates live IVehicle driver classes, independently cross-checks the player PVehicle, observes the road network, reads career cash/car-count/completion, and validates the configured rival-car catalog without mutating the game.
 
-The first engineering milestone is intentionally narrow:
+The population layer distinguishes authored persistent rivals, deterministic procedural locals with stable names/personality/vehicle identity, legendary condition-based rivals, and untouched vanilla traffic.
 
-> Prove the complete Racer construction/AI/cleanup lifecycle, then spawn one native rival in Free Roam without save writes.
+v0.0.8 also turns several design contracts into tested code:
 
-Pink slips and save mutation come later, after the runtime foundation is proven stable.
+- world-generation tracking so live engine pointers cannot survive a world transition;
+- generation-scoped rival runtime handles with destroy-pending invalidation;
+- fail-closed spawn environment/candidate gates;
+- read-only experimental spawn preflight diagnostics;
+- Outrun result/lead/hold/timeout/abort logic;
+- staging candidate scoring for straight, wide, streamed, non-junction road sections;
+- cinematic staging state flow from search through release;
+- mandatory camera/control restoration directives on staging failure or completion.
+
+The next hard runtime milestone remains intentionally narrow:
+
+> Feed a verified road-safe/off-screen candidate into a dedicated gameplay-thread construction probe, prove create → AI → road navigation → cleanup, then allow one native rival to roam.
+
+The render callback remains observation-only. Pink slips and save mutation come later, after the runtime foundation is proven stable.
 
 ## Repository map
 
@@ -73,6 +87,7 @@ docs/
   RESEARCH_NOTES.md
   ENGINE_INTEGRATION_MAP.md
   SPAWN_AND_AI_PLAN.md
+  RUNTIME_SPAWN_CONTRACT.md
   PINK_SLIP_ENGINE_RESEARCH.md
   RIVAL_POPULATION_AND_VEHICLES.md
 .github/workflows/     CI build
@@ -125,5 +140,7 @@ This project is being built using public clean-room reverse-engineering/modding 
 - https://github.com/s-b-repo/nfsmw-2005-re
 - https://github.com/TsyVM/MWSDK
 - https://github.com/TsyVM/MWEncyclopedia
+- https://github.com/berkayylmao/NFSPluginSDK
+- https://github.com/berkayylmao/NFS-Chat-Chaos-Mod
 
 No EA game assets are stored in this repository.

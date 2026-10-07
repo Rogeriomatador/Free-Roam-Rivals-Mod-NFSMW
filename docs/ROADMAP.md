@@ -15,45 +15,54 @@ Exit criterion: loading the ASI does not alter gameplay and creates a diagnostic
 
 ## v0.1 — One living rival
 
-- [x] Detect free-roam gameplay state (runtime validation pending on v0.0.5 log)
-- [x] Resolve player IVehicle safely + independent PVehicle cross-check (runtime validation pending)
-- [x] Obtain read-only render/input observation callbacks (runtime validation pending)
-- [ ] Identify/spawn one rival vehicle
-- [ ] Keep stable rival handle/pointer validation
-- [ ] Rival roaming state
+- [x] Detect free-roam gameplay state (runtime validation still collected in logs)
+- [x] Resolve player IVehicle safely + independent PVehicle cross-check
+- [x] Obtain read-only render/input observation callbacks
+- [x] Define executable fail-closed spawn gates
+- [x] Track world generations and invalidate stale runtime handles
+- [x] Add generation-scoped rival runtime-handle model
+- [x] Add read-only spawn preflight diagnostics
+- [ ] Extract a verified road-safe/off-screen spawn candidate from the live road system
+- [ ] Install a dedicated gameplay-thread mutation callback
+- [ ] Construct/verify/clean up one experimental rival vehicle
+- [ ] Attach/verify native roaming AI
 - [x] Progression-aware vanilla vehicle catalog and deterministic selector
 - [x] Persistent-vs-procedural vehicle ownership policy
-- [ ] Interest distance check
-- [ ] ChallengeAvailable state
+- [x] Interest/challenge distance state machine (runtime adapter pending)
 - [ ] Detect horn or configured fallback input
-- [ ] Accept/decline timeout
-- [ ] No save writes
+- [ ] Wire accepted challenge into runtime encounter director
+- [x] No save writes
 
 Exit criterion: one rival can exist in free roam and naturally enter a challenge-ready state.
 
 ## v0.2 — Outrun
 
-- [ ] Implement Outrun race state
-- [ ] Determine lead/separation
-- [ ] Hold-distance win condition
-- [ ] Abort/recovery rules
-- [ ] Basic HUD
-- [ ] Race result
-- [ ] Rival cooldown
+- [x] Implement engine-independent Outrun race state
+- [x] Signed lead/separation model
+- [x] Hold-distance win condition
+- [x] Timeout/draw/abort recovery rules
+- [x] Race result model
+- [x] HUD-ready hold progress
+- [ ] Derive signed lead from live road progress
+- [ ] Basic D3D9 HUD
+- [ ] Wire result into rival cooldown/history
 
 Exit criterion: complete repeatable 1v1 Outrun without loading a stock race.
 
 ## v0.3 — Staging + cinematic
 
-- [x] Read road-network singleton (runtime validation pending)
-- [ ] Find safe staging segment
-- [ ] Reserve two poses
-- [ ] Rival approach
-- [ ] Temporary player control suppression
-- [ ] Alignment timeout + hidden snap fallback
-- [ ] Real-time intro camera
-- [ ] Countdown camera
-- [ ] Restore camera/input on every failure path
+- [x] Read road-network singleton
+- [x] Implement safe staging-candidate scoring/selection rules
+- [ ] Populate staging candidates from the live road network
+- [x] Implement Search -> Reserve -> Approach -> Align state flow
+- [ ] Rival approach runtime control
+- [ ] Temporary player control suppression bridge
+- [x] Alignment timeout + validated hidden-snap fallback request
+- [x] CameraIntro -> Negotiating -> Ready -> Countdown -> Release state flow
+- [ ] Real-time camera ownership/shot bridge
+- [ ] Wager UI bridge
+- [x] Mandatory restore-camera/input directives on completion/abort
+- [ ] Validate restoration in-game across every interruption
 
 Exit criterion: accepted challenge transitions into a polished side-by-side start.
 
@@ -72,9 +81,9 @@ Exit criterion: repeatable cash wagers that survive save/load without corruption
 ## v0.5 — Rival persistence
 
 - [x] Rival definitions (template schema)
-- [ ] Personalities
+- [x] Persistent personality bundle for procedural rivals
 - [ ] W/L history
-- [ ] Respect / grudge / fear
+- [ ] Respect / grudge / fear evolution
 - [x] Persistent rival garage model/schema
 - [ ] Rematches
 - [x] District preferences in vehicle selection model
@@ -83,8 +92,8 @@ Exit criterion: repeatable cash wagers that survive save/load without corruption
 ## v0.6 — Pink slip: player wins
 
 - [ ] Verify engine-backed award-car path on supported exe
-- [ ] Eligibility rules
-- [ ] Last-car rule for rival
+- [x] Domain eligibility rules
+- [x] Last-car rule for rival
 - [ ] Add wagered rival car safely
 - [ ] Verify garage after transaction
 - [ ] Remove car from rival virtual garage only after success
@@ -93,7 +102,7 @@ Exit criterion: repeatable cash wagers that survive save/load without corruption
 ## v0.7 — Full pink slip
 
 - [ ] Enumerate player-owned cars safely
-- [ ] Last-car protection
+- [x] Domain last-car protection
 - [ ] Identify exact wagered car record
 - [ ] Snapshot exact customization
 - [ ] Remove/transfer using verified engine path
@@ -111,7 +120,7 @@ Exit criterion: repeatable cash wagers that survive save/load without corruption
 - [ ] Rival upgrades / vehicle changes
 - [ ] Rival actively seeks rematch
 - [ ] Street value balancing
-- [ ] Mixed car + cash wagers
+- [x] Mixed car + cash stake feasibility logic
 
 ## v0.9 — Rockport systems
 

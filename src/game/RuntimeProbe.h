@@ -7,6 +7,10 @@ struct RuntimeProbeConfig {
     bool inputProbeEnabled = true;
     unsigned sampleEveryFrames = 30;
     unsigned heartbeatFrames = 600;
+
+    bool experimentalSpawnEnabled = false;
+    unsigned stableFreeRoamSamplesBeforeSpawn = 6;
+    int maxActiveRivals = 1;
 };
 
 struct RuntimeProbeInstallResult {

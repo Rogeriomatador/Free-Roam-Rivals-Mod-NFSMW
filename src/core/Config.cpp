@@ -3,6 +3,7 @@
 #include <windows.h>
 
 #include <algorithm>
+#include <cstdlib>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -29,15 +30,44 @@ std::filesystem::path executableDirectory() {
 
 int iniInt(
     const std::string& file,
+    const char* section,
     const char* key,
     int fallback
 ) {
     return GetPrivateProfileIntA(
-        "Diagnostics",
+        section,
         key,
         fallback,
         file.c_str()
     );
+}
+
+float iniFloat(
+    const std::string& file,
+    const char* section,
+    const char* key,
+    float fallback
+) {
+    char buffer[64]{};
+    const std::string fallbackText =
+        std::to_string(fallback);
+
+    GetPrivateProfileStringA(
+        section,
+        key,
+        fallbackText.c_str(),
+        buffer,
+        static_cast<DWORD>(sizeof(buffer)),
+        file.c_str()
+    );
+
+    char* end = nullptr;
+    const float value = std::strtof(buffer, &end);
+    if (end == buffer) {
+        return fallback;
+    }
+
+    return value;
 }
 
 } // namespace
@@ -54,15 +84,30 @@ Config Config::load() {
     const std::string ini = path.string();
 
     cfg.renderProbeEnabled =
-        iniInt(ini, "RenderProbeEnabled", 1) != 0;
+        iniInt(
+            ini,
+            "Diagnostics",
+            "RenderProbeEnabled",
+            1
+        ) != 0;
 
     cfg.inputProbeEnabled =
-        iniInt(ini, "InputProbeEnabled", 1) != 0;
+        iniInt(
+            ini,
+            "Diagnostics",
+            "InputProbeEnabled",
+            1
+        ) != 0;
 
     cfg.runtimeSampleEveryFrames =
         static_cast<unsigned>(
             std::clamp(
-                iniInt(ini, "RuntimeSampleEveryFrames", 30),
+                iniInt(
+                    ini,
+                    "Diagnostics",
+                    "RuntimeSampleEveryFrames",
+                    30
+                ),
                 1,
                 600
             )
@@ -71,11 +116,209 @@ Config Config::load() {
     cfg.runtimeProbeHeartbeatFrames =
         static_cast<unsigned>(
             std::clamp(
-                iniInt(ini, "RuntimeProbeHeartbeatFrames", 600),
+                iniInt(
+                    ini,
+                    "Diagnostics",
+                    "RuntimeProbeHeartbeatFrames",
+                    600
+                ),
                 60,
                 36000
             )
         );
+
+    cfg.experimentalSpawnEnabled =
+        iniInt(
+            ini,
+            "Experimental",
+            "ExperimentalSpawnEnabled",
+            0
+        ) != 0;
+
+    cfg.experimentalAIControlEnabled =
+        iniInt(
+            ini,
+            "Experimental",
+            "ExperimentalAIControlEnabled",
+            0
+        ) != 0;
+
+    cfg.stableFreeRoamSamplesBeforeSpawn =
+        static_cast<unsigned>(
+            std::clamp(
+                iniInt(
+                    ini,
+                    "Experimental",
+                    "StableFreeRoamSamplesBeforeSpawn",
+                    6
+                ),
+                1,
+                120
+            )
+        );
+
+    cfg.maxActiveRivals = std::clamp(
+        iniInt(ini, "Rivals", "MaxActiveRivals", 1),
+        0,
+        8
+    );
+
+    cfg.spawnMinDistanceMeters = std::clamp(
+        iniFloat(
+            ini,
+            "Rivals",
+            "SpawnMinDistanceMeters",
+            350.0f
+        ),
+        50.0f,
+        5000.0f
+    );
+
+    cfg.spawnMaxDistanceMeters = std::clamp(
+        iniFloat(
+            ini,
+            "Rivals",
+            "SpawnMaxDistanceMeters",
+            850.0f
+        ),
+        cfg.spawnMinDistanceMeters,
+        10000.0f
+    );
+
+    cfg.noSpawnVisibleRadiusMeters = std::clamp(
+        iniFloat(
+            ini,
+            "Rivals",
+            "NoSpawnVisibleRadiusMeters",
+            300.0f
+        ),
+        0.0f,
+        cfg.spawnMaxDistanceMeters
+    );
+
+    cfg.despawnDistanceMeters = std::clamp(
+        iniFloat(
+            ini,
+            "Rivals",
+            "DespawnDistanceMeters",
+            1400.0f
+        ),
+        cfg.spawnMaxDistanceMeters,
+        20000.0f
+    );
+
+    cfg.interestRadiusMeters = std::clamp(
+        iniFloat(
+            ini,
+            "Rivals",
+            "InterestRadiusMeters",
+            90.0f
+        ),
+        1.0f,
+        1000.0f
+    );
+
+    cfg.challengeRadiusMeters = std::clamp(
+        iniFloat(
+            ini,
+            "Rivals",
+            "ChallengeRadiusMeters",
+            20.0f
+        ),
+        1.0f,
+        cfg.interestRadiusMeters
+    );
+
+    cfg.challengeTimeoutSeconds = std::clamp(
+        iniFloat(
+            ini,
+            "Rivals",
+            "ChallengeTimeoutSeconds",
+            12.0f
+        ),
+        1.0f,
+        120.0f
+    );
+
+    cfg.outrunEnabled =
+        iniInt(ini, "Outrun", "Enabled", 0) != 0;
+
+    cfg.outrunWinLeadMeters = std::clamp(
+        iniFloat(
+            ini,
+            "Outrun",
+            "WinLeadMeters",
+            300.0f
+        ),
+        10.0f,
+        5000.0f
+    );
+
+    cfg.outrunLeadHoldSeconds = std::clamp(
+        iniFloat(
+            ini,
+            "Outrun",
+            "LeadHoldSeconds",
+            3.0f
+        ),
+        0.0f,
+        60.0f
+    );
+
+    cfg.outrunMaxDurationSeconds = std::clamp(
+        iniFloat(
+            ini,
+            "Outrun",
+            "MaxDurationSeconds",
+            300.0f
+        ),
+        10.0f,
+        3600.0f
+    );
+
+    cfg.stagingEnabled =
+        iniInt(ini, "Staging", "Enabled", 0) != 0;
+
+    cfg.stagingSearchAheadMeters = std::clamp(
+        iniFloat(
+            ini,
+            "Staging",
+            "SearchAheadMeters",
+            160.0f
+        ),
+        20.0f,
+        1000.0f
+    );
+
+    cfg.stagingApproachTimeoutSeconds = std::clamp(
+        iniFloat(
+            ini,
+            "Staging",
+            "ApproachTimeoutSeconds",
+            10.0f
+        ),
+        1.0f,
+        120.0f
+    );
+
+    cfg.stagingAlignmentTimeoutSeconds = std::clamp(
+        iniFloat(
+            ini,
+            "Staging",
+            "AlignmentTimeoutSeconds",
+            5.0f
+        ),
+        1.0f,
+        60.0f
+    );
+
+    cfg.stagingHiddenAlignmentFallback =
+        iniInt(
+            ini,
+            "Staging",
+            "AllowHiddenAlignmentFallback",
+            1
+        ) != 0;
 
     return cfg;
 }

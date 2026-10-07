@@ -3,6 +3,41 @@
 This document defines the exact safety contract that must be satisfied before
 Free Roam Rivals is allowed to create a live Racer in Rockport.
 
+## v0.0.8 implementation status
+
+The contract is now represented by executable domain code rather than
+documentation alone.
+
+Implemented and unit-tested:
+
+- safe Free Roam environment gate
+- supported-executable gate
+- loading/NIS/fade rejection
+- player availability + independent PVehicle cross-check
+- road-network availability
+- stable-sample window
+- population budget
+- vehicle/candidate/ground validity
+- overlap rejection
+- hidden/off-screen requirement
+- minimum-distance rule
+- long-distance streaming-proof rule
+- world-generation tracking
+- generation-scoped runtime rival handles
+
+The ASI can optionally log a **read-only spawn preflight** when
+`ExperimentalSpawnEnabled=1`. A READY preflight means only that the world
+environment is eligible for the next research step. It does **not** construct a
+car in v0.0.8.
+
+Still blocked before first mutation:
+
+1. obtain a live road-relative candidate with enough streaming/visibility proof;
+2. establish a dedicated gameplay-thread mutation callback;
+3. prove Construct -> registry -> AI -> road-nav -> cleanup as one lifecycle.
+
+The D3D9 EndScene callback remains observation-only.
+
 ## Engine chain
 
 Public MW05 research currently gives us this chain:
@@ -49,6 +84,7 @@ AND !fade
 AND valid Human IVehicle
 AND independent player PVehicle cross-check
 AND road network exists
+AND stable Free Roam sample window satisfied
 AND selected pvehicle key exists
 AND spawn point passes road/visibility validation
 AND current live rival count < population budget
@@ -79,9 +115,13 @@ Initial distance band remains conservative:
 > 850 m      only when road + streaming state are known valid
 ```
 
+The default INI is even more conservative and starts procedural creation at
+350 m.
+
 ## AI bootstrap
 
-The first experimental rival should use the engine's Racer driver path.
+The first experimental rival should use the engine's Racer driver path only
+after its full lifecycle can be observed and reversed safely.
 
 Do not manually inject steering/gas every frame as the default design.
 
@@ -96,6 +136,10 @@ Preferred order:
 7. Install/verify native Racer goal.
 8. Observe several seconds of native AI movement.
 9. Only then expose the object to EncounterDirector.
+
+If Racer construction proves to require stock-race state, the controlled S1
+probe may temporarily use Traffic only to validate physical construction and
+cleanup. That must not be presented as the final rival implementation.
 
 ## Roaming behavior
 
@@ -163,6 +207,10 @@ No live engine pointer survives a world transition.
 The mod stores stable mod-side rival IDs. Runtime PVehicle/IVehicle/IVehicleAI
 pointers are session handles only and must be reacquired/validated.
 
+v0.0.8 enforces this in the runtime-handle model with a monotonically
+increasing world generation. A handle from generation N is invalid in N+1 even
+if an address happens to be reused by the game.
+
 ## Experimental enablement
 
 The experimental spawn feature remains behind:
@@ -171,10 +219,11 @@ The experimental spawn feature remains behind:
 [Experimental]
 ExperimentalSpawnEnabled=0
 ExperimentalAIControlEnabled=0
+StableFreeRoamSamplesBeforeSpawn=6
 ```
 
-Even after code exists, default public builds keep those switches off until
-create/drive/cleanup tests pass.
+Even after mutation code exists, default public builds keep these switches off
+until create/drive/cleanup tests pass.
 
 ## Promotion criteria
 

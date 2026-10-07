@@ -1,5 +1,58 @@
 # Changelog
 
+## 0.0.8-dev
+
+- Added explicit world-generation tracking for Free Roam runtime sessions.
+  - leaving safe Free Roam invalidates the active session
+  - re-entering creates a new generation
+  - player/road-network identity changes also force a new generation
+- Added generation-scoped rival runtime handles.
+  - live IVehicle/PVehicle/AI addresses are session-only
+  - destroy-pending handles cannot be used
+  - invalidation clears all engine addresses
+- Turned the documented spawn contract into executable fail-closed rules.
+  - supported executable
+  - stable Free Roam observation window
+  - player + independent PVehicle cross-check
+  - road-network availability
+  - population budget
+  - vehicle/candidate/ground validity
+  - overlap rejection
+  - hidden/off-screen requirement
+  - distance and streaming proof
+- Added read-only experimental spawn preflight logging.
+  - no vehicle is constructed from D3D9 EndScene
+  - enabling the switch only proves environment readiness in this build
+- Added a pure Outrun race core with:
+  - signed lead tracking
+  - player/rival leader reporting
+  - held-distance victory
+  - timeout resolution
+  - draw and abort paths
+  - HUD-ready hold progress
+- Added a staging candidate scorer/selector that rejects:
+  - junctions
+  - unstreamed/invalid road
+  - obstructions
+  - insufficient width
+  - excessive curvature/grade
+  - invalid ground/two-car geometry
+- Added the cinematic staging state machine:
+  - Search
+  - Reserve
+  - Approach
+  - Align
+  - CameraIntro
+  - Negotiating
+  - Ready
+  - Countdown
+  - Release
+  - Completed/Aborted
+- Added safe hidden-alignment fallback requests and mandatory camera/input restoration directives.
+- Expanded INI parsing for rival, experimental, Outrun and staging settings.
+- Added a second automated systems test suite.
+- Runtime vehicle construction, AI mutation, economy writes, garage writes and pink-slip transfers remain disabled until their engine lifecycle is verified.
+
 ## 0.0.7-dev
 
 - Added deterministic procedural rival identity generation.
