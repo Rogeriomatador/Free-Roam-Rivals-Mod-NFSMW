@@ -5,6 +5,17 @@
 namespace frr::game {
 namespace {
 
+frr::domain::RoadCandidateVector3 copyCandidateVector(
+    const RoadVectorProbe& value
+) {
+    frr::domain::RoadCandidateVector3 out{};
+    out.x = value.x;
+    out.y = value.y;
+    out.z = value.z;
+    out.finite = value.finite;
+    return out;
+}
+
 float distance(
     const RoadVectorProbe& a,
     const RoadVectorProbe& b
@@ -102,6 +113,10 @@ frr::domain::RoadCandidateObservation fromRoad(
         road.segmentSpanWorldUnits;
     out.absoluteCurvature =
         std::abs(road.curvature);
+    out.position =
+        copyCandidateVector(road.position);
+    out.forward =
+        copyCandidateVector(road.forward);
     return out;
 }
 
@@ -109,6 +124,7 @@ frr::domain::RoadCandidateObservation fromLookahead(
     frr::domain::RoadCandidateSource source,
     const PlayerRoadNavigationProbe& navigation,
     const RoadVectorProbe& position,
+    const RoadVectorProbe* explicitForward,
     float distanceWorldUnits,
     float projectionWorldUnits
 ) {
@@ -141,6 +157,17 @@ frr::domain::RoadCandidateObservation fromLookahead(
             geometry->segmentSpanWorldUnits;
         out.absoluteCurvature =
             std::abs(geometry->curvature);
+    }
+
+    out.position =
+        copyCandidateVector(position);
+
+    if (explicitForward && explicitForward->finite) {
+        out.forward =
+            copyCandidateVector(*explicitForward);
+    } else if (geometry) {
+        out.forward =
+            copyCandidateVector(geometry->forward);
     }
 
     // The AI exposes these positions, but no verified API currently tells us
@@ -195,6 +222,7 @@ RoadCandidateProbe::build(
                 RoadCandidateSource::SeekAhead,
                 roadNavigation,
                 roadNavigation.seekAheadPosition,
+                nullptr,
                 roadNavigation.seekAheadDistanceWorldUnits,
                 roadNavigation.seekAheadProjectionWorldUnits
             )
@@ -207,6 +235,7 @@ RoadCandidateProbe::build(
                 RoadCandidateSource::FarFuture,
                 roadNavigation,
                 roadNavigation.farFuturePosition,
+                &roadNavigation.farFutureDirection,
                 roadNavigation.farFutureDistanceWorldUnits,
                 roadNavigation.farFutureProjectionWorldUnits
             )
