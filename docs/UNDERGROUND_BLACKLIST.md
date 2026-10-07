@@ -216,3 +216,30 @@ progress.
 The remaining integration step is event-driven mutation: sighting a target,
 winning qualifier races and defeating a rank must update the in-memory record
 and then commit the new JSON atomically.
+
+
+## Progress-event contract
+
+v0.0.12 makes progression changes explicit rather than allowing callers to
+edit counters/masks directly.
+
+Supported events:
+
+- Street Rep earned
+- qualifier win
+- pink-slip win
+- current target sighted
+- current target defeated
+
+Target-specific events are rank-ordered. A future rank cannot be discovered or
+defeated before it becomes the current target. Sighting and defeat also require
+that rank's requirements to be satisfied, and defeat additionally requires the
+rival to have been discovered first.
+
+Accepted events can be sent through the persistence layer's
+`applyAndSave` operation. The operation applies domain validation first and
+writes the updated mod JSON atomically only when the event is accepted.
+Rejected events never write.
+
+This gives future race/encounter adapters one narrow path for Blacklist state
+mutation instead of scattering counter/mask edits across runtime code.
