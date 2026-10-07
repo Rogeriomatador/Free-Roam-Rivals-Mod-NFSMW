@@ -36,6 +36,12 @@ PluginBootstrap
         +-- StakeManager
         +-- PinkSlipManager [later]
   |
+  +-- UndergroundBlacklist
+        +-- RankedProgression
+        +-- DiscoveryState
+        +-- BlacklistScreenViewModel
+        +-- RankedTargetScheduler
+  |
   +-- SafetyManager
         +-- Transaction
         +-- Snapshot
@@ -242,3 +248,33 @@ If the executable is unsupported:
 - no gameplay hooks are installed
 - no save/economy operation is permitted
 - user receives a clear diagnostic
+
+
+## Underground Blacklist boundary
+
+`UndergroundBlacklist` owns rank/progression truth only.
+
+It never owns live engine pointers and never directly manipulates frontend
+assets.
+
+Inputs:
+
+- vanilla career-completed flag from GameBridge
+- mod Street Rep
+- current-rank qualifier wins
+- persistent defeated/discovered masks
+- ephemeral current-target presence from Encounter/World systems
+
+Outputs:
+
+- current rank
+- state of every rank
+- current-target spawn eligibility
+- current-target challenge eligibility
+- remaining requirements
+- whether identity should be revealed
+
+The eventual `FrontendBridge` consumes the snapshot and projects it into
+`FRR_UndergroundBlacklist.fng`.
+
+If frontend loading fails, ranked progression remains valid.
