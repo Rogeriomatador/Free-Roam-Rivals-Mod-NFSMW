@@ -107,6 +107,14 @@ Config Config::load() {
             1
         ) != 0;
 
+    cfg.frameTickProbeEnabled =
+        iniInt(
+            ini,
+            "Diagnostics",
+            "FrameTickProbeEnabled",
+            0
+        ) != 0;
+
     cfg.runtimeSampleEveryFrames =
         static_cast<unsigned>(
             std::clamp(
