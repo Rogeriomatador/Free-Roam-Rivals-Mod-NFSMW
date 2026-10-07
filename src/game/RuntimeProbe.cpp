@@ -12,6 +12,8 @@
 #include "../domain/RuntimeSession.h"
 #include "../domain/SpawnSafety.h"
 #include "../domain/UndergroundBlacklist.h"
+#include "../domain/VehicleFootprintLearning.h"
+#include "../domain/VehicleSelection.h"
 #include "../domain/VehicleSpatialEvidence.h"
 #include "../persistence/UndergroundBlacklistStore.h"
 
@@ -28,6 +30,7 @@
 #include <iomanip>
 #include <sstream>
 #include <string>
+#include <string_view>
 
 namespace frr::game {
 namespace {
@@ -50,6 +53,10 @@ std::atomic<bool> g_safeFreeRoamObserved{false};
 std::atomic<bool> g_roadLookaheadObserved{false};
 std::atomic<bool> g_exactRoadCandidateObserved{false};
 std::atomic<bool> g_vehicleSpatialEvidenceObserved{false};
+std::atomic<bool> g_vehicleFootprintVerified{false};
+std::atomic<std::uint32_t> g_verifiedFootprintVehicleKey{0};
+
+frr::domain::VehicleFootprintLearner g_vehicleFootprintLearner{};
 
 bool g_vehicleCatalogValidated = false;
 
@@ -75,6 +82,33 @@ bool g_loggedStableMotionScale = false;
 bool g_haveSpawnPreflight = false;
 frr::domain::SpawnRejectReason g_lastSpawnPreflightReason =
     frr::domain::SpawnRejectReason::ExperimentalFeatureDisabled;
+
+std::uint32_t findFirstVerifiedCatalogFootprintKey() {
+    const auto& catalog =
+        frr::domain::defaultVehicleCatalog();
+
+    for (const auto& definition : catalog) {
+        const auto runtimeKey =
+            VehicleCatalogProbe::runtimeKeyForName(
+                definition.key
+            );
+
+        if (!runtimeKey) {
+            continue;
+        }
+
+        const auto estimate =
+            g_vehicleFootprintLearner.estimate(
+                *runtimeKey
+            );
+
+        if (estimate.verified) {
+            return *runtimeKey;
+        }
+    }
+
+    return 0;
+}
 
 bool sameMeaningfulState(
     const RuntimeSnapshot& a,
@@ -669,6 +703,53 @@ void sampleAndLog(
         );
     }
 
+    for (const auto& box : vehicleSpatial.boxes) {
+        if (box.valid) {
+            g_vehicleFootprintLearner.observe(box);
+        }
+    }
+
+    if (g_verifiedFootprintVehicleKey.load(
+            std::memory_order_relaxed) == 0 &&
+        g_vehicleFootprintLearner.verifiedModelCount() > 0) {
+        const std::uint32_t verifiedCatalogKey =
+            findFirstVerifiedCatalogFootprintKey();
+
+        if (verifiedCatalogKey != 0) {
+            g_verifiedFootprintVehicleKey.store(
+                verifiedCatalogKey,
+                std::memory_order_relaxed
+            );
+            g_vehicleFootprintVerified.store(
+                true,
+                std::memory_order_relaxed
+            );
+
+            const auto estimate =
+                g_vehicleFootprintLearner.estimate(
+                    verifiedCatalogKey
+                );
+
+            std::ostringstream line;
+            line << "Verified pre-construction vehicle footprint:"
+                 << " vehicleKey=0x"
+                 << std::hex << std::uppercase
+                 << verifiedCatalogKey
+                 << std::dec
+                 << " samples="
+                 << estimate.sampleCount
+                 << " halfExtentsWorld=("
+                 << std::fixed << std::setprecision(3)
+                 << estimate.meanHalfExtents.x << ","
+                 << estimate.meanHalfExtents.y << ","
+                 << estimate.meanHalfExtents.z << ")"
+                 << " maxRelativeSpread="
+                 << estimate.maximumObservedRelativeSpread;
+
+            Log::instance().info(line.str());
+        }
+    }
+
     bool exactRoadCandidateThisSample = false;
     for (const auto& candidate : roadCandidates) {
         if (frr::domain::inspectRoadCandidate(candidate) ==
@@ -761,7 +842,16 @@ void sampleAndLog(
                     .halfExtentSemanticsResearchBacked
                  ? 1
                  : 0)
-             << " footprintOverlapPromotion=0";
+             << " learnedModels="
+             << g_vehicleFootprintLearner.modelCount()
+             << " verifiedLearnedModels="
+             << g_vehicleFootprintLearner.verifiedModelCount()
+             << " catalogFootprintKey=0x"
+             << std::hex << std::uppercase
+             << g_verifiedFootprintVehicleKey.load(
+                    std::memory_order_relaxed
+                )
+             << std::dec;
 
         Log::instance().info(line.str());
     }
@@ -822,6 +912,65 @@ void sampleAndLog(
                     line << ",nearestVehicleGapWorld="
                          << occupancy
                                 .nearestSeparationWorldUnits;
+                }
+
+                const std::uint32_t footprintKey =
+                    g_verifiedFootprintVehicleKey.load(
+                        std::memory_order_relaxed
+                    );
+
+                if (footprintKey != 0 &&
+                    candidate.forward.finite) {
+                    const auto footprintEstimate =
+                        g_vehicleFootprintLearner.estimate(
+                            footprintKey
+                        );
+
+                    if (footprintEstimate.verified) {
+                        const auto candidateFootprint =
+                            frr::domain::
+                                makeRoadAlignedVehicleFootprint(
+                                    footprintKey,
+                                    {
+                                        candidate.position.x,
+                                        candidate.position.y,
+                                        candidate.position.z
+                                    },
+                                    {
+                                        candidate.forward.x,
+                                        candidate.forward.y,
+                                        candidate.forward.z
+                                    },
+                                    footprintEstimate
+                                        .meanHalfExtents
+                                );
+
+                        const auto footprintOverlap =
+                            frr::domain::
+                                evaluateFootprintAgainstFleet(
+                                    candidateFootprint,
+                                    vehicleSpatial.boxes,
+                                    vehicleSpatial
+                                        .registryComplete
+                                );
+
+                        line << ",footprintKey=0x"
+                             << std::hex << std::uppercase
+                             << footprintKey
+                             << std::dec
+                             << ",preconstructionOverlap="
+                             << (footprintOverlap.verified
+                                 ? (footprintOverlap.overlaps
+                                    ? "occupied"
+                                    : "clear")
+                                 : "unverified")
+                             << ",footprintFleetChecked="
+                             << footprintOverlap
+                                    .checkedVehicles
+                             << ",footprintFleetInvalid="
+                             << footprintOverlap
+                                    .invalidVehicles;
+                    }
                 }
             }
 
@@ -969,6 +1118,10 @@ DWORD WINAPI healthThread(LPVOID) {
         g_vehicleSpatialEvidenceObserved.load(
             std::memory_order_relaxed
         );
+    readiness.vehicleFootprintVerified =
+        g_vehicleFootprintVerified.load(
+            std::memory_order_relaxed
+        );
 
     // Intentionally false until target-machine calibration/candidate
     // promotion work completes. This keeps construction fail-closed.
@@ -1000,6 +1153,14 @@ DWORD WINAPI healthThread(LPVOID) {
              << (readiness.exactRoadCandidateObserved ? 1 : 0)
              << " vehicleSpatialEvidenceObserved="
              << (readiness.vehicleSpatialEvidenceObserved ? 1 : 0)
+             << " vehicleFootprintVerified="
+             << (readiness.vehicleFootprintVerified ? 1 : 0)
+             << " verifiedFootprintVehicleKey=0x"
+             << std::hex << std::uppercase
+             << g_verifiedFootprintVehicleKey.load(
+                    std::memory_order_relaxed
+                )
+             << std::dec
              << " metricCalibrationVerified=0"
              << " spawnCandidateVerified=0";
 
