@@ -154,6 +154,8 @@ VehicleSpatialSnapshot VehicleSpatialProbe::sample() {
     VehicleSpatialSnapshot out{};
     out.boxes.reserve(32);
 
+    bool registryFault = false;
+
     for (std::uint32_t index = 0;
          index < kVehicleCountHardLimit;
          ++index) {
@@ -162,7 +164,7 @@ VehicleSpatialSnapshot VehicleSpatialProbe::sample() {
 
         if (slot.kind == SlotReadKind::End) {
             out.registryCount = index;
-            out.registryComplete = true;
+            out.registryComplete = !registryFault;
             break;
         }
 
@@ -184,6 +186,7 @@ VehicleSpatialSnapshot VehicleSpatialProbe::sample() {
         if (slot.kind == SlotReadKind::Fault) {
             // A fault means even the registry slot itself cannot be trusted.
             // Keep scanning bounded, but never call the fleet complete.
+            registryFault = true;
             out.registryComplete = false;
         }
     }
