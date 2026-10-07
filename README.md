@@ -50,7 +50,7 @@ Support for additional 1.3 executables will be added only after their addresses/
 
 ## Current status
 
-**Pre-alpha / read-only runtime + live vehicle spatial evidence + road/motion/readiness foundations (v0.0.19-dev).**
+**Pre-alpha / read-only runtime + learned pre-construction vehicle footprints + road/motion/readiness foundations (v0.0.20-dev).**
 
 The ASI validates the supported executable, installs observation hooks, separates Free Roam from stock races, enumerates live IVehicle driver classes, independently cross-checks the player PVehicle, observes the road network, reads career cash/car-count/completion, and validates the configured rival-car catalog without mutating the game.
 
@@ -76,6 +76,8 @@ v0.0.17 adds read-only player-motion cross-checks for `GetSpeed`, `GetSpeedomete
 v0.0.18 adds a typed road-candidate pipeline. `CurrentRoad`, `FutureRoad`, `SeekAhead` and `FarFuture` are represented as different evidence sources instead of interchangeable coordinates. Only a point carrying exact WRoadNav geometry can progress toward spawn/staging, and promotion still requires verified metric conversion plus independent streaming, ground and overlap evidence. Spawn additionally requires verified off-screen visibility; staging deliberately does not, because both cars can drive toward a visible cinematic site.
 
 v0.0.19 adds read-only spatial evidence for the live PVehicle registry. Active vehicles are represented as oriented boxes from their rigid-body position, basis vectors and dimensions. Pure-domain SAT tests can verify OBB-vs-OBB overlap when both footprints are known, while runtime road-candidate diagnostics already report whether a candidate point lies inside any live vehicle and the nearest vehicle-box separation. The final `overlapVerified` spawn gate remains fail-closed until the selected rival's own collision footprint can be obtained before construction.
+
+v0.0.20 closes that specific footprint gap without calling an unverified collision-geometry lookup. Live cars now carry their stable `IVehicle::GetVehicleKey()`. Repeated consistent rigid-body dimension samples are learned per model; configured catalog names are resolved to the same pvehicle keys. Once a catalog model has a verified footprint, the runtime can build a road-aligned pre-construction OBB for that model and test the full box against every live vehicle before construction.
 
 v0.0.9 also adds a tested, independent **Underground Blacklist** domain that unlocks after the vanilla career is completed. It is not a relabel of the original Blacklist: the mod tracks its own ranks, discovery state, qualification requirements, world-hunt eligibility and future portrait/audio asset keys.
 
