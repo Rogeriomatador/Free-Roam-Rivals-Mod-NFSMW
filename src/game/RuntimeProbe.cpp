@@ -5,6 +5,7 @@
 #include "../core/Log.h"
 #include "../domain/RuntimeSession.h"
 #include "../domain/SpawnSafety.h"
+#include "../domain/UndergroundBlacklist.h"
 
 #include <nfsmw_sdk/d3d9_hooks.h>
 #include <nfsmw_sdk/input.h>
@@ -28,6 +29,10 @@ std::atomic<std::uint64_t> g_renderFrames{0};
 std::atomic<std::uint64_t> g_inputPolls{0};
 std::atomic<std::uint64_t> g_samples{0};
 bool g_vehicleCatalogValidated = false;
+bool g_haveBlacklistDiagnostic = false;
+bool g_lastBlacklistUnlocked = false;
+bool g_lastBlacklistCompleted = false;
+int g_lastBlacklistRank = -1;
 
 frr::domain::RuntimeSessionTracker g_runtimeSession{};
 bool g_haveSpawnPreflight = false;
@@ -225,6 +230,47 @@ void updateRuntimeSessionAndSpawnPreflight(
     }
 }
 
+void updateUndergroundBlacklistDiagnostic(
+    const RuntimeSnapshot& current
+) {
+    if (!current.career.available) {
+        return;
+    }
+
+    frr::domain::UndergroundBlacklistProgress progress{};
+    progress.careerCompleted =
+        current.career.careerCompletedAtLeastOnce;
+
+    const auto snapshot =
+        frr::domain::evaluateUndergroundBlacklist(progress);
+
+    const bool changed =
+        !g_haveBlacklistDiagnostic ||
+        snapshot.unlocked != g_lastBlacklistUnlocked ||
+        snapshot.completed != g_lastBlacklistCompleted ||
+        snapshot.currentRank != g_lastBlacklistRank;
+
+    if (!changed) {
+        return;
+    }
+
+    std::ostringstream line;
+    line << "Underground Blacklist diagnostic: "
+         << "unlocked=" << (snapshot.unlocked ? 1 : 0)
+         << " completed=" << (snapshot.completed ? 1 : 0)
+         << " currentRank=" << snapshot.currentRank
+         << " targetSpawnEligible="
+         << (snapshot.currentTargetSpawnEligible ? 1 : 0)
+         << ". Progress is read-only in this build.";
+
+    Log::instance().info(line.str());
+
+    g_haveBlacklistDiagnostic = true;
+    g_lastBlacklistUnlocked = snapshot.unlocked;
+    g_lastBlacklistCompleted = snapshot.completed;
+    g_lastBlacklistRank = snapshot.currentRank;
+}
+
 void sampleAndLog(
     std::uint64_t renderFrame
 ) {
@@ -232,6 +278,7 @@ void sampleAndLog(
     ++g_samples;
 
     updateRuntimeSessionAndSpawnPreflight(current);
+    updateUndergroundBlacklistDiagnostic(current);
 
     if (!g_vehicleCatalogValidated &&
         current.mode == WorldProbeMode::FreeRoamCandidate &&
