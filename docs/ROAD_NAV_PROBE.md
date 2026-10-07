@@ -158,3 +158,43 @@ It does not:
 - change the garage/save
 
 The GameFrameTick probe remains separately opt-in and read-only.
+
+
+## v0.0.18 typed promotion boundary
+
+Road telemetry no longer flows directly into spawn/staging structures.
+
+The adapter emits four typed observation sources:
+
+```text
+CurrentRoad
+FutureRoad
+SeekAhead
+FarFuture
+```
+
+CurrentRoad and FutureRoad can carry `exactRoadGeometry=true` because their
+position and segment/lane/width/curvature come from the same WRoadNav object.
+
+SeekAhead and FarFuture remain useful navigation evidence, but their positions
+are returned independently by IVehicleAI. Until a verified query proves the
+exact WRoadNav that owns those positions, they remain blocked by
+`RoadGeometryAssociationUnverified`.
+
+Promotion is deliberately staged:
+
+```text
+RoadCandidateObservation
+ -> exact road inspection
+ -> WorldMetricCalibration
+ -> independent runtime evidence
+ -> SpawnCandidateInput / StagingCandidate
+ -> existing safety/scoring rules
+```
+
+Spawn additionally requires verified off-screen visibility to prevent visible
+pop-in. Staging does not require invisibility because both cars may naturally
+drive toward a visible start site.
+
+Runtime heartbeats can list each observed source with its current blocker,
+segment/lane, world-unit distance and forward projection.
