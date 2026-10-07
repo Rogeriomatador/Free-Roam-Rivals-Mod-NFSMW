@@ -42,6 +42,44 @@ int iniInt(
     );
 }
 
+unsigned iniUnsigned(
+    const std::string& file,
+    const char* section,
+    const char* key,
+    unsigned fallback
+) {
+    char buffer[64]{};
+    const std::string fallbackText =
+        std::to_string(fallback);
+
+    GetPrivateProfileStringA(
+        section,
+        key,
+        fallbackText.c_str(),
+        buffer,
+        static_cast<DWORD>(sizeof(buffer)),
+        file.c_str()
+    );
+
+    char* end = nullptr;
+    const unsigned long value =
+        std::strtoul(buffer, &end, 0);
+
+    if (end == buffer) {
+        return fallback;
+    }
+
+    while (*end == ' ' || *end == '\t') {
+        ++end;
+    }
+
+    if (*end != '\0') {
+        return fallback;
+    }
+
+    return static_cast<unsigned>(value);
+}
+
 float iniFloat(
     const std::string& file,
     const char* section,
@@ -255,6 +293,26 @@ Config Config::load() {
         1.0f,
         120.0f
     );
+
+    cfg.useHornToChallenge =
+        iniInt(
+            ini,
+            "Input",
+            "UseHornToChallenge",
+            1
+        ) != 0;
+
+    cfg.fallbackChallengeVirtualKey =
+        std::clamp(
+            iniUnsigned(
+                ini,
+                "Input",
+                "FallbackChallengeKey",
+                0x47u
+            ),
+            0u,
+            0xFEu
+        );
 
     cfg.outrunEnabled =
         iniInt(ini, "Outrun", "Enabled", 0) != 0;
