@@ -13,6 +13,7 @@
 #include <sstream>
 #include <string>
 #include <system_error>
+#include <utility>
 #include <vector>
 
 namespace frr::persistence {
@@ -25,7 +26,7 @@ std::optional<std::uint64_t> readUnsignedField(
     std::string_view key
 ) {
     const std::string quotedKey =
-        std::string(""") + std::string(key) + """;
+        std::string("\"") + std::string(key) + "\"";
 
     const std::size_t keyPos = json.find(quotedKey);
     if (keyPos == std::string_view::npos) {
@@ -246,7 +247,8 @@ UndergroundBlacklistStore::load(
 
     std::ifstream input(path, std::ios::binary);
     if (!input) {
-        result.error = "Could not open persistence file for reading.";
+        result.error =
+            "Could not open persistence file for reading.";
         return result;
     }
 
@@ -254,7 +256,8 @@ UndergroundBlacklistStore::load(
     buffer << input.rdbuf();
 
     if (!input.good() && !input.eof()) {
-        result.error = "Could not read persistence file.";
+        result.error =
+            "Could not read persistence file.";
         return result;
     }
 
