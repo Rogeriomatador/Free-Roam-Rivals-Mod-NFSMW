@@ -17,6 +17,12 @@ struct UndergroundBlacklistLoadResult {
     std::string error;
 };
 
+struct UndergroundBlacklistCommitResult {
+    frr::domain::UndergroundProgressUpdate update{};
+    bool persisted = false;
+    std::string error;
+};
+
 std::string serializeUndergroundBlacklistProgress(
     const frr::domain::UndergroundBlacklistProgress& progress
 );
@@ -46,6 +52,12 @@ public:
         std::uint64_t profileKey,
         const frr::domain::UndergroundBlacklistProgress& progress,
         std::string* error = nullptr
+    ) const;
+
+    UndergroundBlacklistCommitResult applyAndSave(
+        std::uint64_t profileKey,
+        const frr::domain::UndergroundBlacklistProgress& progress,
+        const frr::domain::UndergroundProgressEvent& event
     ) const;
 
 private:
