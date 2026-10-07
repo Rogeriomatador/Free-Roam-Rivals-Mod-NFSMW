@@ -406,6 +406,24 @@ int main() {
         "promoted road candidate passes existing spawn safety thresholds"
     );
 
+    roadEvidence.visibleToPlayer = true;
+    roadSpawn =
+        promoteRoadCandidateForSpawn(
+            futureObservation,
+            roadEvidence,
+            verifiedScale,
+            true
+        );
+
+    require(
+        !roadSpawn.promotable &&
+        roadSpawn.blocker ==
+            RoadCandidateBlocker::VisibleToPlayer,
+        "spawn promotion blocks a fully evidenced point that is on-screen"
+    );
+
+    // A staging destination may be visible because both cars can drive to it;
+    // hidden/off-screen is a spawn pop-in rule, not a cinematic-site rule.
     roadEvidence.junctionVerified = true;
     roadEvidence.junction = false;
     roadEvidence.obstructionVerified = true;
@@ -428,7 +446,7 @@ int main() {
         scoreStagingCandidate(
             roadStaging.candidate
         ).eligible,
-        "fully evidenced road candidate can enter existing staging scorer"
+        "visible but otherwise safe road candidate can enter staging scorer"
     );
 
     RuntimeSessionTracker sessions;
