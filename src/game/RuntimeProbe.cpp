@@ -3,6 +3,7 @@
 #include "ChallengeInputProbe.h"
 #include "GameBridge.h"
 #include "RoadCandidateProbe.h"
+#include "RenderVisibilityProbe.h"
 #include "VehicleCatalogProbe.h"
 #include "VehicleSpatialProbe.h"
 #include "WorldCollisionProbe.h"
@@ -10,6 +11,7 @@
 #include "../domain/MotionScaleObserver.h"
 #include "../domain/MutationReadiness.h"
 #include "../domain/RoadCandidatePlanner.h"
+#include "../domain/RenderVisibilityEvidence.h"
 #include "../domain/RuntimeSession.h"
 #include "../domain/SpawnSafety.h"
 #include "../domain/UndergroundBlacklist.h"
@@ -59,9 +61,11 @@ std::atomic<bool> g_vehicleSpatialEvidenceObserved{false};
 std::atomic<bool> g_vehicleFootprintVerified{false};
 std::atomic<bool> g_groundEvidenceObserved{false};
 std::atomic<bool> g_worldOcclusionEvidenceObserved{false};
+std::atomic<bool> g_renderVisibilityEvidenceObserved{false};
 std::atomic<std::uint32_t> g_verifiedFootprintVehicleKey{0};
 
 frr::domain::VehicleFootprintLearner g_vehicleFootprintLearner{};
+frr::domain::RenderCameraVerifier g_renderCameraVerifier{};
 
 struct WorldCollisionRequest {
     bool pending = false;
@@ -808,8 +812,14 @@ void updateUndergroundBlacklistDiagnostic(
 }
 
 void sampleAndLog(
-    std::uint64_t renderFrame
+    std::uint64_t renderFrame,
+    void* rawD3D9Device
 ) {
+    const auto renderSnapshot =
+        RenderVisibilityProbe::capture(
+            rawD3D9Device
+        );
+
     const RuntimeSnapshot current = GameBridge::sample();
     ++g_samples;
 
@@ -890,12 +900,35 @@ void sampleAndLog(
         g_loggedStableMotionScale = true;
     }
 
-    if (current.mode == WorldProbeMode::FreeRoamCandidate &&
-        current.capabilities.canClassifyFreeRoam) {
+    const bool safeFreeRoam =
+        current.mode == WorldProbeMode::FreeRoamCandidate &&
+        current.capabilities.canClassifyFreeRoam;
+
+    if (safeFreeRoam) {
         g_safeFreeRoamObserved.store(
             true,
             std::memory_order_relaxed
         );
+    }
+
+    frr::domain::RenderCameraVerification
+        renderCameraVerification{};
+
+    if (safeFreeRoam &&
+        current.playerMotion.position.finite) {
+        renderCameraVerification =
+            g_renderCameraVerifier.push(
+                renderSnapshot,
+                {
+                    current.playerMotion.position.x,
+                    current.playerMotion.position.y,
+                    current.playerMotion.position.z
+                }
+            );
+    } else {
+        g_renderCameraVerifier.reset();
+        renderCameraVerification =
+            g_renderCameraVerifier.state();
     }
 
     const auto roadCandidates =
@@ -973,12 +1006,78 @@ void sampleAndLog(
     }
 
     bool exactRoadCandidateThisSample = false;
+    const frr::domain::RoadCandidateObservation*
+        firstExactRoadCandidate = nullptr;
+
     for (const auto& candidate : roadCandidates) {
         if (frr::domain::inspectRoadCandidate(candidate) ==
             frr::domain::RoadCandidateBlocker::None) {
             exactRoadCandidateThisSample = true;
-            break;
+            if (!firstExactRoadCandidate) {
+                firstExactRoadCandidate = &candidate;
+            }
         }
+    }
+
+    frr::domain::FrustumVisibilityEvidence
+        renderVisibility{};
+
+    if (firstExactRoadCandidate &&
+        firstExactRoadCandidate->position.finite &&
+        firstExactRoadCandidate->forward.finite &&
+        renderCameraVerification.verified) {
+        const std::uint32_t footprintKey =
+            g_verifiedFootprintVehicleKey.load(
+                std::memory_order_relaxed
+            );
+
+        if (footprintKey != 0) {
+            const auto footprintEstimate =
+                g_vehicleFootprintLearner.estimate(
+                    footprintKey
+                );
+
+            if (footprintEstimate.verified) {
+                const auto candidateFootprint =
+                    frr::domain::
+                        makeRoadAlignedVehicleFootprint(
+                            footprintKey,
+                            {
+                                firstExactRoadCandidate
+                                    ->position.x,
+                                firstExactRoadCandidate
+                                    ->position.y,
+                                firstExactRoadCandidate
+                                    ->position.z
+                            },
+                            {
+                                firstExactRoadCandidate
+                                    ->forward.x,
+                                firstExactRoadCandidate
+                                    ->forward.y,
+                                firstExactRoadCandidate
+                                    ->forward.z
+                            },
+                            footprintEstimate
+                                .meanHalfExtents
+                        );
+
+                renderVisibility =
+                    frr::domain::
+                        classifyVehicleAgainstFrustum(
+                            renderSnapshot,
+                            candidateFootprint,
+                            true
+                        );
+            }
+        }
+    }
+
+    if (renderVisibility.visibilityVerified) {
+        g_renderVisibilityEvidenceObserved.store(
+            true,
+            std::memory_order_relaxed
+        );
     }
 
     if (exactRoadCandidateThisSample) {
@@ -1207,6 +1306,47 @@ void sampleAndLog(
         Log::instance().info(line.str());
     }
 
+    if (heartbeat) {
+        std::ostringstream line;
+        line << "Render-frustum evidence:"
+             << " captureValid="
+             << (renderSnapshot.captureValid ? 1 : 0)
+             << " perspectiveLike="
+             << (frr::domain::perspectiveProjectionLikely(
+                    renderSnapshot.projection
+                ) ? 1 : 0)
+             << " viewport="
+             << renderSnapshot.viewportWidth
+             << "x"
+             << renderSnapshot.viewportHeight
+             << " playerPlausible="
+             << (renderCameraVerification
+                    .currentSnapshotPlausible
+                 ? 1
+                 : 0)
+             << " consecutive="
+             << renderCameraVerification
+                    .consecutivePlausibleSamples
+             << " cameraSemanticsVerified="
+             << (renderCameraVerification.verified
+                 ? 1
+                 : 0)
+             << " candidateVisibility=";
+
+        if (!renderVisibility.visibilityVerified) {
+            line << "unverified";
+        } else if (renderVisibility.visibleToPlayer) {
+            line << "visible_or_intersecting";
+        } else {
+            line << "verified_offscreen";
+        }
+
+        line << " transformedCorners="
+             << renderVisibility.transformedCorners;
+
+        Log::instance().info(line.str());
+    }
+
     if (heartbeat &&
         g_config.worldCollisionDiagnosticsEnabled) {
         const auto collision =
@@ -1317,14 +1457,17 @@ void NFSMW_CDECL onFrameTickProbe(nfsmw_regs*) {
     ++g_frameTicks;
 }
 
-void onRenderFrame(void*) {
+void onRenderFrame(void* rawD3D9Device) {
     rememberThread(g_renderThreadId);
     const std::uint64_t frame = ++g_renderFrames;
 
     if (g_config.sampleEveryFrames == 0 ||
         frame == 1 ||
         (frame % g_config.sampleEveryFrames) == 0) {
-        sampleAndLog(frame);
+        sampleAndLog(
+            frame,
+            rawD3D9Device
+        );
     }
 }
 
