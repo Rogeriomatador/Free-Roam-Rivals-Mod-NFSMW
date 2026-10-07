@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.6
+    VERSION 0.0.7
     LANGUAGES C CXX
 )
 
@@ -68,6 +68,7 @@ set(FRR_DOMAIN_SOURCES
     src/domain/EncounterStateMachine.cpp
     src/domain/Progression.cpp
     src/domain/RivalGarage.cpp
+    src/domain/RivalPopulation.cpp
     src/domain/StakeRules.cpp
     src/domain/VehicleSelection.cpp
 )
