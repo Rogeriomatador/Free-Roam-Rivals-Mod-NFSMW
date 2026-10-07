@@ -1,6 +1,7 @@
 #include "RuntimeProbe.h"
 
 #include "GameBridge.h"
+#include "VehicleCatalogProbe.h"
 #include "../core/Log.h"
 
 #include <nfsmw_sdk/d3d9_hooks.h>
@@ -24,6 +25,7 @@ bool g_haveLast = false;
 std::atomic<std::uint64_t> g_renderFrames{0};
 std::atomic<std::uint64_t> g_inputPolls{0};
 std::atomic<std::uint64_t> g_samples{0};
+bool g_vehicleCatalogValidated = false;
 
 bool sameMeaningfulState(
     const RuntimeSnapshot& a,
@@ -139,6 +141,37 @@ void sampleAndLog(
 ) {
     const RuntimeSnapshot current = GameBridge::sample();
     ++g_samples;
+
+    if (!g_vehicleCatalogValidated &&
+        current.mode == WorldProbeMode::FreeRoamCandidate &&
+        current.capabilities.canClassifyFreeRoam) {
+        const auto catalog =
+            VehicleCatalogProbe::validateDefaultCatalog();
+
+        if (catalog.completed) {
+            std::ostringstream catalogLine;
+            catalogLine
+                << "Vehicle catalog validation: "
+                << catalog.available
+                << "/"
+                << catalog.configured
+                << " configured pvehicle keys available.";
+
+            if (!catalog.missingKeys.empty()) {
+                catalogLine << " Missing:";
+                for (const auto& key : catalog.missingKeys) {
+                    catalogLine << " " << key;
+                }
+            }
+
+            Log::instance().info(catalogLine.str());
+            g_vehicleCatalogValidated = true;
+        } else {
+            Log::instance().warn(
+                "Vehicle catalog validation could not complete; will retry on a later Free Roam sample."
+            );
+        }
+    }
 
     const bool changed =
         !g_haveLast ||
