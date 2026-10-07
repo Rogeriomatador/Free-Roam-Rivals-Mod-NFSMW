@@ -38,6 +38,7 @@ int main() {
     motionFrame.safeFreeRoam = true;
     motionFrame.grounded = true;
     motionFrame.engineSpeed = 10.0f;
+    motionFrame.speedometer = 36.0f;
     motionFrame.absoluteSpeed = 10.0f;
     motionFrame.localVelocityMagnitude = 10.0f;
     motionFrame.linearVelocityMagnitude = 10.0f;
@@ -66,6 +67,14 @@ int main() {
     );
 
     require(
+        motionSnapshot.meanSpeedometerToEngineSpeedRatio > 3.59f &&
+        motionSnapshot.meanSpeedometerToEngineSpeedRatio < 3.61f &&
+        motionSnapshot.meanAbsoluteToEngineSpeedRatio > 0.99f &&
+        motionSnapshot.meanAbsoluteToEngineSpeedRatio < 1.01f,
+        "motion observer exposes speedometer and absolute-speed ratios"
+    );
+
+    require(
         motionSnapshot.meanSpeedToLocalVelocityRatio > 0.99f &&
         motionSnapshot.meanSpeedToLocalVelocityRatio < 1.01f &&
         motionSnapshot.meanSpeedToLinearVelocityRatio > 0.99f &&
@@ -90,6 +99,7 @@ int main() {
     MotionScaleFrame fast = motionFrame;
     fast.x = 0.0f;
     fast.engineSpeed = 10.0f;
+    fast.speedometer = 36.0f;
     unstableObserver.push(fast, 1.0f);
     fast.x = 20.0f;
     fast.engineSpeed = 20.0f;
