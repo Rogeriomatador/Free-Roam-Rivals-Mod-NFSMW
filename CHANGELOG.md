@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.0.30-dev
+
+- Deepen pinned-source roaming/streaming/cache research: separate racer goal/class, candidate-section activation, mutating road-nav queries, deferred cleanup and companion resource limits.
+- Reject post-race samples when reread live-list storage/count/membership changes; include inactive slots, log registry status and world-transition revocations, and add portable regression cases. Equal reads do not claim atomicity or object lifetime.
+
+- Add disabled-by-default, read-only post-race racer diagnostics on the verified completed gameplay loop, with bounded identity correlation and invalidation on incomplete samples, loading, context changes or observation gaps. No runtime target-game validation has been performed for this new probe.
+- Add portable regression tests for transition matching, movement, AI identity changes, disappearance/reuse, invalid observations and evidence expiry.
+- Document pinned public reconstruction sources and the independently authored Native Free Roam Racers mod. Treat the user's post-race observation as a research lead, not an executable ABI proof.
+- Harden the imported executable dump utility: refuse input/report overwrite, respect raw section boundaries and replace byte-scanned return guesses with optional decoded candidates that do not prove the ABI.
+- Correct root-only local-copy ignore rules so new src/game sources are included in Git.
+
+- Record the v0.0.29 target audit: metric calibration verified (1.00159 world units/m), ground=valid with plausible delta/grade, selected GTI footprint verified; remaining blocker SpawnCandidateUnverified (remote road association, streaming, full-view invisibility).
+- Add docs/SPAWN_FACTORY_RESEARCH.md: SDK evidence and red flags for PVehicle::Construct (0x689820 is a generic Sim factory taking VehicleParams by value).
+- Add docs/TARGET_CAPTURE_V29_ALL_DIAGNOSTICS_2026-10-07.md (audit of the v0.0.29 target log) and docs/EXE_DUMP_V2_FINDINGS.md (static ABI findings with reproducibility hashes).
+- Correct CreateAIGoalRacerInstance entry to 0x43D330 in docs (0x43D388 is interior).
+- Import Claude's tools/dump_exe_functions.py and research documents; their executable-dump and v0.0.29 target-log claims were supplied without original inputs and have not been independently reproduced in this review.
+
 ## 0.0.29-dev
 
 - Confirm the v0.0.28 live-IVehicle spatial fix on target: safe Free Roam samples track the actual live vehicle count with zero failed spatial reads.

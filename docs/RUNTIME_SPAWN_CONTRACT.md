@@ -42,6 +42,13 @@ The D3D9 EndScene callback remains observation-only.
 
 Public MW05 research currently gives us this chain:
 
+This is a research hypothesis, not a verified callable ABI. The supplied dump
+findings were not independently reproduced here. The separately published NFRR
+implementation instead uses a Traffic seed followed by Racer conversion and
+AI revalidation; neither route is implemented or promoted by this document.
+See [streaming, navigation and cache findings](NATIVE_ROAMING_STREAMING_RESEARCH.md)
+before treating a query name, global loading flag or inactive count as proof.
+
 ```text
 Vehicle selection
   -> pvehicle key exists
@@ -60,7 +67,7 @@ Vehicle selection
        mAI -> IVehicleAI
   -> Racer host / goal
        CreateAIVehicleRacerInstance @ 0x43EF70
-       CreateAIGoalRacerInstance    @ 0x43D388
+       CreateAIGoalRacerInstance    @ 0x43D330 (0x43D388 is interior; see EXE_DUMP_V1_FINDINGS.md)
        SetAIRacerGoal / PushAIGoalByHash
   -> WRoadNav
   -> native AI tick

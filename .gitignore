@@ -24,12 +24,15 @@ scripts/FreeRoamRivals/Saves/
 scripts/FreeRoamRivals/Transactions/
 
 # Local game / SDK copies
-game/
-sdk/
-vendor/
+/game/
+/sdk/
+/vendor/
 
 # OS/editor
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+
+__pycache__/
+*.pyc
