@@ -69,6 +69,7 @@ set(FRR_DOMAIN_SOURCES
     src/domain/MutationReadiness.cpp
     src/domain/OutrunRace.cpp
     src/domain/Progression.cpp
+    src/domain/RoadCandidatePlanner.cpp
     src/domain/RivalGarage.cpp
     src/domain/RivalPopulation.cpp
     src/domain/RivalRuntimeHandle.cpp
@@ -93,6 +94,7 @@ nfsmw_add_plugin(FreeRoamRivals
         src/game/ChallengeInputProbe.cpp
         src/game/GameBridge.cpp
         src/game/PlayerMotionProbe.cpp
+        src/game/RoadCandidateProbe.cpp
         src/game/RoadNavProbe.cpp
         src/game/RuntimeProbe.cpp
         src/game/VehicleCatalogProbe.cpp
@@ -144,6 +146,7 @@ add_test(
 
 add_executable(FreeRoamRivalsSystemsTests
     tests/systems_tests.cpp
+    src/game/RoadCandidateProbe.cpp
     ${FRR_DOMAIN_SOURCES}
 )
 
