@@ -48,9 +48,9 @@ Support for additional 1.3 executables will be added only after their addresses/
 
 ## Current status
 
-**Pre-alpha / read-only runtime + population foundation (v0.0.6-dev).**
+**Pre-alpha / read-only runtime + population foundation (v0.0.7-dev).**
 
-The ASI validates the supported executable, installs observation hooks, separates Free Roam from stock races, enumerates live IVehicle driver classes, independently cross-checks the player PVehicle, observes the road network, reads career cash/car-count/completion, and validates the configured rival-car catalog without mutating the game. The population layer now distinguishes authored persistent rivals, progression-aware procedural locals, and untouched vanilla traffic.
+The ASI validates the supported executable, installs observation hooks, separates Free Roam from stock races, enumerates live IVehicle driver classes, independently cross-checks the player PVehicle, observes the road network, reads career cash/car-count/completion, and validates the configured rival-car catalog without mutating the game. The population layer now distinguishes authored persistent rivals, deterministic procedural locals with stable names/personality/vehicle identity, legendary condition-based rivals, and untouched vanilla traffic.
 
 The first engineering milestone is intentionally narrow:
 
