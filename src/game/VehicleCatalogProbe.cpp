@@ -2,6 +2,8 @@
 
 #include "../domain/VehicleSelection.h"
 
+#include <windows.h>
+
 #include <NFSPluginSDK/Game.MW05/Types/Attrib/Gen/pvehicle.h>
 
 #include <string>
