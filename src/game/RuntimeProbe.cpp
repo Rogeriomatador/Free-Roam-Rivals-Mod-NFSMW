@@ -33,6 +33,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace frr::game {
 namespace {
@@ -1407,6 +1408,10 @@ DWORD WINAPI healthThread(LPVOID) {
         g_vehicleFootprintVerified.load(
             std::memory_order_relaxed
         );
+    readiness.groundEvidenceVerified =
+        g_groundEvidenceObserved.load(
+            std::memory_order_relaxed
+        );
 
     // Intentionally false until target-machine calibration/candidate
     // promotion work completes. This keeps construction fail-closed.
@@ -1446,6 +1451,12 @@ DWORD WINAPI healthThread(LPVOID) {
                     std::memory_order_relaxed
                 )
              << std::dec
+             << " groundEvidenceVerified="
+             << (readiness.groundEvidenceVerified ? 1 : 0)
+             << " worldOcclusionEvidenceObserved="
+             << (g_worldOcclusionEvidenceObserved.load(
+                    std::memory_order_relaxed
+                ) ? 1 : 0)
              << " metricCalibrationVerified=0"
              << " spawnCandidateVerified=0";
 
