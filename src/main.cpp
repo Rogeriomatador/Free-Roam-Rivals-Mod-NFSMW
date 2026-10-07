@@ -67,6 +67,8 @@ int bootstrap() {
         config.inputProbeEnabled;
     probeConfig.roadNavDiagnosticsEnabled =
         config.roadNavDiagnosticsEnabled;
+    probeConfig.frameTickProbeEnabled =
+        config.frameTickProbeEnabled;
     probeConfig.sampleEveryFrames =
         config.runtimeSampleEveryFrames;
     probeConfig.heartbeatFrames =
