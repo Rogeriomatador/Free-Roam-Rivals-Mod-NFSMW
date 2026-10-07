@@ -51,9 +51,10 @@ jobs:
           Copy-Item "artifact/FreeRoamRivals.asi" "$pkg/scripts/FreeRoamRivals.asi"
           Copy-Item "config/FreeRoamRivals.ini" "$pkg/scripts/FreeRoamRivals/FreeRoamRivals.ini"
           Copy-Item "config/Rivals.ini" "$pkg/scripts/FreeRoamRivals/Rivals.ini"
+          Copy-Item "config/VehiclePools.ini" "$pkg/scripts/FreeRoamRivals/VehiclePools.ini"
 
           @"
-          NFSMW Free Roam Rivals v0.0.5-dev
+          NFSMW Free Roam Rivals v0.0.6-dev
 
           INSTALL:
           1. Extract this ZIP into the Need for Speed Most Wanted game folder.
@@ -62,8 +63,8 @@ jobs:
           4. Drive for 20-30 seconds.
           5. Check scripts\FreeRoamRivals\FreeRoamRivals.log.
 
-          This build adds the first read-only runtime hook.
-          It probes live vehicle state but does NOT spawn or control vehicles.
+          This build validates Free Roam/runtime state and the progression-aware rival vehicle catalog.
+          It does NOT spawn or control vehicles yet.
 
           Supported development target:
           speed.exe size: 6029312 bytes
@@ -71,23 +72,23 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.5-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.6-dev.zip" -Force
 
-      - name: Publish v0.0.5-dev GitHub Release
+      - name: Publish v0.0.6-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.5-dev"
+          $tag = "v0.0.6-dev"
 
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
             Write-Host "Release $tag already exists; keeping existing release."
           } else {
-            gh release create $tag "release/FreeRoamRivals-v0.0.5-dev.zip" `
+            gh release create $tag "release/FreeRoamRivals-v0.0.6-dev.zip" `
               --target "${{ github.sha }}" `
-              --title "Free Roam Rivals v0.0.5-dev" `
+              --title "Free Roam Rivals v0.0.6-dev" `
               --prerelease `
-              --notes "Runtime bridge v0.0.5-dev: classifica Free Roam vs corrida, cruza IVehicle/PVehicle por caminhos independentes, observa rede viária e lê dados de carreira sem escrever nada. Spawn, IA, dinheiro e garagem continuam bloqueados."
+              --notes "v0.0.6-dev: adiciona o sistema de população híbrida e seleção de carros por progressão/distrito, valida ao vivo os pvehicle keys configurados e mantém spawn/IA/dinheiro/garagem bloqueados até a próxima etapa experimental."
           }
