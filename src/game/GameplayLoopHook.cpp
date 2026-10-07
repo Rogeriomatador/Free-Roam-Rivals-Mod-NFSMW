@@ -4,7 +4,9 @@
 #include <windows.h>
 #include <MinHook.h>
 #include <atomic>
+#include <cwctype>
 #include <sstream>
+#include <string>
 #include <vector>
 
 namespace frr::game {
@@ -32,11 +34,13 @@ void __cdecl detour(float tickerDifference) {
     if (outer && g_consistent.load() && g_after) g_after(tickerDifference);
     --g_depth;
 }
+
 bool copy(std::uintptr_t address, void* output, std::size_t size) {
     SIZE_T copied = 0;
     return address && ReadProcessMemory(GetCurrentProcess(), reinterpret_cast<void*>(address),
         output, size, &copied) && copied == size;
 }
+
 bool executable(std::uintptr_t address) {
     MEMORY_BASIC_INFORMATION info{};
     if (!address || !VirtualQuery(reinterpret_cast<void*>(address), &info, sizeof(info)) ||
@@ -44,6 +48,49 @@ bool executable(std::uintptr_t address) {
     const auto p = info.Protect & 0xff;
     return p == PAGE_EXECUTE || p == PAGE_EXECUTE_READ || p == PAGE_EXECUTE_READWRITE || p == PAGE_EXECUTE_WRITECOPY;
 }
+
+std::wstring moduleBaseName(std::uintptr_t address) {
+    MEMORY_BASIC_INFORMATION info{};
+    if (!address || !VirtualQuery(reinterpret_cast<void*>(address), &info, sizeof(info)) ||
+        !info.AllocationBase) return {};
+
+    wchar_t path[1024]{};
+    constexpr DWORD capacity = static_cast<DWORD>(sizeof(path) / sizeof(path[0]));
+    const DWORD length = GetModuleFileNameW(
+        reinterpret_cast<HMODULE>(info.AllocationBase),
+        path,
+        capacity
+    );
+    if (length == 0 || length >= capacity) return {};
+
+    std::wstring result(path, path + length);
+    const auto slash = result.find_last_of(L"\\/");
+    if (slash != std::wstring::npos) result.erase(0, slash + 1);
+    for (auto& ch : result) ch = static_cast<wchar_t>(std::towlower(ch));
+    return result;
+}
+
+std::string narrowAscii(const std::wstring& text) {
+    std::string out;
+    out.reserve(text.size());
+    for (const wchar_t ch : text) {
+        out.push_back(ch >= 0 && ch <= 0x7f ? static_cast<char>(ch) : '?');
+    }
+    return out;
+}
+
+bool knownWidescreenFixWrapper(std::uintptr_t target, const std::wstring& owner) {
+    return executable(target) && owner == L"nfsmostwanted.widescreenfix.asi"; // replaced below
+}
+
+const char* routeName(domain::GameplayLoopRoute route) {
+    switch (route) {
+        case domain::GameplayLoopRoute::DirectPinnedTarget: return "direct_pinned_target";
+        case domain::GameplayLoopRoute::KnownChainedWrapper: return "known_widescreenfix_chain";
+        default: return "blocked";
+    }
+}
+
 bool attach(std::uintptr_t target, GameplayLoopHook::Callback before, GameplayLoopHook::Callback after) {
     if (g_installed.load() || !executable(target) || (!before && !after)) return false;
     const auto initialized = MH_Initialize();
@@ -66,6 +113,7 @@ bool attach(std::uintptr_t target, GameplayLoopHook::Callback before, GameplayLo
     Log::instance().info(std::string("Gameplay-loop hook installation: ") + MH_StatusToString(enabled));
     return g_installed.load();
 }
+
 domain::GameplayLoopResolution discover() {
     const auto base = reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr));
     IMAGE_DOS_HEADER dos{}; IMAGE_NT_HEADERS32 nt{};
@@ -94,6 +142,7 @@ domain::GameplayLoopResolution discover() {
     return combined;
 }
 } // namespace
+
 bool GameplayLoopHook::install(Callback before, Callback after) {
     const auto found = discover();
     std::ostringstream line;
@@ -101,19 +150,43 @@ bool GameplayLoopHook::install(Callback before, Callback after) {
          << " callSite=0x" << std::hex << found.callSite << " target=0x" << found.target
          << " expectedRva=0x263d30 source=WFP_MW05_cdecl_float";
     Log::instance().info(line.str());
-    if (found.match != domain::GameplayLoopMatch::Unique) {
-        Log::instance().warn("Missing, ambiguous or redirected main-loop CALL; no gameplay hook or unverified ABI fallback installed.");
+
+    const auto owner = moduleBaseName(found.target);
+    const bool knownWrapper = knownWidescreenFixWrapper(found.target, owner);
+    const auto route = domain::classifyGameplayLoopRoute(found.match, knownWrapper);
+
+    {
+        std::ostringstream routeLine;
+        routeLine << "Gameplay-loop route: targetOwner="
+                  << (owner.empty() ? "unresolved" : narrowAscii(owner))
+                  << " authorization=" << routeName(route);
+        Log::instance().info(routeLine.str());
+    }
+
+    if (route == domain::GameplayLoopRoute::Blocked) {
+        Log::instance().warn(
+            "Missing, ambiguous or unsupported redirected main-loop CALL; no gameplay hook or unverified ABI fallback installed."
+        );
         return false;
     }
+
+    if (route == domain::GameplayLoopRoute::KnownChainedWrapper) {
+        Log::instance().info(
+            "Main-loop CALL is already chained through the recognized NFSMostWanted.WidescreenFix.asi wrapper; observing that wrapper entry preserves the existing chain."
+        );
+    }
+
     g_site.store(found.callSite);
     const bool installed = attach(found.target, before, after);
     g_verified.store(installed);
     return installed;
 }
+
 GameplayLoopSnapshot GameplayLoopHook::snapshot() {
     return {g_installed.load(), g_verified.load(), g_consistent.load(), g_site.load(), g_target.load(),
         g_entered.load(), g_completed.load(), g_thread.load()};
 }
+
 #ifdef FRR_GAMEPLAY_HOOK_TESTING
 bool GameplayLoopHook::attachForTest(void* target, Callback before, Callback after) {
     return attach(reinterpret_cast<std::uintptr_t>(target), before, after);

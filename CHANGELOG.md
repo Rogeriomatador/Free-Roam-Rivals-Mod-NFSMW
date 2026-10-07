@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.0.27-dev
+
+- Audited the supplied v0.0.26 target log: the unique MW05 main-loop call site is present, but its destination is redirected; gameplay callbacks/FrameTicks/G edges therefore correctly remained zero.
+- Correlated that redirect with the pinned WidescreenFixesPack implementation, which patches the same CALL to `NFSMostWanted.WidescreenFix.asi!MainLoop(float)` and forwards to the original.
+- Add a fail-closed route policy: direct pinned GameFrameTick remains accepted; a redirect is accepted only when the executable target is owned by the exact `NFSMostWanted.WidescreenFix.asi` module. Unknown/missing/ambiguous routes remain blocked.
+- Hook the recognized existing wrapper entry rather than bypassing or rewriting its chain; preserve the float argument, original call order, recursion suppression and thread-consistency revocation.
+- Add route-policy regressions and explicit target-owner/authorization logging for the next machine test.
+- Record target proof that corrected spatial boxes can produce complete zero-failure fleets and verified learned models; later partial spatial failures and the missing selected-GTI footprint remain fail-closed.
+- Update package/release metadata to v0.0.27-dev. Vehicle construction, AI, world-collision mutation path, physical metric and economy/garage writes remain disabled.
+
 ## 0.0.26-dev
 
 - Recorded target render recovery: 350 motion records, 288 accepted pairs, no auditor mismatches. Physical metric remains unverified.

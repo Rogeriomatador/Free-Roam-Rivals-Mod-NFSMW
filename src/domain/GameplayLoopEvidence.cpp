@@ -30,4 +30,17 @@ GameplayLoopResolution resolveGameplayLoop(std::span<const std::uint8_t> code,
     }
     return out;
 }
+
+GameplayLoopRoute classifyGameplayLoopRoute(
+    GameplayLoopMatch match,
+    bool knownChainedWrapper
+) {
+    if (match == GameplayLoopMatch::Unique) {
+        return GameplayLoopRoute::DirectPinnedTarget;
+    }
+    if (match == GameplayLoopMatch::UnexpectedTarget && knownChainedWrapper) {
+        return GameplayLoopRoute::KnownChainedWrapper;
+    }
+    return GameplayLoopRoute::Blocked;
+}
 } // namespace frr::domain

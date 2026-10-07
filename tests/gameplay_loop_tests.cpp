@@ -19,6 +19,9 @@ int main() {
     auto found = resolve(code);
     require(found.match == GameplayLoopMatch::Unique && found.target == 0x663D30 && found.callSite == codeAt,
         "CALL ABI and pinned target agree");
+    require(classifyGameplayLoopRoute(found.match, false) == GameplayLoopRoute::DirectPinnedTarget,
+        "direct pinned target is authorized without a chain owner");
+
     auto backward = code;
     const std::int32_t negative = 0x663D30 - 0x700005;
     std::memcpy(backward.data()+1, &negative, 4);
@@ -32,6 +35,13 @@ int main() {
     }
     auto changed = code; changed[1] ^= 1;
     require(resolve(changed).match == GameplayLoopMatch::UnexpectedTarget, "redirected CALL cannot authorize guessed ABI");
+    require(classifyGameplayLoopRoute(GameplayLoopMatch::UnexpectedTarget, false) == GameplayLoopRoute::Blocked,
+        "unknown redirected owner remains blocked");
+    require(classifyGameplayLoopRoute(GameplayLoopMatch::UnexpectedTarget, true) == GameplayLoopRoute::KnownChainedWrapper,
+        "explicitly recognized redirected owner may preserve a known chain");
+    require(classifyGameplayLoopRoute(GameplayLoopMatch::Ambiguous, true) == GameplayLoopRoute::Blocked,
+        "known owner cannot override ambiguous call-site evidence");
+
     changed = code; std::uint32_t invalidGlobal = base-1; std::memcpy(changed.data()+6, &invalidGlobal, 4);
     require(resolve(changed).match == GameplayLoopMatch::Missing, "global before image rejected");
     invalidGlobal = base + 0x600000; std::memcpy(changed.data()+6, &invalidGlobal, 4);
