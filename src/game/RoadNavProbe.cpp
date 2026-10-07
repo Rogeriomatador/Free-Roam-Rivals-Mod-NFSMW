@@ -1,9 +1,9 @@
 #include "RoadNavProbe.h"
 
+#include <windows.h>
+
 #include <NFSPluginSDK/Game.MW05/MW05.h>
 #include <NFSPluginSDK/Game.MW05/Extensions.h>
-
-#include <windows.h>
 
 #include <cmath>
 #include <cstddef>
