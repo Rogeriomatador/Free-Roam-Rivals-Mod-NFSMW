@@ -41,6 +41,19 @@ enum class RoadCandidateBlocker {
     TwoCarGeometryInvalid
 };
 
+struct RoadCandidateVector3 {
+    float x = 0.0f;
+    float y = 0.0f;
+    float z = 0.0f;
+    bool finite = false;
+};
+
+struct RoadCandidateTransform {
+    bool available = false;
+    RoadCandidateVector3 position{};
+    RoadCandidateVector3 forward{};
+};
+
 struct RoadCandidateObservation {
     RoadCandidateSource source =
         RoadCandidateSource::CurrentRoad;
@@ -68,6 +81,9 @@ struct RoadCandidateObservation {
     float roadWidthWorldUnits = 0.0f;
     float segmentSpanWorldUnits = 0.0f;
     float absoluteCurvature = 0.0f;
+
+    RoadCandidateVector3 position{};
+    RoadCandidateVector3 forward{};
 };
 
 struct RoadCandidateEvidence {
@@ -108,6 +124,7 @@ struct RoadSpawnPromotion {
         RoadCandidateBlocker::PositionUnavailable;
 
     RoadCandidateMetricView metric{};
+    RoadCandidateTransform transform{};
     SpawnCandidateInput candidate{};
 };
 
@@ -117,6 +134,7 @@ struct RoadStagingPromotion {
         RoadCandidateBlocker::PositionUnavailable;
 
     RoadCandidateMetricView metric{};
+    RoadCandidateTransform transform{};
     StagingCandidate candidate{};
 };
 
