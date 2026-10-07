@@ -9,6 +9,25 @@
 #include <string>
 
 namespace frr::game {
+namespace {
+
+bool vehicleKeyExists(const char* key) {
+#if defined(_MSC_VER)
+    __try {
+#endif
+        const auto instance =
+            NFSPluginSDK::MW05::Attrib::Gen::pvehicle::
+                TryGetInstance(key);
+
+        return instance.mCollection != nullptr;
+#if defined(_MSC_VER)
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+#endif
+}
+
+} // namespace
 
 VehicleCatalogProbeResult
 VehicleCatalogProbe::validateDefaultCatalog() {
@@ -19,32 +38,17 @@ VehicleCatalogProbe::validateDefaultCatalog() {
 
     out.configured = catalog.size();
 
-#if defined(_MSC_VER)
-    __try {
-#endif
-        for (const auto& vehicle : catalog) {
-            const std::string key(vehicle.key);
+    for (const auto& vehicle : catalog) {
+        const std::string key(vehicle.key);
 
-            const auto instance =
-                NFSPluginSDK::MW05::Attrib::Gen::pvehicle::
-                    TryGetInstance(key.c_str());
-
-            if (instance.mCollection) {
-                ++out.available;
-            } else {
-                out.missingKeys.push_back(key);
-            }
+        if (vehicleKeyExists(key.c_str())) {
+            ++out.available;
+        } else {
+            out.missingKeys.push_back(key);
         }
-
-        out.completed = true;
-#if defined(_MSC_VER)
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        out.completed = false;
-        out.available = 0;
-        out.missingKeys.clear();
     }
-#endif
 
+    out.completed = true;
     return out;
 }
 
