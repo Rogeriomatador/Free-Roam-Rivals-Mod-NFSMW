@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.0.7-dev
+
+- Added deterministic procedural rival identity generation.
+- Procedural locals now generate a stable bundle from one seed:
+  - rival id
+  - display name
+  - vehicle
+  - visual archetype
+  - personality
+  - challenge style
+  - starting cash
+  - visual/performance seeds
+- Added promotion from ephemeral local to persistent rival.
+- Added progression-aware live-rival population budgets.
+- Added personality-driven challenge-style selection.
+- Preserved the rule that ordinary traffic remains untouched.
+- Added automated tests for deterministic identity, persistence promotion,
+  legendary exclusion and Rockport Legend population limits.
+- Continued engine research on Racer construction, AIGoalRacer, road navigation
+  and safe cleanup. Runtime spawning remains disabled until the full lifecycle
+  is verified in-game.
+
 ## 0.0.6-dev
 
 - Added hybrid rival population design:
