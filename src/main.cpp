@@ -69,6 +69,8 @@ int bootstrap() {
         config.roadNavDiagnosticsEnabled;
     probeConfig.frameTickProbeEnabled =
         config.frameTickProbeEnabled;
+    probeConfig.worldCollisionDiagnosticsEnabled =
+        config.worldCollisionDiagnosticsEnabled;
     probeConfig.sampleEveryFrames =
         config.runtimeSampleEveryFrames;
     probeConfig.heartbeatFrames =
