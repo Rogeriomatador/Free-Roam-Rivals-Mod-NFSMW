@@ -616,12 +616,6 @@ void sampleAndLog(
              << " absoluteToSpeedRatio="
              << g_motionScaleSnapshot
                     .meanAbsoluteToEngineSpeedRatio
-             << " speedometerToSpeedRatio="
-             << g_motionScaleSnapshot
-                    .meanSpeedometerToEngineSpeedRatio
-             << " absoluteToSpeedRatio="
-             << g_motionScaleSnapshot
-                    .meanAbsoluteToEngineSpeedRatio
              << " speedToLocalRatio="
              << g_motionScaleSnapshot
                     .meanSpeedToLocalVelocityRatio
@@ -718,6 +712,12 @@ void sampleAndLog(
              << " cv="
              << g_motionScaleSnapshot
                     .coefficientOfVariation
+             << " speedometerToSpeedRatio="
+             << g_motionScaleSnapshot
+                    .meanSpeedometerToEngineSpeedRatio
+             << " absoluteToSpeedRatio="
+             << g_motionScaleSnapshot
+                    .meanAbsoluteToEngineSpeedRatio
              << " speedToLocalRatio="
              << g_motionScaleSnapshot
                     .meanSpeedToLocalVelocityRatio
