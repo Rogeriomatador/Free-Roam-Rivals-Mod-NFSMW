@@ -71,7 +71,6 @@ bool normalizeBox(
     NormalizedBox& out
 ) {
     if (!source.valid ||
-        source.identity == 0 ||
         !finiteVector(source.center) ||
         !finiteVector(source.right) ||
         !finiteVector(source.up) ||
@@ -308,7 +307,8 @@ PointOccupancyReport evaluatePointAgainstFleet(
         std::numeric_limits<float>::infinity();
 
     for (const auto& vehicle : fleet) {
-        if (!validVehicleOrientedBox(vehicle)) {
+        if (vehicle.identity == 0 ||
+            !validVehicleOrientedBox(vehicle)) {
             ++out.invalidVehicles;
             continue;
         }
@@ -366,7 +366,8 @@ FleetOverlapReport evaluateFootprintAgainstFleet(
     }
 
     for (const auto& vehicle : fleet) {
-        if (!validVehicleOrientedBox(vehicle)) {
+        if (vehicle.identity == 0 ||
+            !validVehicleOrientedBox(vehicle)) {
             ++out.invalidVehicles;
             continue;
         }
