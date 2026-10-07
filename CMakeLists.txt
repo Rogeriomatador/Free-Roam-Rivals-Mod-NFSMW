@@ -65,6 +65,7 @@ set(NFSMW__MINHOOK_SRCS
 set(FRR_DOMAIN_SOURCES
     src/domain/ChallengeInput.cpp
     src/domain/EncounterStateMachine.cpp
+    src/domain/MutationReadiness.cpp
     src/domain/OutrunRace.cpp
     src/domain/Progression.cpp
     src/domain/RivalGarage.cpp
