@@ -1,5 +1,7 @@
 #include "VehicleSpatialProbe.h"
 
+#include <windows.h>
+
 #include <NFSPluginSDK/Game.MW05/MW05.h>
 #include <NFSPluginSDK/Game.MW05/Extensions.h>
 
