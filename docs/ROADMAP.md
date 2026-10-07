@@ -52,6 +52,7 @@ Exit criterion: complete repeatable 1v1 Outrun without loading a stock race.
 ## v0.3 — Staging + cinematic
 
 - [x] Read road-network singleton
+- [x] Read live player current/future WRoadNav segment/lane geometry
 - [x] Implement safe staging-candidate scoring/selection rules
 - [ ] Populate staging candidates from the live road network
 - [x] Implement Search -> Reserve -> Approach -> Align state flow
@@ -129,7 +130,9 @@ Exit criterion: repeatable cash wagers that survive save/load without corruption
 - [x] Ranked discovery / rumor / hunt / challenge / defeated states
 - [x] Asset-ready portrait and voice keys
 - [x] Native FNG frontend feasibility research
-- [ ] Persist Underground Blacklist progress per profile
+- [x] Bind mod-owned Underground Blacklist persistence to a pseudonymous per-profile key
+- [x] Atomic JSON load/save + malformed-schema fail-closed handling
+- [ ] Commit sighting/qualifier/defeat events into persisted progress
 - [ ] World Director integration for current ranked target
 - [ ] Native FRR_UndergroundBlacklist.fng screen
 - [ ] Add safe menu entry after vanilla career completion

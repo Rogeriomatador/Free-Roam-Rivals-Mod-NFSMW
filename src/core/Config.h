@@ -5,6 +5,8 @@ namespace frr {
 struct Config {
     bool renderProbeEnabled = true;
     bool inputProbeEnabled = true;
+    bool roadNavDiagnosticsEnabled = true;
+    bool frameTickProbeEnabled = false;
     unsigned runtimeSampleEveryFrames = 30;
     unsigned runtimeProbeHeartbeatFrames = 600;
 
@@ -31,6 +33,9 @@ struct Config {
     float stagingApproachTimeoutSeconds = 10.0f;
     float stagingAlignmentTimeoutSeconds = 5.0f;
     bool stagingHiddenAlignmentFallback = true;
+
+    bool undergroundBlacklistEnabled = true;
+    bool undergroundBlacklistPersistence = true;
 
     static Config load();
 };

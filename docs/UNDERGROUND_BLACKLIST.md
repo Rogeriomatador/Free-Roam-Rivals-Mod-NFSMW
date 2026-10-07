@@ -175,3 +175,44 @@ Names are placeholders and may be redesigned when character art, voices,
 cars and personalities are authored.
 
 Stable keys `ub10` ... `ub01` are the persistence identifiers.
+
+
+## Mod-side persistence
+
+v0.0.10 adds the first real persistence layer for this ladder without touching
+the NFSMW save file.
+
+The game profile name is read only long enough to derive a namespaced 64-bit
+pseudonymous key in memory. The raw name is not written to disk by the mod.
+
+Files live under:
+
+```text
+scripts/FreeRoamRivals/Saves/
+  profile_<16-hex-hash>.json
+```
+
+The JSON schema currently stores only Free Roam Rivals-owned progression:
+
+```json
+{
+  "schema": 1,
+  "streetRep": 0,
+  "qualifierWinsCurrentRank": 0,
+  "pinkSlipWins": 0,
+  "defeatedMask": 0,
+  "discoveredMask": 0
+}
+```
+
+Career completion is intentionally not persisted here because the game remains
+authoritative for that fact. Likewise, `currentTargetPresent` is runtime-only
+and is recomputed from the living-world system.
+
+Writes use a temporary file followed by a replace operation. Unsupported or
+malformed schemas fail closed instead of silently resetting the player's mod
+progress.
+
+The remaining integration step is event-driven mutation: sighting a target,
+winning qualifier races and defeating a rank must update the in-memory record
+and then commit the new JSON atomically.

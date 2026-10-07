@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.9
+    VERSION 0.0.10
     LANGUAGES C CXX
 )
 
@@ -83,10 +83,13 @@ nfsmw_add_plugin(FreeRoamRivals
         src/main.cpp
         src/core/Config.cpp
         src/core/Log.cpp
+        src/core/ProfileKey.cpp
         src/core/VersionGuard.cpp
         src/game/GameBridge.cpp
+        src/game/RoadNavProbe.cpp
         src/game/RuntimeProbe.cpp
         src/game/VehicleCatalogProbe.cpp
+        src/persistence/UndergroundBlacklistStore.cpp
         ${FRR_DOMAIN_SOURCES}
 )
 
@@ -162,4 +165,28 @@ endif()
 add_test(
     NAME FreeRoamRivalsBlacklistTests
     COMMAND FreeRoamRivalsBlacklistTests
+)
+
+
+add_executable(FreeRoamRivalsPersistenceTests
+    tests/persistence_tests.cpp
+    src/core/ProfileKey.cpp
+    src/domain/UndergroundBlacklist.cpp
+    src/persistence/UndergroundBlacklistStore.cpp
+)
+
+target_include_directories(FreeRoamRivalsPersistenceTests PRIVATE src)
+
+target_compile_definitions(FreeRoamRivalsPersistenceTests PRIVATE
+    WIN32_LEAN_AND_MEAN
+    NOMINMAX
+)
+
+if(MSVC)
+    target_compile_options(FreeRoamRivalsPersistenceTests PRIVATE /W4)
+endif()
+
+add_test(
+    NAME FreeRoamRivalsPersistenceTests
+    COMMAND FreeRoamRivalsPersistenceTests
 )

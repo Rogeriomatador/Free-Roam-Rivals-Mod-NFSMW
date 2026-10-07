@@ -1,5 +1,7 @@
 #pragma once
 
+#include "RoadNavProbe.h"
+
 #include <cstdint>
 
 namespace frr::game {
@@ -50,6 +52,11 @@ struct CareerProbe {
     std::uint32_t careerCars = 0;
     std::uint32_t currentCarHandle = 0;
     bool careerCompletedAtLeastOnce = false;
+
+    // The raw profile name never leaves GameBridge. This pseudonymous key
+    // is used only to select the mod's own per-profile persistence file.
+    bool profileKeyAvailable = false;
+    std::uint64_t profileKey = 0;
 };
 
 struct RuntimeCapabilities {
@@ -57,6 +64,7 @@ struct RuntimeCapabilities {
     bool canIdentifyPlayer = false;
     bool canClassifyFreeRoam = false;
     bool roadNetworkAvailable = false;
+    bool roadNavigationReadAvailable = false;
     bool careerReadAvailable = false;
 
     // Remains false until a dedicated experimental-spawn build proves the
@@ -83,6 +91,7 @@ struct RuntimeSnapshot {
     std::uintptr_t roadNetwork = 0;
 
     VehicleProbe vehicles{};
+    PlayerRoadNavigationProbe roadNavigation{};
     CareerProbe career{};
     RuntimeCapabilities capabilities{};
 

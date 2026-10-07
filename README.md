@@ -56,6 +56,13 @@ The ASI validates the supported executable, installs observation hooks, separate
 
 The population layer distinguishes authored persistent rivals, deterministic procedural locals with stable names/personality/vehicle identity, legendary condition-based rivals, and untouched vanilla traffic.
 
+v0.0.10 adds two runtime foundations that were previously only planned:
+
+- live read-only WRoadNav telemetry from the player's native AI object, including current/future segment, lane, road width, curvature and geometry;
+- mod-owned per-profile Underground Blacklist persistence in `scripts/FreeRoamRivals/Saves/`, keyed by a one-way pseudonymous hash. The raw NFSMW profile name is never written to the mod save.
+
+This moves staging/route work from abstract road-network availability toward real lane/segment data and gives the post-career ladder a safe persistence path without touching the vanilla save.
+
 v0.0.9 also adds a tested, independent **Underground Blacklist** domain that unlocks after the vanilla career is completed. It is not a relabel of the original Blacklist: the mod tracks its own ranks, discovery state, qualification requirements, world-hunt eligibility and future portrait/audio asset keys.
 
 The previous runtime foundations remain in place:

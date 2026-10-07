@@ -6,6 +6,7 @@
 #include "../domain/RuntimeSession.h"
 #include "../domain/SpawnSafety.h"
 #include "../domain/UndergroundBlacklist.h"
+#include "../persistence/UndergroundBlacklistStore.h"
 
 #include <nfsmw_sdk/d3d9_hooks.h>
 #include <nfsmw_sdk/input.h>
@@ -29,10 +30,17 @@ std::atomic<std::uint64_t> g_renderFrames{0};
 std::atomic<std::uint64_t> g_inputPolls{0};
 std::atomic<std::uint64_t> g_samples{0};
 bool g_vehicleCatalogValidated = false;
+
 bool g_haveBlacklistDiagnostic = false;
 bool g_lastBlacklistUnlocked = false;
 bool g_lastBlacklistCompleted = false;
 int g_lastBlacklistRank = -1;
+
+bool g_blacklistProfileBound = false;
+bool g_blacklistFileExists = false;
+bool g_blacklistPersistenceHealthy = true;
+std::uint64_t g_blacklistProfileKey = 0;
+frr::domain::UndergroundBlacklistProgress g_blacklistProgress{};
 
 frr::domain::RuntimeSessionTracker g_runtimeSession{};
 bool g_haveSpawnPreflight = false;
@@ -72,6 +80,10 @@ bool sameMeaningfulState(
             b.vehicles.copVehicles &&
         a.vehicles.racerVehicles ==
             b.vehicles.racerVehicles &&
+        a.roadNavigation.available ==
+            b.roadNavigation.available &&
+        a.roadNavigation.playerAiAvailable ==
+            b.roadNavigation.playerAiAvailable &&
         a.career.available == b.career.available &&
         a.career.cash == b.career.cash &&
         a.career.careerCars == b.career.careerCars &&
@@ -79,6 +91,10 @@ bool sameMeaningfulState(
             b.career.currentCarHandle &&
         a.career.careerCompletedAtLeastOnce ==
             b.career.careerCompletedAtLeastOnce &&
+        a.career.profileKeyAvailable ==
+            b.career.profileKeyAvailable &&
+        a.career.profileKey ==
+            b.career.profileKey &&
         a.mode == b.mode;
 }
 
@@ -122,7 +138,11 @@ std::string describe(const RuntimeSnapshot& s) {
             << " currentCarHandle="
             << s.career.currentCarHandle
             << " careerCompleted="
-            << (s.career.careerCompletedAtLeastOnce ? 1 : 0);
+            << (s.career.careerCompletedAtLeastOnce ? 1 : 0)
+            << " profileKey="
+            << (s.career.profileKeyAvailable
+                ? "pseudonymous"
+                : "unavailable");
     } else {
         out << " career=unavailable";
     }
@@ -135,6 +155,8 @@ std::string describe(const RuntimeSnapshot& s) {
         << (s.capabilities.canClassifyFreeRoam ? 1 : 0)
         << ",road:"
         << (s.capabilities.roadNetworkAvailable ? 1 : 0)
+        << ",roadNav:"
+        << (s.capabilities.roadNavigationReadAvailable ? 1 : 0)
         << ",careerRead:"
         << (s.capabilities.careerReadAvailable ? 1 : 0)
         << ",spawnWrite:"
@@ -144,6 +166,48 @@ std::string describe(const RuntimeSnapshot& s) {
         << ",garageWrite:"
         << (s.capabilities.garageWriteVerified ? 1 : 0)
         << "]";
+
+    if (g_config.roadNavDiagnosticsEnabled) {
+        if (s.roadNavigation.available) {
+            out << " roadNav=[ai:0x"
+                << std::hex << std::uppercase
+                << s.roadNavigation.playerAi
+                << std::dec;
+
+            if (s.roadNavigation.current.available) {
+                out << ",curSeg:"
+                    << s.roadNavigation.current.segmentIndex
+                    << ",curLane:"
+                    << s.roadNavigation.current.laneIndex
+                    << ",curWidth:"
+                    << std::fixed << std::setprecision(1)
+                    << s.roadNavigation.current.roadWidthMeters
+                    << ",curCurve:"
+                    << std::setprecision(4)
+                    << s.roadNavigation.current.curvature;
+            } else {
+                out << ",cur:unavailable";
+            }
+
+            if (s.roadNavigation.future.available) {
+                out << ",futureSeg:"
+                    << s.roadNavigation.future.segmentIndex
+                    << ",futureLane:"
+                    << s.roadNavigation.future.laneIndex
+                    << ",futureWidth:"
+                    << std::fixed << std::setprecision(1)
+                    << s.roadNavigation.future.roadWidthMeters
+                    << ",navGap:"
+                    << s.roadNavigation.currentToFutureMeters;
+            } else {
+                out << ",future:unavailable";
+            }
+
+            out << "]";
+        } else {
+            out << " roadNav=unavailable";
+        }
+    }
 
     return out.str();
 }
@@ -215,7 +279,7 @@ void updateRuntimeSessionAndSpawnPreflight(
             line << "READY"
                  << " generation=" << session.generation
                  << " stableSamples=" << session.stableSamples
-                 << ". Road-candidate planning and vehicle construction remain disabled in this build.";
+                 << ". Live road-nav telemetry is available separately; vehicle construction remains disabled in this build.";
             Log::instance().info(line.str());
         } else {
             line << "BLOCKED reason="
@@ -230,19 +294,129 @@ void updateRuntimeSessionAndSpawnPreflight(
     }
 }
 
-void updateUndergroundBlacklistDiagnostic(
+frr::persistence::UndergroundBlacklistStore&
+blacklistStore() {
+    static frr::persistence::UndergroundBlacklistStore store(
+        frr::persistence::UndergroundBlacklistStore::
+            defaultSaveDirectory()
+    );
+    return store;
+}
+
+void resetBlacklistProfileBinding() {
+    g_blacklistProfileBound = false;
+    g_blacklistFileExists = false;
+    g_blacklistPersistenceHealthy = true;
+    g_blacklistProfileKey = 0;
+    g_blacklistProgress = {};
+    g_haveBlacklistDiagnostic = false;
+}
+
+void bindBlacklistProfile(
     const RuntimeSnapshot& current
 ) {
-    if (!current.career.available) {
+    if (!g_config.undergroundBlacklistPersistence ||
+        !current.career.profileKeyAvailable) {
+        if (g_blacklistProfileBound) {
+            resetBlacklistProfileBinding();
+        }
         return;
     }
 
-    frr::domain::UndergroundBlacklistProgress progress{};
+    const std::uint64_t key =
+        current.career.profileKey;
+
+    if (g_blacklistProfileBound &&
+        g_blacklistProfileKey == key) {
+        return;
+    }
+
+    resetBlacklistProfileBinding();
+    g_blacklistProfileBound = true;
+    g_blacklistProfileKey = key;
+
+    const auto loaded =
+        blacklistStore().load(key);
+
+    if (!loaded.ok) {
+        g_blacklistPersistenceHealthy = false;
+        Log::instance().warn(
+            std::string(
+                "Underground Blacklist persistence load failed: "
+            ) + loaded.error
+        );
+        return;
+    }
+
+    if (loaded.found) {
+        g_blacklistProgress = loaded.progress;
+        g_blacklistFileExists = true;
+
+        Log::instance().info(
+            "Underground Blacklist mod-side progress loaded for current profile."
+        );
+    } else {
+        Log::instance().info(
+            "Underground Blacklist has no mod-side progress file for current profile yet."
+        );
+    }
+}
+
+void ensureBlacklistPersistenceFile(
+    const RuntimeSnapshot& current
+) {
+    if (!g_config.undergroundBlacklistPersistence ||
+        !g_blacklistProfileBound ||
+        !g_blacklistPersistenceHealthy ||
+        g_blacklistFileExists ||
+        !current.career.careerCompletedAtLeastOnce) {
+        return;
+    }
+
+    std::string error;
+    if (blacklistStore().save(
+            g_blacklistProfileKey,
+            g_blacklistProgress,
+            &error)) {
+        g_blacklistFileExists = true;
+        Log::instance().info(
+            "Created mod-owned Underground Blacklist progress file after vanilla career completion."
+        );
+    } else {
+        g_blacklistPersistenceHealthy = false;
+        Log::instance().warn(
+            std::string(
+                "Could not create Underground Blacklist progress file: "
+            ) + error
+        );
+    }
+}
+
+void updateUndergroundBlacklistDiagnostic(
+    const RuntimeSnapshot& current
+) {
+    if (!g_config.undergroundBlacklistEnabled ||
+        !current.career.available) {
+        return;
+    }
+
+    bindBlacklistProfile(current);
+    ensureBlacklistPersistenceFile(current);
+
+    frr::domain::UndergroundBlacklistProgress progress =
+        g_blacklistProfileBound
+        ? g_blacklistProgress
+        : frr::domain::UndergroundBlacklistProgress{};
+
+    // Runtime facts are deliberately not loaded from the mod save.
     progress.careerCompleted =
         current.career.careerCompletedAtLeastOnce;
+    progress.currentTargetPresent = false;
 
     const auto snapshot =
-        frr::domain::evaluateUndergroundBlacklist(progress);
+        frr::domain::evaluateUndergroundBlacklist(
+            progress
+        );
 
     const bool changed =
         !g_haveBlacklistDiagnostic ||
@@ -261,7 +435,15 @@ void updateUndergroundBlacklistDiagnostic(
          << " currentRank=" << snapshot.currentRank
          << " targetSpawnEligible="
          << (snapshot.currentTargetSpawnEligible ? 1 : 0)
-         << ". Progress is read-only in this build.";
+         << " persistence="
+         << (g_config.undergroundBlacklistPersistence
+             ? (g_blacklistPersistenceHealthy
+                 ? (g_blacklistFileExists
+                     ? "ready"
+                     : "pending")
+                 : "error")
+             : "disabled")
+         << ".";
 
     Log::instance().info(line.str());
 
