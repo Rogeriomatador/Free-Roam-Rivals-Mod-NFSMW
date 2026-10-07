@@ -4,6 +4,7 @@
 #include "GameBridge.h"
 #include "RoadCandidateProbe.h"
 #include "VehicleCatalogProbe.h"
+#include "VehicleSpatialProbe.h"
 #include "../core/Log.h"
 #include "../domain/MotionScaleObserver.h"
 #include "../domain/MutationReadiness.h"
@@ -11,6 +12,7 @@
 #include "../domain/RuntimeSession.h"
 #include "../domain/SpawnSafety.h"
 #include "../domain/UndergroundBlacklist.h"
+#include "../domain/VehicleSpatialEvidence.h"
 #include "../persistence/UndergroundBlacklistStore.h"
 
 #include <nfsmw_sdk/d3d9_hooks.h>
@@ -47,6 +49,7 @@ std::atomic<bool> g_frameTickProbeInstalled{false};
 std::atomic<bool> g_safeFreeRoamObserved{false};
 std::atomic<bool> g_roadLookaheadObserved{false};
 std::atomic<bool> g_exactRoadCandidateObserved{false};
+std::atomic<bool> g_vehicleSpatialEvidenceObserved{false};
 
 bool g_vehicleCatalogValidated = false;
 
@@ -644,8 +647,23 @@ void sampleAndLog(
             current.roadNavigation
         );
 
+    VehicleSpatialSnapshot vehicleSpatial{};
+    if (current.inWorld &&
+        current.vehicles.registryReadable) {
+        vehicleSpatial =
+            VehicleSpatialProbe::sample();
+    }
+
     if (current.roadNavigation.available) {
         g_roadLookaheadObserved.store(
+            true,
+            std::memory_order_relaxed
+        );
+    }
+
+    if (vehicleSpatial.registryComplete &&
+        vehicleSpatial.failedSpatialReads == 0) {
+        g_vehicleSpatialEvidenceObserved.store(
             true,
             std::memory_order_relaxed
         );
@@ -721,6 +739,33 @@ void sampleAndLog(
         );
     }
 
+    if (heartbeat &&
+        current.inWorld &&
+        current.vehicles.registryReadable) {
+        std::ostringstream line;
+        line << "Vehicle-spatial observation:"
+             << " registryComplete="
+             << (vehicleSpatial.registryComplete ? 1 : 0)
+             << " registryCount="
+             << vehicleSpatial.registryCount
+             << " enabledActive="
+             << vehicleSpatial.enabledActiveVehicles
+             << " ignoredInactive="
+             << vehicleSpatial.ignoredInactiveVehicles
+             << " boxes="
+             << vehicleSpatial.boxes.size()
+             << " failedSpatialReads="
+             << vehicleSpatial.failedSpatialReads
+             << " halfExtentSemanticsResearchBacked="
+             << (vehicleSpatial
+                    .halfExtentSemanticsResearchBacked
+                 ? 1
+                 : 0)
+             << " footprintOverlapPromotion=0";
+
+        Log::instance().info(line.str());
+    }
+
     if (heartbeat && !roadCandidates.empty()) {
         std::ostringstream line;
         line << "Road-candidate observations: count="
@@ -748,8 +793,39 @@ void sampleAndLog(
                  << std::fixed << std::setprecision(1)
                  << candidate.distanceWorldUnits
                  << ",projWorld="
-                 << candidate.forwardProjectionWorldUnits
-                 << "]";
+                 << candidate.forwardProjectionWorldUnits;
+
+            if (candidate.position.finite) {
+                const auto occupancy =
+                    frr::domain::evaluatePointAgainstFleet(
+                        {
+                            candidate.position.x,
+                            candidate.position.y,
+                            candidate.position.z
+                        },
+                        vehicleSpatial.boxes,
+                        vehicleSpatial.registryComplete
+                    );
+
+                line << ",pointOccupancy="
+                     << (occupancy.verified
+                         ? (occupancy.insideAnyVehicle
+                            ? "occupied"
+                            : "clear")
+                         : "unverified")
+                     << ",fleetChecked="
+                     << occupancy.checkedVehicles
+                     << ",fleetInvalid="
+                     << occupancy.invalidVehicles;
+
+                if (occupancy.checkedVehicles > 0) {
+                    line << ",nearestVehicleGapWorld="
+                         << occupancy
+                                .nearestSeparationWorldUnits;
+                }
+            }
+
+            line << "]";
         }
 
         Log::instance().info(line.str());
@@ -889,6 +965,10 @@ DWORD WINAPI healthThread(LPVOID) {
         g_exactRoadCandidateObserved.load(
             std::memory_order_relaxed
         );
+    readiness.vehicleSpatialEvidenceObserved =
+        g_vehicleSpatialEvidenceObserved.load(
+            std::memory_order_relaxed
+        );
 
     // Intentionally false until target-machine calibration/candidate
     // promotion work completes. This keeps construction fail-closed.
@@ -918,6 +998,8 @@ DWORD WINAPI healthThread(LPVOID) {
              << (readiness.roadLookaheadObserved ? 1 : 0)
              << " exactRoadCandidateObserved="
              << (readiness.exactRoadCandidateObserved ? 1 : 0)
+             << " vehicleSpatialEvidenceObserved="
+             << (readiness.vehicleSpatialEvidenceObserved ? 1 : 0)
              << " metricCalibrationVerified=0"
              << " spawnCandidateVerified=0";
 

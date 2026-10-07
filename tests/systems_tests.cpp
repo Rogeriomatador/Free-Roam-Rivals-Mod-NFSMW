@@ -8,6 +8,7 @@
 #include "domain/SpawnSafety.h"
 #include "domain/StagingPlanner.h"
 #include "domain/StagingStateMachine.h"
+#include "domain/VehicleSpatialEvidence.h"
 #include "domain/WorldMetricCalibration.h"
 #include "game/RoadCandidateProbe.h"
 
@@ -28,6 +29,142 @@ void require(bool value, const char* message) {
 
 int main() {
     using namespace frr::domain;
+
+    VehicleOrientedBox parked{};
+    parked.valid = true;
+    parked.identity = 0x1111;
+    parked.center = {0.0f, 0.0f, 0.0f};
+    parked.right = {1.0f, 0.0f, 0.0f};
+    parked.up = {0.0f, 1.0f, 0.0f};
+    parked.forward = {0.0f, 0.0f, 1.0f};
+    parked.halfExtents = {1.0f, 1.0f, 2.0f};
+
+    require(
+        validVehicleOrientedBox(parked),
+        "orthonormal live-vehicle OBB is valid"
+    );
+
+    require(
+        pointInsideVehicleOrientedBox(
+            {0.5f, 0.0f, 1.5f},
+            parked
+        ),
+        "point inside vehicle half-extents is detected"
+    );
+
+    require(
+        !pointInsideVehicleOrientedBox(
+            {0.0f, 0.0f, 3.0f},
+            parked
+        ),
+        "point beyond vehicle length is outside"
+    );
+
+    const float pointSeparation =
+        pointSeparationFromVehicleOrientedBox(
+            {0.0f, 0.0f, 3.0f},
+            parked
+        );
+
+    require(
+        pointSeparation > 0.99f &&
+        pointSeparation < 1.01f,
+        "point-to-OBB separation is reported in world units"
+    );
+
+    VehicleOrientedBox crossing = parked;
+    crossing.identity = 0x2222;
+    crossing.center = {2.5f, 0.0f, 0.0f};
+    crossing.right = {0.0f, 0.0f, 1.0f};
+    crossing.forward = {-1.0f, 0.0f, 0.0f};
+
+    require(
+        vehicleOrientedBoxesOverlap(
+            parked,
+            crossing
+        ),
+        "SAT detects overlap between rotated vehicle boxes"
+    );
+
+    crossing.center = {5.0f, 0.0f, 0.0f};
+
+    require(
+        !vehicleOrientedBoxesOverlap(
+            parked,
+            crossing
+        ),
+        "SAT rejects separated rotated vehicle boxes"
+    );
+
+    std::vector<VehicleOrientedBox> spatialFleet = {
+        parked,
+        crossing
+    };
+
+    const auto occupiedPoint =
+        evaluatePointAgainstFleet(
+            {0.0f, 0.0f, 0.0f},
+            spatialFleet,
+            true
+        );
+
+    require(
+        occupiedPoint.verified &&
+        occupiedPoint.insideAnyVehicle &&
+        occupiedPoint.containingVehicle == parked.identity,
+        "complete fleet verifies point occupancy"
+    );
+
+    VehicleOrientedBox candidateFootprint = parked;
+    candidateFootprint.identity = 0;
+    candidateFootprint.center = {9.0f, 0.0f, 0.0f};
+
+    const auto clearFleet =
+        evaluateFootprintAgainstFleet(
+            candidateFootprint,
+            spatialFleet,
+            true
+        );
+
+    require(
+        clearFleet.verified &&
+        !clearFleet.overlaps,
+        "complete fleet can verify clear candidate footprint"
+    );
+
+    candidateFootprint.center = {0.5f, 0.0f, 0.0f};
+
+    const auto overlappingFleet =
+        evaluateFootprintAgainstFleet(
+            candidateFootprint,
+            spatialFleet,
+            true
+        );
+
+    require(
+        overlappingFleet.verified &&
+        overlappingFleet.overlaps &&
+        overlappingFleet.overlappingVehicle ==
+            parked.identity,
+        "complete fleet identifies overlapping live vehicle"
+    );
+
+    VehicleOrientedBox unreadable{};
+    unreadable.identity = 0x4444;
+    spatialFleet.push_back(unreadable);
+
+    const auto incompleteEvidence =
+        evaluateFootprintAgainstFleet(
+            candidateFootprint,
+            spatialFleet,
+            true
+        );
+
+    require(
+        !incompleteEvidence.verified &&
+        incompleteEvidence.invalidVehicles == 1,
+        "one unreadable live vehicle fails overlap evidence closed"
+    );
 
     MotionScaleTuning motionTuning{};
     motionTuning.minimumStableSamples = 4;
@@ -186,6 +323,14 @@ int main() {
     );
 
     readiness.exactRoadCandidateObserved = true;
+    readinessReport = evaluateMutationReadiness(readiness);
+    require(
+        readinessReport.blocker ==
+            MutationReadinessBlocker::VehicleSpatialEvidenceUnavailable,
+        "readiness requires complete live-vehicle spatial evidence"
+    );
+
+    readiness.vehicleSpatialEvidenceObserved = true;
     readinessReport = evaluateMutationReadiness(readiness);
     require(
         readinessReport.blocker ==

@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.0.19-dev
+
+- Added read-only `VehicleSpatialProbe` over the validated NFSPluginSDK PVehicle registry.
+- Samples active vehicle rigid-body:
+  - world position
+  - right/up/forward basis
+  - local collision dimensions
+- Represents live vehicles as oriented boxes.
+- Added pure-domain OBB validation and 15-axis SAT intersection testing.
+- Added point-in-OBB and point-to-OBB separation queries in world units.
+- Fleet evidence fails closed when the registry is incomplete or any active vehicle spatial read is invalid.
+- Runtime heartbeats report live spatial-read health.
+- Road-candidate heartbeat diagnostics now include point occupancy and nearest live-vehicle separation.
+- Added `VehicleSpatialEvidenceUnavailable` to construction readiness.
+- Public MW05 reconstruction evidence supports treating rigid-body `GetDimension()` as local half-extents; target runtime logs still sanity-check values.
+- Full candidate-footprint overlap is implemented in domain logic but is not promoted at runtime until the selected rival's pre-construction footprint is available.
+- Added systems tests for oriented boxes, rotated overlap, clear footprint, occupied footprint and fail-closed incomplete evidence.
+- Added `docs/VEHICLE_SPATIAL_EVIDENCE.md`.
+
+
 ## 0.0.18-dev
 
 - Added typed road-candidate observations for CurrentRoad, FutureRoad, SeekAhead and FarFuture.

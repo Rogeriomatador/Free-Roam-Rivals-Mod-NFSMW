@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.18
+    VERSION 0.0.19
     LANGUAGES C CXX
 )
 
@@ -81,6 +81,7 @@ set(FRR_DOMAIN_SOURCES
     src/domain/StagingStateMachine.cpp
     src/domain/UndergroundBlacklist.cpp
     src/domain/VehicleSelection.cpp
+    src/domain/VehicleSpatialEvidence.cpp
     src/domain/WorldMetricCalibration.cpp
 )
 
@@ -98,6 +99,7 @@ nfsmw_add_plugin(FreeRoamRivals
         src/game/RoadNavProbe.cpp
         src/game/RuntimeProbe.cpp
         src/game/VehicleCatalogProbe.cpp
+        src/game/VehicleSpatialProbe.cpp
         src/persistence/UndergroundBlacklistStore.cpp
         ${FRR_DOMAIN_SOURCES}
 )

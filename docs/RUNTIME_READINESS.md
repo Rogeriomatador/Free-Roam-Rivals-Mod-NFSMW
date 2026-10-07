@@ -1,6 +1,6 @@
 # Runtime Construction Readiness
 
-v0.0.18 extends the remaining first-spawn prerequisites into one
+v0.0.19 extends the remaining first-spawn prerequisites into one
 fail-closed readiness report.
 
 The report exists so target-machine testing can answer:
@@ -20,8 +20,9 @@ The evaluator checks, in order:
 6. safe Free Roam observed
 7. live road lookahead observed
 8. at least one ahead point with exact WRoadNav geometry observed
-9. metric calibration verified
-10. final spawn candidate verified
+9. complete live-vehicle spatial evidence observed
+10. metric calibration verified
+11. final spawn candidate verified
 
 Only when every item passes is:
 
@@ -54,6 +55,7 @@ Construction readiness after 8s:
   freeRoamObserved=1
   roadLookaheadObserved=1
   exactRoadCandidateObserved=1
+  vehicleSpatialEvidenceObserved=1
   metricCalibrationVerified=0
   spawnCandidateVerified=0
 ```
@@ -68,6 +70,7 @@ Possible blocker names:
 - `FreeRoamNotObserved`
 - `RoadLookaheadUnavailable`
 - `ExactRoadCandidateUnavailable`
+- `VehicleSpatialEvidenceUnavailable`
 - `MetricCalibrationUnverified`
 - `SpawnCandidateUnverified`
 
@@ -83,7 +86,7 @@ FrameTickProbeEnabled=0
 So normal play is expected to report `FrameTickProbeDisabled`.
 
 For a deliberate diagnostics session, the probe can be enabled manually. Even
-then, v0.0.16 intentionally leaves metric calibration and final spawn-candidate
+then, current development builds intentionally leave metric calibration and final spawn-candidate
 promotion false, so the readiness report cannot accidentally authorize live
 construction.
 
@@ -97,7 +100,8 @@ The runtime adapter only feeds it:
 - first-observed thread IDs;
 - whether safe Free Roam was observed;
 - whether road lookahead was observed;
-- whether at least one ahead candidate has exact WRoadNav geometry.
+- whether at least one ahead candidate has exact WRoadNav geometry;
+- whether the active PVehicle set has complete, valid spatial OBB evidence.
 
 It does not:
 
