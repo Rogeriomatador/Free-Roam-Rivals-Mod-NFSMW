@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.0.18-dev
+
+- Added typed road-candidate observations for CurrentRoad, FutureRoad, SeekAhead and FarFuture.
+- CurrentRoad/FutureRoad can carry exact WRoadNav geometry; SeekAhead/FarFuture remain observational until exact road association is independently proven.
+- Added explicit candidate blockers for invalid/unavailable geometry, dead ends, points not ahead, unverified metric scale and missing safety evidence.
+- Spawn promotion now requires exact road geometry, verified metric conversion, streaming, ground, overlap and verified off-screen visibility.
+- Staging promotion requires exact road geometry, verified metric conversion, streaming/ground/overlap plus junction, obstruction, grade and two-car-geometry evidence.
+- Kept visibility as a spawn-only pop-in gate; a staging site may be visible while the cars approach it naturally.
+- Runtime heartbeat diagnostics now list candidate source, current blocker, segment/lane, world-unit distance and forward projection.
+- Added `ExactRoadCandidateUnavailable` to construction readiness.
+- Expanded systems tests for observation, metric conversion, spawn promotion, staging promotion and visibility separation.
+- Added `docs/ROAD_CANDIDATE_PROMOTION.md`.
+
+
 ## 0.0.17-dev
 
 - Added read-only `PlayerMotionProbe` through the validated player PVehicle.
