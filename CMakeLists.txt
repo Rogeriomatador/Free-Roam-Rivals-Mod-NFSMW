@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.12
+    VERSION 0.0.13
     LANGUAGES C CXX
 )
 
@@ -70,6 +70,7 @@ set(FRR_DOMAIN_SOURCES
     src/domain/RivalPopulation.cpp
     src/domain/RivalRuntimeHandle.cpp
     src/domain/RuntimeSession.cpp
+    src/domain/SpawnExperiment.cpp
     src/domain/SpawnSafety.cpp
     src/domain/StakeRules.cpp
     src/domain/StagingPlanner.cpp
@@ -189,4 +190,21 @@ endif()
 add_test(
     NAME FreeRoamRivalsPersistenceTests
     COMMAND FreeRoamRivalsPersistenceTests
+)
+
+
+add_executable(FreeRoamRivalsSpawnExperimentTests
+    tests/spawn_experiment_tests.cpp
+    src/domain/SpawnExperiment.cpp
+)
+
+target_include_directories(FreeRoamRivalsSpawnExperimentTests PRIVATE src)
+
+if(MSVC)
+    target_compile_options(FreeRoamRivalsSpawnExperimentTests PRIVATE /W4)
+endif()
+
+add_test(
+    NAME FreeRoamRivalsSpawnExperimentTests
+    COMMAND FreeRoamRivalsSpawnExperimentTests
 )
