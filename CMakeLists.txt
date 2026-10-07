@@ -177,6 +177,11 @@ add_executable(FreeRoamRivalsPersistenceTests
 
 target_include_directories(FreeRoamRivalsPersistenceTests PRIVATE src)
 
+target_compile_definitions(FreeRoamRivalsPersistenceTests PRIVATE
+    WIN32_LEAN_AND_MEAN
+    NOMINMAX
+)
+
 if(MSVC)
     target_compile_options(FreeRoamRivalsPersistenceTests PRIVATE /W4)
 endif()
