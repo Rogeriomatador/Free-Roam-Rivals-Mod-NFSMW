@@ -21,7 +21,7 @@ The evaluator checks, in order:
 7. live road lookahead observed
 8. at least one ahead point with exact WRoadNav geometry observed
 9. complete live-vehicle spatial evidence observed
-10. at least one catalog vehicle has a verified learned pre-construction footprint
+10. the selected pending rival vehicle has a verified learned pre-construction footprint
 11. world-face ground evidence observed on an exact road candidate
 12. metric calibration verified
 13. final spawn candidate verified
@@ -141,3 +141,12 @@ AND current callback thread == input thread
 
 Only then can the input/gameplay callback consume a collision request queued by
 the render sampler. This keeps WCollisionMgr traversal away from EndScene.
+
+
+## v0.0.22 lifetime correction
+
+Readiness fields now describe the latest safe sample. Ground results have a
+500 ms lease and must match the current generation, both player identities,
+road network, race status and profile. Footprint readiness belongs to the
+selected pending rival model, is recomputed each sample and can be revoked by
+a later inconsistent observation. These diagnostics never authorize mutation.

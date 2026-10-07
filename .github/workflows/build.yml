@@ -55,7 +55,7 @@ jobs:
           Copy-Item "config/UndergroundBlacklist.ini" "$pkg/scripts/FreeRoamRivals/UndergroundBlacklist.ini"
 
           @"
-          NFSMW Free Roam Rivals v0.0.21-dev
+          NFSMW Free Roam Rivals v0.0.22-dev
 
           INSTALL:
           1. Extract this ZIP into the Need for Speed Most Wanted game folder.
@@ -64,9 +64,9 @@ jobs:
           4. Drive for 20-30 seconds.
           5. Check scripts\FreeRoamRivals\FreeRoamRivals.log.
 
-          v0.0.21 adds an opt-in WCollisionMgr diagnostic executed only on a
-          confirmed gameplay thread. It verifies world-face ground, derives
-          grade from the collision normal and records world/barrier occlusion.
+          v0.0.22 selects one pending rival and tests its exact learned model
+          against the live fleet. Collision requests expire after 500 ms and
+          are revalidated on the confirmed gameplay thread before queries.
 
           Runtime vehicle creation and AI control are still disabled by default.
           ExperimentalSpawnEnabled=1 only enables read-only preflight diagnostics
@@ -78,23 +78,23 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.21-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.22-dev.zip" -Force
 
-      - name: Publish v0.0.21-dev GitHub Release
+      - name: Publish v0.0.22-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.21-dev"
+          $tag = "v0.0.22-dev"
 
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
             Write-Host "Release $tag already exists; keeping existing release."
           } else {
-            gh release create $tag "release/FreeRoamRivals-v0.0.21-dev.zip" `
+            gh release create $tag "release/FreeRoamRivals-v0.0.22-dev.zip" `
               --target "${{ github.sha }}" `
-              --title "Free Roam Rivals v0.0.21-dev" `
+              --title "Free Roam Rivals v0.0.22-dev" `
               --prerelease `
-              --notes "v0.0.21-dev: adiciona sonda read-only WCollisionMgr no gameplay thread confirmado, valida chão por world-face, deriva grade pela normal e observa oclusão do mundo. Visibilidade de câmera/streaming continuam bloqueados."
+              --notes "v0.0.22-dev: overlap ligado ao modelo selecionado do rival; mailbox com validade por tempo, identidade e geração. Construção continua bloqueada."
           }

@@ -139,3 +139,15 @@ After v0.0.21, the important unresolved live gates are:
   pre-construction footprint overlap path.
 
 No unresolved gate is inferred optimistically.
+
+
+## v0.0.22 mailbox lease
+
+Every POD request/result carries a RuntimeEvidenceStamp. Requests older than
+500 ms, or with changed generation/player/road/race/profile identity, are
+discarded before CheckHitWorld. A fresh GameBridge sample on the confirmed
+gameplay thread verifies safety again; a render observation alone is not
+sufficient. New render samples replace pending requests. Generation changes
+and unsafe samples invalidate queued/results state. Historical ground evidence
+cannot carry readiness into a later world. This is still a diagnostic lease,
+not a final candidate-bound spawn authorization.

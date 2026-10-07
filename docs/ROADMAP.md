@@ -37,8 +37,8 @@ Exit criterion: loading the ASI does not alter gameplay and creates a diagnostic
 - [x] Learn per-model collision footprint from repeated live PVehicle dimensions
 - [x] Resolve configured catalog names to stable IVehicle::GetVehicleKey values
 - [x] Build road-aligned pre-construction OBB and perform full live-fleet overlap test
-- [ ] Bind the actual selected rival model to pre-construction overlap promotion
-- [ ] Promote verified live vehicle overlap result into RoadCandidateEvidence
+- [x] Bind the actual selected rival model to pre-construction overlap promotion
+- [x] Promote verified live vehicle overlap result into RoadCandidateEvidence
 - [x] Verify exact-executable WCollisionMgr CheckHitWorld address
 - [x] Execute world-collision queries only on confirmed gameplay/input thread
 - [x] Implement live world-face ground + road-grade evidence
@@ -195,3 +195,4 @@ Release goals:
 - police integration
 - safe rollback
 - compatibility documentation
+
