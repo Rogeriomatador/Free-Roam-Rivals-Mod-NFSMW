@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.0.16-dev
+
+- Added a pure `MutationReadiness` evaluator for the first controlled construction experiment.
+- Readiness now identifies the first blocker in a strict sequence:
+  - FrameTick probe disabled
+  - FrameTick probe not installed
+  - FrameTick not observed
+  - input polling not observed
+  - FrameTick/input thread mismatch
+  - safe Free Roam not observed
+  - road lookahead unavailable
+  - metric calibration unverified
+  - spawn candidate unverified
+- Runtime sampling records Free Roam/lookahead evidence only through atomics.
+- The 8-second hook-health diagnostic now emits a construction-readiness line.
+- Matching FrameTick and input-poll thread IDs is required before gameplay-thread evidence is considered confirmed.
+- Metric calibration and final candidate promotion remain deliberately false in v0.0.16, so readiness cannot accidentally authorize construction.
+- Added systems tests for every blocker transition.
+- Added `docs/RUNTIME_READINESS.md`.
+
+
 ## 0.0.15-dev
 
 - Added `ChallengeInputEdge` with deterministic rising-edge semantics.

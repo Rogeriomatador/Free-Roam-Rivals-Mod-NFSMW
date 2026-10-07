@@ -24,10 +24,12 @@ Exit criterion: loading the ASI does not alter gameplay and creates a diagnostic
 - [x] Add read-only spawn preflight diagnostics
 - [x] Read native SeekAhead/FarFuture road-lookahead geometry
 - [x] Block raw world-unit geometry from metric spawn thresholds until calibrated
+- [x] Emit a single fail-closed construction-readiness diagnostic
 - [ ] Calibrate world-units-to-metre scale on the target installation
 - [ ] Extract a verified road-safe/off-screen spawn candidate from the live road system
 - [ ] Validate dedicated gameplay-thread mutation callback in-game
   - [x] Add opt-in read-only GameFrameTick entry probe
+  - [x] Encode callback/thread/FreeRoam/lookahead/calibration/candidate readiness blockers
   - [ ] Confirm callback/thread health on target installation before mutation
 - [x] Encode construct/registry/AI/motion/cleanup experiment as a fail-closed state machine
 - [ ] Wire the state machine to verified engine construction/cleanup calls

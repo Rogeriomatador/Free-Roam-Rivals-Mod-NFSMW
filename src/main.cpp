@@ -11,7 +11,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.15-dev";
+constexpr const char* kVersion = "0.0.16-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -100,7 +100,7 @@ int bootstrap() {
     }
 
     log.info(
-        "v0.0.15-dev adds an edge-triggered configurable challenge fallback input with an atomic press queue for the future EncounterDirector. No verified native HORN/HONK action exists in the current MW05 action map, so horn integration remains separate."
+        "v0.0.16-dev adds a single fail-closed construction-readiness report covering FrameTick installation/observation, main-loop thread evidence, Free Roam, road lookahead, metric calibration and spawn-candidate promotion."
     );
 
     return NFSMW_OK;
@@ -110,7 +110,7 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.15-dev",
+    "0.0.16-dev",
     "Rogeriomatador"
 )
 

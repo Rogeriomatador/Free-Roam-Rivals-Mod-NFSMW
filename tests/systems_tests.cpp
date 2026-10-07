@@ -1,4 +1,5 @@
 #include "domain/ChallengeInput.h"
+#include "domain/MutationReadiness.h"
 #include "domain/OutrunRace.h"
 #include "domain/RuntimeSession.h"
 #include "domain/RivalRuntimeHandle.h"
@@ -24,6 +25,93 @@ void require(bool value, const char* message) {
 
 int main() {
     using namespace frr::domain;
+
+    MutationReadinessInput readiness{};
+    auto readinessReport =
+        evaluateMutationReadiness(readiness);
+
+    require(
+        !readinessReport.readyForConstructionExperiment &&
+        readinessReport.blocker ==
+            MutationReadinessBlocker::FrameTickProbeDisabled,
+        "mutation readiness starts with FrameTick probe disabled"
+    );
+
+    readiness.frameTickProbeEnabled = true;
+    readinessReport = evaluateMutationReadiness(readiness);
+    require(
+        readinessReport.blocker ==
+            MutationReadinessBlocker::FrameTickProbeNotInstalled,
+        "readiness requires installed FrameTick probe"
+    );
+
+    readiness.frameTickProbeInstalled = true;
+    readinessReport = evaluateMutationReadiness(readiness);
+    require(
+        readinessReport.blocker ==
+            MutationReadinessBlocker::FrameTickNotObserved,
+        "readiness requires observed FrameTick calls"
+    );
+
+    readiness.frameTickCount = 10;
+    readiness.frameTickThreadId = 100;
+    readinessReport = evaluateMutationReadiness(readiness);
+    require(
+        readinessReport.blocker ==
+            MutationReadinessBlocker::InputPollNotObserved,
+        "readiness requires input-poll evidence"
+    );
+
+    readiness.inputPollCount = 10;
+    readiness.inputThreadId = 200;
+    readinessReport = evaluateMutationReadiness(readiness);
+    require(
+        readinessReport.blocker ==
+            MutationReadinessBlocker::MainLoopThreadUnconfirmed,
+        "readiness rejects unmatched FrameTick/input threads"
+    );
+
+    readiness.inputThreadId = 100;
+    readinessReport = evaluateMutationReadiness(readiness);
+    require(
+        readinessReport.gameplayThreadConfirmed &&
+        readinessReport.blocker ==
+            MutationReadinessBlocker::FreeRoamNotObserved,
+        "matching FrameTick/input thread confirms gameplay-thread evidence"
+    );
+
+    readiness.safeFreeRoamObserved = true;
+    readinessReport = evaluateMutationReadiness(readiness);
+    require(
+        readinessReport.blocker ==
+            MutationReadinessBlocker::RoadLookaheadUnavailable,
+        "readiness requires live road lookahead"
+    );
+
+    readiness.roadLookaheadObserved = true;
+    readinessReport = evaluateMutationReadiness(readiness);
+    require(
+        readinessReport.blocker ==
+            MutationReadinessBlocker::MetricCalibrationUnverified,
+        "readiness requires verified metric scale"
+    );
+
+    readiness.metricCalibrationVerified = true;
+    readinessReport = evaluateMutationReadiness(readiness);
+    require(
+        readinessReport.blocker ==
+            MutationReadinessBlocker::SpawnCandidateUnverified,
+        "readiness requires final verified spawn candidate"
+    );
+
+    readiness.spawnCandidateVerified = true;
+    readinessReport = evaluateMutationReadiness(readiness);
+    require(
+        readinessReport.readyForConstructionExperiment &&
+        readinessReport.blocker ==
+            MutationReadinessBlocker::None,
+        "all evidence gates construction experiment readiness"
+    );
 
     ChallengeInputEdge challengeEdge{};
 

@@ -4,6 +4,7 @@
 #include "GameBridge.h"
 #include "VehicleCatalogProbe.h"
 #include "../core/Log.h"
+#include "../domain/MutationReadiness.h"
 #include "../domain/RuntimeSession.h"
 #include "../domain/SpawnSafety.h"
 #include "../domain/UndergroundBlacklist.h"
@@ -37,6 +38,11 @@ std::atomic<std::uint64_t> g_samples{0};
 std::atomic<DWORD> g_renderThreadId{0};
 std::atomic<DWORD> g_inputThreadId{0};
 std::atomic<DWORD> g_frameTickThreadId{0};
+
+std::atomic<bool> g_frameTickProbeInstalled{false};
+std::atomic<bool> g_safeFreeRoamObserved{false};
+std::atomic<bool> g_roadLookaheadObserved{false};
+
 bool g_vehicleCatalogValidated = false;
 
 bool g_haveBlacklistDiagnostic = false;
@@ -513,6 +519,21 @@ void sampleAndLog(
     const RuntimeSnapshot current = GameBridge::sample();
     ++g_samples;
 
+    if (current.mode == WorldProbeMode::FreeRoamCandidate &&
+        current.capabilities.canClassifyFreeRoam) {
+        g_safeFreeRoamObserved.store(
+            true,
+            std::memory_order_relaxed
+        );
+    }
+
+    if (current.roadNavigation.available) {
+        g_roadLookaheadObserved.store(
+            true,
+            std::memory_order_relaxed
+        );
+    }
+
     updateRuntimeSessionAndSpawnPreflight(current);
     updateUndergroundBlacklistDiagnostic(current);
 
@@ -636,6 +657,66 @@ DWORD WINAPI healthThread(LPVOID) {
 
     Log::instance().info(out.str());
 
+    frr::domain::MutationReadinessInput readiness{};
+    readiness.frameTickProbeEnabled =
+        g_config.frameTickProbeEnabled;
+    readiness.frameTickProbeInstalled =
+        g_frameTickProbeInstalled.load(
+            std::memory_order_relaxed
+        );
+    readiness.frameTickCount =
+        g_frameTicks.load(
+            std::memory_order_relaxed
+        );
+    readiness.inputPollCount =
+        g_inputPolls.load(
+            std::memory_order_relaxed
+        );
+    readiness.frameTickThreadId =
+        frameThread;
+    readiness.inputThreadId =
+        inputThread;
+    readiness.safeFreeRoamObserved =
+        g_safeFreeRoamObserved.load(
+            std::memory_order_relaxed
+        );
+    readiness.roadLookaheadObserved =
+        g_roadLookaheadObserved.load(
+            std::memory_order_relaxed
+        );
+
+    // Intentionally false until target-machine calibration/candidate
+    // promotion work completes. This keeps construction fail-closed.
+    readiness.metricCalibrationVerified = false;
+    readiness.spawnCandidateVerified = false;
+
+    const auto readinessReport =
+        frr::domain::evaluateMutationReadiness(
+            readiness
+        );
+
+    {
+        std::ostringstream line;
+        line << "Construction readiness after 8s: "
+             << (readinessReport.readyForConstructionExperiment
+                 ? "READY"
+                 : "BLOCKED")
+             << " blocker="
+             << frr::domain::mutationReadinessBlockerName(
+                    readinessReport.blocker
+                )
+             << " gameplayThreadConfirmed="
+             << (readinessReport.gameplayThreadConfirmed ? 1 : 0)
+             << " freeRoamObserved="
+             << (readiness.safeFreeRoamObserved ? 1 : 0)
+             << " roadLookaheadObserved="
+             << (readiness.roadLookaheadObserved ? 1 : 0)
+             << " metricCalibrationVerified=0"
+             << " spawnCandidateVerified=0";
+
+        Log::instance().info(line.str());
+    }
+
     if (g_renderFrames.load() == 0) {
         Log::instance().warn(
             "D3D9 EndScene callback has not fired yet."
@@ -725,6 +806,11 @@ RuntimeProbeInstallResult RuntimeProbe::install(
 
         result.frameTickProbeInstalled =
             frameTickHook.installed();
+
+        g_frameTickProbeInstalled.store(
+            result.frameTickProbeInstalled,
+            std::memory_order_relaxed
+        );
 
         if (result.frameTickProbeInstalled) {
             Log::instance().info(
