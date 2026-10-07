@@ -348,6 +348,110 @@ PointOccupancyReport evaluatePointAgainstFleet(
     return out;
 }
 
+
+ConservativeClearanceReport
+evaluateConservativeSpawnClearance(
+    const SpatialVector3& candidatePosition,
+    const ProspectiveVehicleFootprint& candidate,
+    const std::vector<VehicleOrientedBox>& fleet,
+    bool registryComplete,
+    float paddingWorldUnits
+) {
+    ConservativeClearanceReport out{};
+    out.registryComplete = registryComplete;
+
+    if (!finitePoint(candidatePosition) ||
+        !candidate.valid ||
+        candidate.modelHash == 0 ||
+        !finiteVector(candidate.localCenterOffset) ||
+        !finiteVector(candidate.halfExtents) ||
+        !finite(candidate.conservativeRadiusWorldUnits) ||
+        candidate.conservativeRadiusWorldUnits <= 0.0f ||
+        !finite(paddingWorldUnits) ||
+        paddingWorldUnits < 0.0f) {
+        return out;
+    }
+
+    out.queryValid = true;
+    out.candidateRadiusWorldUnits =
+        candidate.conservativeRadiusWorldUnits;
+
+    float nearest =
+        std::numeric_limits<float>::infinity();
+
+    for (const auto& vehicle : fleet) {
+        if (vehicle.identity == 0 ||
+            !validVehicleOrientedBox(vehicle)) {
+            ++out.invalidVehicles;
+            continue;
+        }
+
+        ++out.checkedVehicles;
+
+        const float liveRadius =
+            length(vehicle.halfExtents);
+
+        if (!finite(liveRadius) ||
+            liveRadius <= 0.0f) {
+            ++out.invalidVehicles;
+            --out.checkedVehicles;
+            continue;
+        }
+
+        const float dx =
+            vehicle.center.x - candidatePosition.x;
+        const float dy =
+            vehicle.center.y - candidatePosition.y;
+
+        const float centerDistance =
+            std::sqrt(dx * dx + dy * dy);
+
+        if (!finite(centerDistance)) {
+            ++out.invalidVehicles;
+            --out.checkedVehicles;
+            continue;
+        }
+
+        const float required =
+            candidate.conservativeRadiusWorldUnits +
+            liveRadius +
+            paddingWorldUnits;
+
+        if (centerDistance < nearest) {
+            nearest = centerDistance;
+            out.nearestVehicle = vehicle.identity;
+            out.nearestRequiredClearanceWorldUnits =
+                required;
+        }
+
+        if (centerDistance <= required) {
+            out.potentialOverlap = true;
+
+            if (out.blockingVehicle == 0) {
+                out.blockingVehicle =
+                    vehicle.identity;
+            }
+        }
+    }
+
+    if (finite(nearest)) {
+        out.nearestCenterDistanceWorldUnits = nearest;
+    }
+
+    out.evidenceComplete =
+        out.queryValid &&
+        out.registryComplete &&
+        out.invalidVehicles == 0;
+
+    // A conservative circle overlap does not prove a real OBB collision.
+    // Only the negative result is promoted as verified clearance.
+    out.verifiedClear =
+        out.evidenceComplete &&
+        !out.potentialOverlap;
+
+    return out;
+}
+
 FleetOverlapReport evaluateFootprintAgainstFleet(
     const VehicleOrientedBox& candidate,
     const std::vector<VehicleOrientedBox>& fleet,
