@@ -46,7 +46,9 @@ void ChallengeInputProbe::configure(
 void ChallengeInputProbe::onPoll() {
     bool down = false;
 
-    if (validVirtualKey(g_fallbackVirtualKey)) {
+    DWORD foregroundProcess = 0;
+    GetWindowThreadProcessId(GetForegroundWindow(), &foregroundProcess);
+    if (foregroundProcess == GetCurrentProcessId() && validVirtualKey(g_fallbackVirtualKey)) {
         const SHORT state = GetAsyncKeyState(
             static_cast<int>(g_fallbackVirtualKey)
         );
@@ -108,3 +110,4 @@ unsigned ChallengeInputProbe::fallbackVirtualKey() {
 }
 
 } // namespace frr::game
+

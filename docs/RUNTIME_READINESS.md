@@ -150,3 +150,17 @@ Readiness fields now describe the latest safe sample. Ground results have a
 road network, race status and profile. Footprint readiness belongs to the
 selected pending rival model, is recomputed each sample and can be revoked by
 a later inconsistent observation. These diagnostics never authorize mutation.
+
+## v0.0.26 verified-loop alternative
+
+The unobserved legacy input-poller adapter is no longer installed. A unique
+WFP main-loop CALL with cdecl-float cleanup must agree with the independently
+pinned GameFrameTick target before a typed hook is enabled. The evaluator has
+explicit sourceVerified/threadConsistent/completedCount/threadId fields for
+this alternative. FrameTick must still be enabled and installed/observed, and
+its entry thread must match the loop completion thread. Native input counts
+are not synthesized. This replaces the unconfirmed input ABI assumption;
+entry/completion are one function's boundaries, not independent input proof.
+See GAMEPLAY_LOOP_RECOVERY.md for exact provenance and target-test limitations.
+All remaining geometry, footprint, ground, physical metric and final candidate
+checks still apply. The runtime still never authorizes construction.

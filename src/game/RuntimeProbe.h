@@ -25,6 +25,7 @@ struct RuntimeProbeConfig {
 };
 
 struct RuntimeProbeInstallResult {
+    bool gameplayLoopInstalled = false;
     bool renderProbeArmed = false;
     bool inputProbeInstalled = false;
     bool frameTickProbeInstalled = false;

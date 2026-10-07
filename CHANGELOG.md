@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.0.26-dev
+
+- Recorded target render recovery: 350 motion records, 288 accepted pairs, no auditor mismatches. Physical metric remains unverified.
+- Replaced the unobserved SDK input-poller adapter with a guarded, unique MW05 CALL/ABI/pinned-target main-loop bridge for the fallback key. Native input-poll counts remain separate.
+- Preserve original cdecl float arguments, publish trampolines before activation, suppress nested callbacks and revoke callback delivery permanently on observed thread changes.
+- Add focused-process fallback key sampling and rising-edge logs. No encounter dispatch or native horn is claimed.
+- Add an explicit verified/completed main-loop ownership path to readiness and opt-in world-collision queries; retain current-thread, world identity and expiry gates.
+- Fix live spatial boxes always rejecting themselves due to an initially false valid flag; use a tested geometry factory without weakening geometry/fleet validation.
+- Add portable discovery/readiness/spatial regressions and native Win32 hook tests. Add bounded release publication retries after the prior GitHub HTTP 500.
+- Update package to v0.0.26-dev; construction, AI, physical metric and final candidate promotion remain blocked.
+
 ## 0.0.25-dev
 
 - Investigated the supplied v0.0.24 target log: supported executable and successful ASI loading, but zero render/input callbacks at health and no motion capture records. Carrera GT/Cobalt SS/tuning/KPH are user notes, not captured scale evidence.

@@ -26,15 +26,18 @@ MutationReadinessReport evaluateMutationReadiness(
         return out;
     }
 
-    if (input.inputPollCount == 0 ||
-        input.inputThreadId == 0) {
+    const bool verifiedLoop = input.gameplayLoopSourceVerified &&
+        input.gameplayLoopThreadConsistent && input.gameplayLoopCompletedCount > 0 &&
+        input.gameplayLoopThreadId != 0;
+    if (!verifiedLoop && (input.inputPollCount == 0 ||
+        input.inputThreadId == 0)) {
         out.blocker =
             MutationReadinessBlocker::InputPollNotObserved;
         return out;
     }
 
-    if (input.frameTickThreadId !=
-        input.inputThreadId) {
+    const auto gameplayThread = verifiedLoop ? input.gameplayLoopThreadId : input.inputThreadId;
+    if (input.frameTickThreadId != gameplayThread) {
         out.blocker =
             MutationReadinessBlocker::MainLoopThreadUnconfirmed;
         return out;
@@ -133,3 +136,4 @@ const char* mutationReadinessBlockerName(
 }
 
 } // namespace frr::domain
+

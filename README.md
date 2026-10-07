@@ -50,7 +50,7 @@ Support for additional 1.3 executables will be added only after their addresses/
 
 ## Current status
 
-**Pre-alpha / read-only runtime + gameplay-thread world-collision evidence + road/spawn-readiness foundations (v0.0.25-dev).**
+**Pre-alpha / read-only runtime + gameplay-thread world-collision evidence + road/spawn-readiness foundations (v0.0.26-dev).**
 
 The ASI validates the supported executable, installs observation hooks, separates Free Roam from stock races, enumerates live IVehicle driver classes, independently cross-checks the player PVehicle, observes the road network, reads career cash/car-count/completion, and validates the configured rival-car catalog without mutating the game.
 
@@ -193,4 +193,8 @@ Opt-in `MotionCaptureEnabled=1` records each raw motion sample with a capture/co
 
 ## v0.0.25 render observation recovery
 
-A target log proved ASI/executable loading but contained no render/input callbacks or motion captures. The guarded render bridge now checks hook installation, follows device changes and intercepts EndScene/Present method entries, including cached method pointers. Present provides a read-only fallback without duplicate sampling. Periodic health and actual INI switches distinguish installation from callback delivery. See [RENDER_HOOK_RECOVERY.md](docs/RENDER_HOOK_RECOVERY.md). Target-game confirmation is still required; vehicle construction remains blocked.
+A target log proved ASI/executable loading but contained no render/input callbacks or motion captures. The guarded render bridge now checks hook installation, follows device changes and intercepts EndScene/Present method entries, including cached method pointers. Present provides a read-only fallback without duplicate sampling. Periodic health and actual INI switches distinguish installation from callback delivery. See [RENDER_HOOK_RECOVERY.md](docs/RENDER_HOOK_RECOVERY.md). Target render delivery is now confirmed by the supplied v0.0.25 capture; vehicle construction remains blocked. See [target results](docs/TARGET_CAPTURE_2026-10-07.md).
+
+## v0.0.26 gameplay observation and spatial correction
+
+A signature-verified cdecl-float main-loop bridge replaces the unobserved legacy input adapter for the fallback challenge key. It reports genuine loop delivery separately from native input polling, follows entry/completion and revokes callbacks on thread changes. FrameTick ownership remains opt-in; world collision retains thread/world/lease checks. The live OBB adapter now builds valid geometry before validation, correcting unconditional rejection of every box. See [GAMEPLAY_LOOP_RECOVERY.md](docs/GAMEPLAY_LOOP_RECOVERY.md) for the next target test. Vehicle construction remains blocked.

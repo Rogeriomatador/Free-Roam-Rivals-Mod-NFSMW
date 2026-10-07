@@ -119,6 +119,14 @@ bool validVehicleOrientedBox(
     return normalizeBox(box, normalized);
 }
 
+VehicleOrientedBox makeVehicleOrientedBox(std::uintptr_t identity, std::uint32_t vehicleKey,
+    SpatialVector3 center, SpatialVector3 right, SpatialVector3 up,
+    SpatialVector3 forward, SpatialVector3 halfExtents) {
+    VehicleOrientedBox box{true, identity, vehicleKey, center, right, up, forward, halfExtents};
+    box.valid = validVehicleOrientedBox(box);
+    return box;
+}
+
 bool pointInsideVehicleOrientedBox(
     const SpatialVector3& point,
     const VehicleOrientedBox& box
@@ -395,3 +403,4 @@ FleetOverlapReport evaluateFootprintAgainstFleet(
 }
 
 } // namespace frr::domain
+

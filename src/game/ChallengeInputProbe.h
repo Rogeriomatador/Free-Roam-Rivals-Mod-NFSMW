@@ -14,9 +14,9 @@ public:
         const ChallengeInputProbeConfig& config
     );
 
-    // Called from the verified game input-poll callback after the engine has
-    // refreshed its own bindings. This probe reads only the configured
-    // fallback virtual key and never injects input.
+    // Called after the verified game-loop function returns. Reads only the
+    // configured fallback key while this process is foreground; no injection
+    // and no claim that the internal native-action mirror was polled.
     static void onPoll();
 
     // Future EncounterDirector integration consumes exactly one queued edge.
@@ -27,3 +27,4 @@ public:
 };
 
 } // namespace frr::game
+

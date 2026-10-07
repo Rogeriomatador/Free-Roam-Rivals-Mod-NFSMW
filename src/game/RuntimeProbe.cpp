@@ -1,6 +1,7 @@
 #include "RuntimeProbe.h"
 
 #include "ChallengeInputProbe.h"
+#include "GameplayLoopHook.h"
 #include "CameraFrustumProbe.h"
 #include "GameBridge.h"
 #include "RoadCandidateProbe.h"
@@ -24,9 +25,6 @@
 #include "../domain/WorldCollisionEvidence.h"
 #include "../persistence/UndergroundBlacklistStore.h"
 
-#include <nfsmw_sdk/functions.h>
-#include <nfsmw_sdk/input.h>
-#include <nfsmw_sdk/midhook.h>
 
 #include <windows.h>
 
@@ -48,7 +46,8 @@ RuntimeSnapshot g_last{};
 bool g_haveLast = false;
 
 std::atomic<std::uint64_t> g_renderFrames{0};
-std::atomic<std::uint64_t> g_inputPolls{0};
+std::atomic<std::uint64_t> g_inputPolls{0}; // legacy native poller is not installed
+std::atomic<std::uint64_t> g_gameplayCallbacks{0};
 std::atomic<std::uint64_t> g_frameTicks{0};
 std::atomic<std::uint64_t> g_samples{0};
 
@@ -177,28 +176,16 @@ void selectPendingRival(const RuntimeSnapshot& current) {
     g_selectedRivalVehicle = {g_selectedRival->rivalId, key.value_or(0)};
 }
 
+bool gameplayLoopThreadConfirmed() {
+    const auto loop = GameplayLoopHook::snapshot();
+    const auto frameThread = g_frameTickThreadId.load();
+    return g_config.frameTickProbeEnabled && g_frameTickProbeInstalled.load() &&
+        loop.installed && loop.sourceVerified && loop.threadConsistent && loop.completed > 0 &&
+        frameThread != 0 && frameThread == loop.threadId;
+}
 bool collisionGameplayThreadConfirmed() {
-    if (!g_config.worldCollisionDiagnosticsEnabled ||
-        !g_config.frameTickProbeEnabled ||
-        !g_frameTickProbeInstalled.load(
-            std::memory_order_relaxed)) {
-        return false;
-    }
-
-    const DWORD frameThread =
-        g_frameTickThreadId.load(
-            std::memory_order_relaxed
-        );
-    const DWORD inputThread =
-        g_inputThreadId.load(
-            std::memory_order_relaxed
-        );
-
-    return
-        frameThread != 0 &&
-        inputThread != 0 &&
-        frameThread == inputThread &&
-        GetCurrentThreadId() == inputThread;
+    return g_config.worldCollisionDiagnosticsEnabled && gameplayLoopThreadConfirmed() &&
+        GetCurrentThreadId() == GameplayLoopHook::snapshot().threadId;
 }
 
 void queueWorldCollisionRequest(
@@ -1246,17 +1233,7 @@ void sampleAndLog(
                  ? 1
                  : 0)
              << " gameplayThreadConfirmed="
-             << (g_frameTickThreadId.load(
-                    std::memory_order_relaxed
-                 ) != 0 &&
-                 g_frameTickThreadId.load(
-                    std::memory_order_relaxed
-                 ) ==
-                 g_inputThreadId.load(
-                    std::memory_order_relaxed
-                 )
-                 ? 1
-                 : 0);
+             << (gameplayLoopThreadConfirmed() ? 1 : 0);
 
         if (collision.available) {
             line << " requestId="
@@ -1340,9 +1317,11 @@ void rememberThread(
     );
 }
 
-void NFSMW_CDECL onFrameTickProbe(nfsmw_regs*) {
-    rememberThread(g_frameTickThreadId);
-    ++g_frameTicks;
+void onGameplayLoopBefore(float) {
+    if (g_config.frameTickProbeEnabled) {
+        rememberThread(g_frameTickThreadId);
+        ++g_frameTicks;
+    }
 }
 
 void onRenderFrame(void*) {
@@ -1357,13 +1336,15 @@ void onRenderFrame(void*) {
     }
 }
 
-void onInputPoll() {
-    rememberThread(g_inputThreadId);
-    ChallengeInputProbe::onPoll();
-    ++g_inputPolls;
-
-    // WCollisionMgr world traversal is intentionally executed only from the
-    // game/input thread after FrameTick and input thread IDs match.
+void onGameplayLoopAfter(float) {
+    if (++g_gameplayCallbacks == 1)
+        Log::instance().info("First verified gameplay-loop callback delivered after original update; native inputPolls remains separate.");
+    if (g_config.inputProbeEnabled) {
+        const auto before = ChallengeInputProbe::totalPresses();
+        ChallengeInputProbe::onPoll();
+        if (ChallengeInputProbe::totalPresses() != before)
+            Log::instance().info("Fallback challenge key edge observed on gameplay loop (read-only; encounter dispatch not enabled).");
+    }
     processWorldCollisionRequest();
 }
 
@@ -1375,6 +1356,7 @@ DWORD WINAPI healthThread(LPVOID) {
     for (;;) {
         const auto elapsedSeconds = (GetTickCount64() - startedAt) / 1000;
         const auto renderHook = RenderObservationHook::snapshot();
+        const auto gameplayLoop = GameplayLoopHook::snapshot();
 
         std::ostringstream out;
         const DWORD renderThread = g_renderThreadId.load();
@@ -1384,6 +1366,13 @@ DWORD WINAPI healthThread(LPVOID) {
         out << "Runtime hook health after " << elapsedSeconds << "s:"
             << " renderFrames=" << g_renderFrames.load()
             << " inputPolls=" << g_inputPolls.load()
+            << " gameplayLoopCalls=" << gameplayLoop.entered
+            << " gameplayLoopCompleted=" << gameplayLoop.completed
+            << " gameplayCallbacks=" << g_gameplayCallbacks.load()
+            << " gameplayLoopInstalled=" << gameplayLoop.installed
+            << " gameplayLoopSourceVerified=" << gameplayLoop.sourceVerified
+            << " gameplayLoopThreadConsistent=" << gameplayLoop.threadConsistent
+            << " gameplayLoopThread=" << gameplayLoop.threadId
             << " frameTicks=" << g_frameTicks.load()
             << " samples=" << g_samples.load()
             << " challengeFallbackPresses="
@@ -1399,6 +1388,9 @@ DWORD WINAPI healthThread(LPVOID) {
             << " deviceGlobal=0x" << std::hex << renderHook.deviceGlobal
             << " device=0x" << renderHook.device << " vtable=0x" << renderHook.vtable << std::dec;
 
+        if (frameThread != 0 && gameplayLoop.threadId != 0) {
+            out << " frameTickEqualsGameplayLoop=" << (frameThread == gameplayLoop.threadId ? 1 : 0);
+        }
         if (frameThread != 0 && inputThread != 0) {
             out << " frameTickEqualsInput="
                 << (frameThread == inputThread ? 1 : 0);
@@ -1430,6 +1422,10 @@ DWORD WINAPI healthThread(LPVOID) {
             frameThread;
         readiness.inputThreadId =
             inputThread;
+        readiness.gameplayLoopSourceVerified = gameplayLoop.sourceVerified;
+        readiness.gameplayLoopThreadConsistent = gameplayLoop.threadConsistent;
+        readiness.gameplayLoopCompletedCount = gameplayLoop.completed;
+        readiness.gameplayLoopThreadId = gameplayLoop.threadId;
         readiness.safeFreeRoamObserved =
             g_safeFreeRoamObserved.load(
                 std::memory_order_relaxed
@@ -1510,9 +1506,9 @@ DWORD WINAPI healthThread(LPVOID) {
             );
         }
 
-        if (g_inputPolls.load() == 0) {
+        if (g_config.inputProbeEnabled && gameplayLoop.completed == 0) {
             Log::instance().warn(
-                "Input-poll diagnostic hook has not fired yet."
+                "No verified gameplay-loop completion observed; fallback challenge input is unavailable."
             );
         }
 
@@ -1558,7 +1554,7 @@ RuntimeProbeInstallResult RuntimeProbe::install(
     if (config.worldCollisionDiagnosticsEnabled) {
         if (!config.frameTickProbeEnabled) {
             Log::instance().warn(
-                "WorldCollisionDiagnosticsEnabled requires FrameTickProbeEnabled=1. Collision calls remain blocked until the gameplay thread is confirmed."
+                "WorldCollisionDiagnosticsEnabled requires FrameTickProbeEnabled=1 and verified gameplay-loop delivery."
             );
         } else if (!WorldCollisionProbe::addressAvailable()) {
             Log::instance().warn(
@@ -1566,7 +1562,7 @@ RuntimeProbeInstallResult RuntimeProbe::install(
             );
         } else {
             Log::instance().info(
-                "World-collision diagnostics armed. Queries will execute only after FrameTick and input polling are observed on the same gameplay thread."
+                "World-collision diagnostics armed. Queries require verified gameplay-loop source, completed calls and a consistent FrameTick/gameplay thread."
             );
         }
     }
@@ -1577,50 +1573,15 @@ RuntimeProbeInstallResult RuntimeProbe::install(
         );
     }
 
-    if (config.inputProbeEnabled) {
-        result.inputProbeInstalled =
-            nfsmw::input::on_poll([]() {
-                onInputPoll();
-            });
-
-        if (result.inputProbeInstalled) {
-            Log::instance().info(
-                "Input-poll diagnostic hook installed."
-            );
-        } else {
-            Log::instance().warn(
-                "Input-poll diagnostic hook failed to install."
-            );
-        }
+    if (config.inputProbeEnabled || config.frameTickProbeEnabled) {
+        result.gameplayLoopInstalled = GameplayLoopHook::install(&onGameplayLoopBefore, &onGameplayLoopAfter);
+        result.frameTickProbeInstalled = config.frameTickProbeEnabled && result.gameplayLoopInstalled;
+        g_frameTickProbeInstalled.store(result.frameTickProbeInstalled);
+        Log::instance().info(result.gameplayLoopInstalled ?
+            "Verified main-loop observation installed; fallback input uses post-update callback. No native input-poll count is fabricated." :
+            "Gameplay-loop observation blocked by discovery/installation evidence; fallback key and gameplay queries remain unavailable.");
     }
 
-    if (config.frameTickProbeEnabled) {
-        static nfsmw::MidHook frameTickHook(
-            NFSMW_FN_GameFrameTick_MainLoopUpdate,
-            &onFrameTickProbe
-        );
-
-        result.frameTickProbeInstalled =
-            frameTickHook.installed();
-
-        g_frameTickProbeInstalled.store(
-            result.frameTickProbeInstalled,
-            std::memory_order_relaxed
-        );
-
-        if (result.frameTickProbeInstalled) {
-            Log::instance().info(
-                "Opt-in GameFrameTick diagnostic mid-hook installed (read-only register-preserving probe)."
-            );
-        } else {
-            Log::instance().warn(
-                "GameFrameTick diagnostic probe failed to install; no gameplay mutation will use this path."
-            );
-        }
-    }
-
-    // SDK input/FrameTick initialize MinHook first; the render worker accepts
-    // the shared backend already initialized and never changes those gates.
     if (config.renderProbeEnabled) {
         result.renderProbeArmed = RenderObservationHook::install(&onRenderFrame);
         Log::instance().info(result.renderProbeArmed ?

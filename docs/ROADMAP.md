@@ -19,7 +19,11 @@ Exit criterion: loading the ASI does not alter gameplay and creates a diagnostic
 - [x] Resolve player IVehicle safely + independent PVehicle cross-check
 - [x] Implement read-only render/input observation callbacks
 - [x] Recover render observation with guarded device tracking and Present fallback
-- [ ] Confirm callback delivery and motion capture on target installation (v0.0.24 supplied log has no series)
+- [x] Confirm render callback delivery and audited motion capture on target installation (v0.0.25 log, 2026-10-07)
+- [x] Add signature/ABI-verified gameplay-loop fallback observation
+- [ ] Confirm gameplay-loop delivery and fallback key edges on target installation
+- [x] Correct runtime box construction before geometry validation
+- [ ] Confirm complete spatial fleet/selected-model footprint on target installation
 - [x] Define executable fail-closed spawn gates
 - [x] Track world generations and invalidate stale runtime handles
 - [x] Add generation-scoped rival runtime-handle model
@@ -64,7 +68,7 @@ Exit criterion: loading the ASI does not alter gameplay and creates a diagnostic
 - [x] Persistent-vs-procedural vehicle ownership policy
 - [x] Interest/challenge distance state machine (runtime adapter pending)
 - [x] Parse configurable fallback challenge key
-- [x] Detect edge-triggered fallback challenge input from the game input-poll callback
+- [x] Implement focused edge-triggered fallback challenge input on the verified gameplay loop (target delivery pending)
 - [ ] Identify a genuine native horn/honk source (current verified action table has none)
 - [ ] Wire queued challenge presses into runtime EncounterDirector
 - [ ] Wire accepted challenge into runtime encounter director
