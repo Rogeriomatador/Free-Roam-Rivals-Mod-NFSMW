@@ -54,6 +54,12 @@ MutationReadinessReport evaluateMutationReadiness(
         return out;
     }
 
+    if (!input.exactRoadCandidateObserved) {
+        out.blocker =
+            MutationReadinessBlocker::ExactRoadCandidateUnavailable;
+        return out;
+    }
+
     if (!input.metricCalibrationVerified) {
         out.blocker =
             MutationReadinessBlocker::MetricCalibrationUnverified;
@@ -91,6 +97,8 @@ const char* mutationReadinessBlockerName(
             return "FreeRoamNotObserved";
         case MutationReadinessBlocker::RoadLookaheadUnavailable:
             return "RoadLookaheadUnavailable";
+        case MutationReadinessBlocker::ExactRoadCandidateUnavailable:
+            return "ExactRoadCandidateUnavailable";
         case MutationReadinessBlocker::MetricCalibrationUnverified:
             return "MetricCalibrationUnverified";
         case MutationReadinessBlocker::SpawnCandidateUnverified:
