@@ -25,7 +25,10 @@ Exit criterion: loading the ASI does not alter gameplay and creates a diagnostic
 - [x] Read native SeekAhead/FarFuture road-lookahead geometry
 - [x] Block raw world-unit geometry from metric spawn thresholds until calibrated
 - [x] Emit a single fail-closed construction-readiness diagnostic
-- [ ] Calibrate world-units-to-metre scale on the target installation
+- [x] Instrument GetSpeed/GetSpeedometer/absolute/local/linear motion cross-checks
+- [x] Observe world-units per engine-speed-unit-second statistically
+- [ ] Capture target-machine motion logs across cars/districts
+- [ ] Prove physical GetSpeed unit semantics and calibrate world-units-to-metre scale
 - [ ] Extract a verified road-safe/off-screen spawn candidate from the live road system
 - [ ] Validate dedicated gameplay-thread mutation callback in-game
   - [x] Add opt-in read-only GameFrameTick entry probe
