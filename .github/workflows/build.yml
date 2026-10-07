@@ -52,9 +52,10 @@ jobs:
           Copy-Item "config/FreeRoamRivals.ini" "$pkg/scripts/FreeRoamRivals/FreeRoamRivals.ini"
           Copy-Item "config/Rivals.ini" "$pkg/scripts/FreeRoamRivals/Rivals.ini"
           Copy-Item "config/VehiclePools.ini" "$pkg/scripts/FreeRoamRivals/VehiclePools.ini"
+          Copy-Item "config/UndergroundBlacklist.ini" "$pkg/scripts/FreeRoamRivals/UndergroundBlacklist.ini"
 
           @"
-          NFSMW Free Roam Rivals v0.0.8-dev
+          NFSMW Free Roam Rivals v0.0.9-dev
 
           INSTALL:
           1. Extract this ZIP into the Need for Speed Most Wanted game folder.
@@ -76,23 +77,23 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.8-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.9-dev.zip" -Force
 
-      - name: Publish v0.0.8-dev GitHub Release
+      - name: Publish v0.0.9-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.8-dev"
+          $tag = "v0.0.9-dev"
 
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
             Write-Host "Release $tag already exists; keeping existing release."
           } else {
-            gh release create $tag "release/FreeRoamRivals-v0.0.8-dev.zip" `
+            gh release create $tag "release/FreeRoamRivals-v0.0.9-dev.zip" `
               --target "${{ github.sha }}" `
-              --title "Free Roam Rivals v0.0.8-dev" `
+              --title "Free Roam Rivals v0.0.9-dev" `
               --prerelease `
-              --notes "v0.0.8-dev: adiciona gerações de mundo/handles seguros, gates executáveis de spawn, preflight read-only, núcleo de Outrun e fundação completa do staging cinematográfico. Spawn/IA continuam bloqueados até o ciclo create-roadnav-cleanup ser validado."
+              --notes "v0.0.9-dev: adiciona uma Blacklist secundária real e independente para o pós-carreira, com ranks, descoberta, requisitos, caça no Free Roam e chaves futuras de foto/áudio. Também documenta o caminho para uma tela FNG nativa sem sobrescrever a Blacklist original. Spawn/IA e frontend mutation continuam bloqueados até validação."
           }
