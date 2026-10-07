@@ -1,5 +1,6 @@
 #include "domain/EncounterStateMachine.h"
 #include "domain/Progression.h"
+#include "domain/RivalGarage.h"
 #include "domain/StakeRules.h"
 #include "domain/VehicleSelection.h"
 
@@ -123,6 +124,36 @@ int main() {
         encounter.tick(input) == EncounterState::Roaming,
         "cooldown returns to roaming"
     );
+
+    RivalGarage garage{};
+
+    RivalVehicleState firstCar{};
+    firstCar.instanceId = 1;
+    firstCar.vehicleKey = "supra";
+    firstCar.streetValue = 70000;
+
+    require(garage.addVehicle(firstCar), "add first rival vehicle");
+    require(garage.size() == 1, "garage has first vehicle");
+    require(!garage.canWagerActiveVehicle(),
+            "rival cannot wager its last transferable car");
+    require(!garage.removeVehicle(1),
+            "last rival car removal is protected");
+
+    RivalVehicleState secondCar{};
+    secondCar.instanceId = 2;
+    secondCar.vehicleKey = "rx7";
+    secondCar.streetValue = 65000;
+
+    require(garage.addVehicle(secondCar), "add second rival vehicle");
+    require(garage.canWagerActiveVehicle(),
+            "rival can wager when another transferable car exists");
+    require(garage.setActiveVehicle(2),
+            "set second rival car active");
+    require(garage.removeVehicle(2),
+            "active wagered car can be removed with fallback available");
+    require(garage.activeVehicle() != nullptr &&
+            garage.activeVehicle()->instanceId == 1,
+            "garage selects safe fallback after active car loss");
 
     const auto& catalog = defaultVehicleCatalog();
     require(catalog.size() >= 30, "default vehicle catalog populated");
