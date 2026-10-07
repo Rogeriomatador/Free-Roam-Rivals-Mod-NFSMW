@@ -1,6 +1,7 @@
 #include "UndergroundBlacklist.h"
 
 #include <algorithm>
+#include <limits>
 #include <utility>
 
 namespace frr::domain {
@@ -78,6 +79,33 @@ bool requirementsMet(
         progress.qualifierWinsCurrentRank >=
             definition.qualifierWinsRequired &&
         progress.pinkSlipWins >= definition.minimumPinkSlipWins;
+}
+
+const UndergroundRivalDefinition* findDefinition(
+    const std::vector<UndergroundRivalDefinition>& definitions,
+    int rank
+) {
+    for (const auto& definition : definitions) {
+        if (definition.rank == rank) {
+            return &definition;
+        }
+    }
+
+    return nullptr;
+}
+
+int saturatingAddNonNegative(int current, int amount) {
+    const int safeCurrent = std::max(current, 0);
+    if (amount <= 0) {
+        return safeCurrent;
+    }
+
+    if (safeCurrent >
+        std::numeric_limits<int>::max() - amount) {
+        return std::numeric_limits<int>::max();
+    }
+
+    return safeCurrent + amount;
 }
 
 } // namespace
@@ -245,6 +273,187 @@ std::uint32_t markUndergroundRankDiscovered(
     return discoveredMask | rankBit(rank);
 }
 
+UndergroundProgressUpdate applyUndergroundProgressEvent(
+    const std::vector<UndergroundRivalDefinition>& definitions,
+    const UndergroundBlacklistProgress& progress,
+    const UndergroundProgressEvent& event
+) {
+    UndergroundProgressUpdate out{};
+    out.progress = progress;
+
+    const auto before = evaluateUndergroundBlacklist(
+        definitions,
+        progress
+    );
+
+    out.previousRank = before.currentRank;
+    out.currentRank = before.currentRank;
+
+    if (!before.unlocked) {
+        out.rejectReason =
+            UndergroundProgressRejectReason::CareerNotCompleted;
+        return out;
+    }
+
+    auto reject =
+        [&](UndergroundProgressRejectReason reason) {
+            out.applied = false;
+            out.rejectReason = reason;
+            return out;
+        };
+
+    switch (event.kind) {
+        case UndergroundProgressEventKind::StreetRepEarned:
+            if (event.amount <= 0) {
+                return reject(
+                    UndergroundProgressRejectReason::InvalidAmount
+                );
+            }
+
+            out.progress.streetRep =
+                saturatingAddNonNegative(
+                    out.progress.streetRep,
+                    event.amount
+                );
+            break;
+
+        case UndergroundProgressEventKind::QualifierWin:
+            if (before.currentRank == 0) {
+                return reject(
+                    UndergroundProgressRejectReason::NoCurrentTarget
+                );
+            }
+
+            if (event.amount <= 0) {
+                return reject(
+                    UndergroundProgressRejectReason::InvalidAmount
+                );
+            }
+
+            out.progress.qualifierWinsCurrentRank =
+                saturatingAddNonNegative(
+                    out.progress.qualifierWinsCurrentRank,
+                    event.amount
+                );
+            break;
+
+        case UndergroundProgressEventKind::PinkSlipWin:
+            if (event.amount <= 0) {
+                return reject(
+                    UndergroundProgressRejectReason::InvalidAmount
+                );
+            }
+
+            out.progress.pinkSlipWins =
+                saturatingAddNonNegative(
+                    out.progress.pinkSlipWins,
+                    event.amount
+                );
+            break;
+
+        case UndergroundProgressEventKind::TargetSighted:
+        case UndergroundProgressEventKind::TargetDefeated: {
+            if (before.currentRank == 0) {
+                return reject(
+                    UndergroundProgressRejectReason::NoCurrentTarget
+                );
+            }
+
+            const int targetRank =
+                event.rank == 0
+                    ? before.currentRank
+                    : event.rank;
+
+            if (targetRank != before.currentRank) {
+                return reject(
+                    UndergroundProgressRejectReason::WrongTargetRank
+                );
+            }
+
+            const auto* definition =
+                findDefinition(definitions, targetRank);
+
+            if (!definition) {
+                return reject(
+                    UndergroundProgressRejectReason::WrongTargetRank
+                );
+            }
+
+            if (undergroundRankDefeated(
+                    out.progress.defeatedMask,
+                    targetRank)) {
+                return reject(
+                    UndergroundProgressRejectReason::TargetAlreadyDefeated
+                );
+            }
+
+            if (!requirementsMet(
+                    *definition,
+                    out.progress)) {
+                return reject(
+                    UndergroundProgressRejectReason::RequirementsNotMet
+                );
+            }
+
+            if (event.kind ==
+                UndergroundProgressEventKind::TargetSighted) {
+                out.progress.discoveredMask =
+                    markUndergroundRankDiscovered(
+                        out.progress.discoveredMask,
+                        targetRank
+                    );
+            } else {
+                if (!undergroundRankDiscovered(
+                        out.progress.discoveredMask,
+                        targetRank)) {
+                    return reject(
+                        UndergroundProgressRejectReason::TargetNotDiscovered
+                    );
+                }
+
+                out.progress.discoveredMask =
+                    markUndergroundRankDiscovered(
+                        out.progress.discoveredMask,
+                        targetRank
+                    );
+
+                out.progress.defeatedMask =
+                    markUndergroundRankDefeated(
+                        out.progress.defeatedMask,
+                        targetRank
+                    );
+
+                out.progress.qualifierWinsCurrentRank = 0;
+                out.progress.currentTargetPresent = false;
+            }
+            break;
+        }
+    }
+
+    out.applied = true;
+    out.rejectReason =
+        UndergroundProgressRejectReason::None;
+
+    const auto after = evaluateUndergroundBlacklist(
+        definitions,
+        out.progress
+    );
+    out.currentRank = after.currentRank;
+
+    return out;
+}
+
+UndergroundProgressUpdate applyUndergroundProgressEvent(
+    const UndergroundBlacklistProgress& progress,
+    const UndergroundProgressEvent& event
+) {
+    return applyUndergroundProgressEvent(
+        defaultUndergroundBlacklist(),
+        progress,
+        event
+    );
+}
+
 const char* undergroundEntryStateName(
     UndergroundEntryState state
 ) {
@@ -261,6 +470,31 @@ const char* undergroundEntryStateName(
             return "ChallengeReady";
         case UndergroundEntryState::Defeated:
             return "Defeated";
+    }
+
+    return "Unknown";
+}
+
+const char* undergroundProgressRejectReasonName(
+    UndergroundProgressRejectReason reason
+) {
+    switch (reason) {
+        case UndergroundProgressRejectReason::None:
+            return "None";
+        case UndergroundProgressRejectReason::CareerNotCompleted:
+            return "CareerNotCompleted";
+        case UndergroundProgressRejectReason::NoCurrentTarget:
+            return "NoCurrentTarget";
+        case UndergroundProgressRejectReason::WrongTargetRank:
+            return "WrongTargetRank";
+        case UndergroundProgressRejectReason::InvalidAmount:
+            return "InvalidAmount";
+        case UndergroundProgressRejectReason::RequirementsNotMet:
+            return "RequirementsNotMet";
+        case UndergroundProgressRejectReason::TargetNotDiscovered:
+            return "TargetNotDiscovered";
+        case UndergroundProgressRejectReason::TargetAlreadyDefeated:
+            return "TargetAlreadyDefeated";
     }
 
     return "Unknown";
