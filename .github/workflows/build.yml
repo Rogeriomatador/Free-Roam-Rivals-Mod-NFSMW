@@ -55,7 +55,7 @@ jobs:
           Copy-Item "config/UndergroundBlacklist.ini" "$pkg/scripts/FreeRoamRivals/UndergroundBlacklist.ini"
 
           @"
-          NFSMW Free Roam Rivals v0.0.9-dev
+          NFSMW Free Roam Rivals v0.0.10-dev
 
           INSTALL:
           1. Extract this ZIP into the Need for Speed Most Wanted game folder.
@@ -64,8 +64,9 @@ jobs:
           4. Drive for 20-30 seconds.
           5. Check scripts\FreeRoamRivals\FreeRoamRivals.log.
 
-          v0.0.8 adds world-generation tracking, executable spawn-safety gates,
-          Outrun race logic and cinematic-staging/planner foundations.
+          v0.0.10 adds live player WRoadNav telemetry and mod-owned
+          per-profile Underground Blacklist persistence using a pseudonymous
+          profile key. No raw profile name is written to the mod save.
 
           Runtime vehicle creation and AI control are still disabled by default.
           ExperimentalSpawnEnabled=1 only enables read-only preflight diagnostics
@@ -77,23 +78,23 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.9-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.10-dev.zip" -Force
 
-      - name: Publish v0.0.9-dev GitHub Release
+      - name: Publish v0.0.10-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.9-dev"
+          $tag = "v0.0.10-dev"
 
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
             Write-Host "Release $tag already exists; keeping existing release."
           } else {
-            gh release create $tag "release/FreeRoamRivals-v0.0.9-dev.zip" `
+            gh release create $tag "release/FreeRoamRivals-v0.0.10-dev.zip" `
               --target "${{ github.sha }}" `
-              --title "Free Roam Rivals v0.0.9-dev" `
+              --title "Free Roam Rivals v0.0.10-dev" `
               --prerelease `
-              --notes "v0.0.9-dev: adiciona uma Blacklist secundária real e independente para o pós-carreira, com ranks, descoberta, requisitos, caça no Free Roam e chaves futuras de foto/áudio. Também documenta o caminho para uma tela FNG nativa sem sobrescrever a Blacklist original. Spawn/IA e frontend mutation continuam bloqueados até validação."
+              --notes "v0.0.10-dev: adiciona uma Blacklist secundária real e independente para o pós-carreira, com ranks, descoberta, requisitos, caça no Free Roam e chaves futuras de foto/áudio. Também documenta o caminho para uma tela FNG nativa sem sobrescrever a Blacklist original. Spawn/IA e frontend mutation continuam bloqueados até validação."
           }
