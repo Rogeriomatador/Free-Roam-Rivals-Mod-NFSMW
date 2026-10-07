@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.0.25-dev
+
+- Investigated the supplied v0.0.24 target log: supported executable and successful ASI loading, but zero render/input callbacks at health and no motion capture records. Carrera GT/Cobalt SS/tuning/KPH are user notes, not captured scale evidence.
+- Replaced one-shot unchecked EndScene vtable installation with guarded EndScene/Present method-entry hooks and bounded per-target original trampolines.
+- Added independent MW05 Reset-signature device discovery with image bounds/ambiguity rejection, explicitly labeled pinned-SDK fallback and following device/vtable changes.
+- Added Present observation fallback, EndScene duplicate suppression, device scoping and serialized delivery. Preserves all original COM arguments/HRESULTs and catches cached method entry pointers.
+- Log actual INI path/switches, method installation status/module, first delivered sample and continuing health after 8 seconds/every 30 seconds.
+- Added portable discovery/routing tests and native Win32 MinHook tests for cached calls, replacement devices and unchanged original method behavior.
+- Updated install instructions and v0.0.25-dev packaging. Gameplay input/FrameTick, world-collision ownership and all construction gates remain unchanged.
+
 ## 0.0.24-dev
 
 - Added opt-in `MotionCaptureEnabled=0` by default: per-sample, round-trip float telemetry with capture/cohort identity and exact player model key.

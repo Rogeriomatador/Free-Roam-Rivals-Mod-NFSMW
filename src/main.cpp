@@ -11,7 +11,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.24-dev";
+constexpr const char* kVersion = "0.0.25-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -59,6 +59,16 @@ int bootstrap() {
     );
 
     const Config config = Config::load();
+    {
+        std::ostringstream line;
+        line << "Loaded diagnostics: render=" << config.renderProbeEnabled
+             << " input=" << config.inputProbeEnabled << " frameTick=" << config.frameTickProbeEnabled
+             << " motionCapture=" << config.motionCaptureEnabled
+             << " camera=" << config.cameraFrustumDiagnosticsEnabled
+             << " worldCollision=" << config.worldCollisionDiagnosticsEnabled
+             << " sampleEveryFrames=" << config.runtimeSampleEveryFrames;
+        log.info(line.str());
+    }
 
     game::RuntimeProbeConfig probeConfig{};
     probeConfig.renderProbeEnabled =
@@ -104,7 +114,7 @@ int bootstrap() {
     }
 
     log.info(
-        "v0.0.24-dev adds opt-in reproducible motion capture, model/context isolation and bounded continuous consistency windows. Metric calibration and vehicle construction remain unverified."
+        "v0.0.25-dev verifies EndScene/Present method hooks, follows device changes and reports ongoing callback health. Vehicle construction remains blocked; target-game capture must still be confirmed."
     );
 
     return NFSMW_OK;
@@ -114,7 +124,7 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.24-dev",
+    "0.0.25-dev",
     "Rogeriomatador"
 )
 
