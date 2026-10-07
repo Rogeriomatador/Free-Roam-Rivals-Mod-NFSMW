@@ -49,6 +49,7 @@ std::atomic<bool> g_frameTickProbeInstalled{false};
 std::atomic<bool> g_safeFreeRoamObserved{false};
 std::atomic<bool> g_roadLookaheadObserved{false};
 std::atomic<bool> g_exactRoadCandidateObserved{false};
+std::atomic<bool> g_vehicleSpatialEvidenceObserved{false};
 
 bool g_vehicleCatalogValidated = false;
 
@@ -660,6 +661,14 @@ void sampleAndLog(
         );
     }
 
+    if (vehicleSpatial.registryComplete &&
+        vehicleSpatial.failedSpatialReads == 0) {
+        g_vehicleSpatialEvidenceObserved.store(
+            true,
+            std::memory_order_relaxed
+        );
+    }
+
     bool exactRoadCandidateThisSample = false;
     for (const auto& candidate : roadCandidates) {
         if (frr::domain::inspectRoadCandidate(candidate) ==
@@ -956,6 +965,10 @@ DWORD WINAPI healthThread(LPVOID) {
         g_exactRoadCandidateObserved.load(
             std::memory_order_relaxed
         );
+    readiness.vehicleSpatialEvidenceObserved =
+        g_vehicleSpatialEvidenceObserved.load(
+            std::memory_order_relaxed
+        );
 
     // Intentionally false until target-machine calibration/candidate
     // promotion work completes. This keeps construction fail-closed.
@@ -985,6 +998,8 @@ DWORD WINAPI healthThread(LPVOID) {
              << (readiness.roadLookaheadObserved ? 1 : 0)
              << " exactRoadCandidateObserved="
              << (readiness.exactRoadCandidateObserved ? 1 : 0)
+             << " vehicleSpatialEvidenceObserved="
+             << (readiness.vehicleSpatialEvidenceObserved ? 1 : 0)
              << " metricCalibrationVerified=0"
              << " spawnCandidateVerified=0";
 
