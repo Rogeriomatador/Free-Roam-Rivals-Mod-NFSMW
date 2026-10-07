@@ -11,7 +11,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.8-dev";
+constexpr const char* kVersion = "0.0.9-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -87,7 +87,7 @@ int bootstrap() {
     }
 
     log.info(
-        "v0.0.8-dev adds executable spawn-safety gates, world-generation tracking, runtime rival-handle rules, Outrun race logic and cinematic-staging state/planner foundations. Vehicle creation and AI mutation remain disabled until a road-safe spawn candidate and gameplay-thread lifecycle are proven."
+        "v0.0.9-dev adds the independent post-career Underground Blacklist domain: ranks, discovery, requirements, world-hunt eligibility and future portrait/audio asset keys. Vehicle creation, AI mutation and frontend mutation remain disabled until their lifecycles are proven."
     );
 
     return NFSMW_OK;
@@ -97,7 +97,7 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.8-dev",
+    "0.0.9-dev",
     "Rogeriomatador"
 )
 
