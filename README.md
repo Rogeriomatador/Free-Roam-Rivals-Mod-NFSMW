@@ -45,17 +45,20 @@ Support for additional 1.3 executables will be added only after their addresses/
 - Real-time staging cinematics
 - Police integration
 - Street meets and rival-vs-rival events
+- A real post-career secondary ranked Blacklist found through Free Roam
 - Safety-first save handling and rollback
 
 ## Current status
 
-**Pre-alpha / read-only runtime + executable gameplay-system foundations (v0.0.8-dev).**
+**Pre-alpha / read-only runtime + executable gameplay-system foundations (v0.0.9-dev).**
 
 The ASI validates the supported executable, installs observation hooks, separates Free Roam from stock races, enumerates live IVehicle driver classes, independently cross-checks the player PVehicle, observes the road network, reads career cash/car-count/completion, and validates the configured rival-car catalog without mutating the game.
 
 The population layer distinguishes authored persistent rivals, deterministic procedural locals with stable names/personality/vehicle identity, legendary condition-based rivals, and untouched vanilla traffic.
 
-v0.0.8 also turns several design contracts into tested code:
+v0.0.9 also adds a tested, independent **Underground Blacklist** domain that unlocks after the vanilla career is completed. It is not a relabel of the original Blacklist: the mod tracks its own ranks, discovery state, qualification requirements, world-hunt eligibility and future portrait/audio asset keys.
+
+The previous runtime foundations remain in place:
 
 - world-generation tracking so live engine pointers cannot survive a world transition;
 - generation-scoped rival runtime handles with destroy-pending invalidation;
@@ -90,6 +93,8 @@ docs/
   RUNTIME_SPAWN_CONTRACT.md
   PINK_SLIP_ENGINE_RESEARCH.md
   RIVAL_POPULATION_AND_VEHICLES.md
+  UNDERGROUND_BLACKLIST.md
+  FRONTEND_UI_RESEARCH.md
 .github/workflows/     CI build
 ```
 
