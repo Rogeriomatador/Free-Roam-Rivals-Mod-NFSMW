@@ -70,6 +70,7 @@ set(FRR_DOMAIN_SOURCES
     src/domain/OutrunRace.cpp
     src/domain/Progression.cpp
     src/domain/RoadCandidatePlanner.cpp
+    src/domain/RenderVisibilityEvidence.cpp
     src/domain/RivalGarage.cpp
     src/domain/RivalPopulation.cpp
     src/domain/RivalRuntimeHandle.cpp
@@ -99,6 +100,7 @@ nfsmw_add_plugin(FreeRoamRivals
         src/game/PlayerMotionProbe.cpp
         src/game/RoadCandidateProbe.cpp
         src/game/RoadNavProbe.cpp
+        src/game/RenderVisibilityProbe.cpp
         src/game/RuntimeProbe.cpp
         src/game/VehicleCatalogProbe.cpp
         src/game/VehicleSpatialProbe.cpp
