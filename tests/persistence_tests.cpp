@@ -25,11 +25,11 @@ int main() {
     using namespace frr::persistence;
 
     const auto keyA =
-        profileKeyFromName("ROGERIO", 32, true);
+        profileKeyFromName("PROFILE_A", 32, true);
     const auto keyA2 =
-        profileKeyFromName("ROGERIO", 32, true);
+        profileKeyFromName("PROFILE_A", 32, true);
     const auto keyB =
-        profileKeyFromName("OTHER", 32, true);
+        profileKeyFromName("PROFILE_B", 32, true);
 
     require(
         keyA.has_value() &&
@@ -54,7 +54,11 @@ int main() {
     );
 
     require(
-        !profileKeyFromName("ROGERIO", 32, false).has_value(),
+        !profileKeyFromName(
+            "PROFILE_A",
+            32,
+            false
+        ).has_value(),
         "unnamed profile is rejected"
     );
 
@@ -109,7 +113,7 @@ int main() {
 
     UndergroundBlacklistStore store(testRoot);
 
-    auto missing = store.load(*keyA);
+    const auto missing = store.load(*keyA);
     require(
         missing.ok && !missing.found,
         "missing profile store is a clean empty state"
@@ -143,8 +147,7 @@ int main() {
 
     const auto malformed = store.load(*keyA);
     require(
-        !malformed.ok &&
-        malformed.found == false,
+        !malformed.ok,
         "malformed persistence fails closed"
     );
 
