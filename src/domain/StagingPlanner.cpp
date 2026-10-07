@@ -21,7 +21,8 @@ StagingCandidateScore scoreStagingCandidate(
     const float maxGrade =
         std::max(tuning.maximumAbsoluteGrade, 0.0f);
 
-    if (!candidate.roadValid ||
+    if (!candidate.metricGeometryVerified ||
+        !candidate.roadValid ||
         !candidate.streamed ||
         candidate.junction ||
         candidate.obstructed ||
