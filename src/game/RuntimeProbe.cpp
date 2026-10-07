@@ -168,7 +168,9 @@ void queueWorldCollisionRequest(
     const RuntimeSnapshot& current
 ) {
     if (!g_config.worldCollisionDiagnosticsEnabled ||
-        !g_config.frameTickProbeEnabled) {
+        !g_config.frameTickProbeEnabled ||
+        current.mode != WorldProbeMode::FreeRoamCandidate ||
+        !current.capabilities.canClassifyFreeRoam) {
         return;
     }
 
