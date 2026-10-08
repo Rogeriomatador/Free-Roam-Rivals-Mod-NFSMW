@@ -33,6 +33,7 @@ No historical pointer is dereferenced, no native opponent becomes mod-owned.
 First resumed sample does not measure motion from the pre-fade race position.
 
 SpawnSafety now refuses Unknown, Active, Cooldown and Busted pursuit states.
+MutationReadiness also requires pursuitClearVerified before reporting ready.
 The exact-executable native pursuit reader is not yet verified: runtime stays
 Unknown. Heat and cop counts must not substitute for verified pursuit state.
 This policy does not implement racer police behavior, cleanup ownership, roadblock

@@ -507,6 +507,11 @@ int main() {
 
     readiness.spawnCandidateVerified = true;
     readinessReport = evaluateMutationReadiness(readiness);
+    require(!readinessReport.readyForConstructionExperiment &&
+        readinessReport.blocker == MutationReadinessBlocker::PursuitSafetyUnverified,
+        "complete spatial evidence cannot bypass unknown pursuit state");
+    readiness.pursuitClearVerified = true;
+    readinessReport = evaluateMutationReadiness(readiness);
     require(
         readinessReport.readyForConstructionExperiment &&
         readinessReport.blocker ==
