@@ -226,17 +226,21 @@ PlayerRoadNavigationProbe RoadNavProbe::sample(
         out.playerPosition =
             copyVector(player->GetPosition());
 
-        out.current = probeRoad(ai->GetCurrentRoad());
-        out.future = probeRoad(ai->GetFutureRoad());
-
-        out.seekAheadPosition =
-            copyVector(ai->GetSeekAheadPosition());
-
-        out.farFuturePosition =
-            copyVector(ai->GetFarFuturePosition());
-
-        out.farFutureDirection =
-            copyVector(ai->GetFarFutureDirection());
+        // These native "getters" call UpdateRoads and mutate the AI. Read
+        // the compiled/target-verified embedded fields instead of invoking
+        // them from render-side diagnostics.
+        const auto table = *reinterpret_cast<const std::uintptr_t* const*>(ai);
+        if (!table || table[45] != 0x442A70 || table[46] != 0x442A90) return {};
+        auto* primary = static_cast<AIVehicle*>(ai);
+        if (!isReadable(reinterpret_cast<std::uintptr_t>(primary), sizeof(AIVehicle))) return {};
+        out.current = probeRoad(&primary->mCurrentRoad);
+        // The pinned WRoadNav declaration omits a native trailing suffix.
+        // Its AIVehicle::mFutureRoad offsetof must NOT be used. The verified
+        // native getter returns IVehicleAI+0x3DC, without calling it here.
+        out.future = probeRoad(reinterpret_cast<WRoadNav*>(reinterpret_cast<std::uintptr_t>(ai)+0x3DC));
+        out.seekAheadPosition = copyVector(primary->mSeekAheadPosition);
+        out.farFuturePosition = copyVector(primary->mFarFuturePosition);
+        out.farFutureDirection = copyVector(primary->mFarFutureDirection);
 
         out.currentToFutureWorldUnits = distance(
             out.current.position,

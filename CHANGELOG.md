@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.0.32-dev
+
+- Connect an explicit opt-in F8 native one-GTI prototype to the verified outer gameplay post-update callback; one construction per session, disabled by default.
+- Capture a pointer-free scalar road seed from a freshly registered native AI, reset the new racer's own navigation, recheck actual body/ground/fleet clearance and use SetSpawned -> native Racer goal -> Activate.
+- Require exact executable, fresh pursuit/cooldown state, motion metric calibration, 350-850m distance, primary-frustum exclusion and eight blocked world-face rays. Retire only the owned native simable when hidden/300m away and pursuit clear; wait for both registries to omit it.
+- Correct render-side road diagnostics: native road/future getters call UpdateRoads and are not read-only. Read verified embedded prefixes instead; do not infer the native future-nav address from the incomplete SDK WRoadNav size.
+- Add owned road-seed encoding and malformed-input tests plus expanded compiled native ABI assertions. Actual-game creation, movement, visual streaming and cleanup validation remain pending.
+
 ## 0.0.31-dev
 
 - Fix the loss of numeric race evidence during the short race-end fade observed in the actual v30 PC capture. Retention is limited to ten seconds, fresh guards and context checks remain required, and all resumed matches are explicitly interrupted/lifetime-unproven.

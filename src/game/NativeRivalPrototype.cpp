@@ -1,0 +1,290 @@
+#include "NativeRivalPrototype.h"
+#include "NativeVehicleFactory.h"
+#include "GameBridge.h"
+#include "GameplayLoopHook.h"
+#include "CameraFrustumProbe.h"
+#include "VehicleCatalogProbe.h"
+#include "VehicleSpatialProbe.h"
+#include "WorldCollisionProbe.h"
+#include "../core/Log.h"
+#include "../core/VersionGuard.h"
+#include <windows.h>
+#include <algorithm>
+#include <cmath>
+#include <sstream>
+#include <string>
+
+namespace frr::game {
+namespace {
+using namespace domain;
+enum class Stage { Idle, Seeking, Loading, PreparingRacer, PreparingRoad, Activating, Driving, Retiring, Finished, Disabled };
+Stage stage = Stage::Idle;
+bool enabled = false, keyWasDown = false, attemptSpent = false;
+std::uint64_t lastTick = 0, stageStarted = 0, lastObservation = 0, lastBlockLog = 0;
+unsigned stable = 0;
+std::uintptr_t lastPlayer = 0, lastRoad = 0, lastRace = 0;
+std::uint64_t lastProfile = 0;
+std::string lastBlock;
+SpatialVector3 startPosition{};
+NativeRoadTarget selectedTarget{};
+
+const char* stageName(Stage s) {
+    switch (s) {
+        case Stage::Idle: return "idle"; case Stage::Seeking: return "seeking";
+        case Stage::Loading: return "loading"; case Stage::PreparingRacer: return "preparing_racer";
+        case Stage::PreparingRoad: return "preparing_road"; case Stage::Activating: return "activating";
+        case Stage::Driving: return "driving"; case Stage::Retiring: return "retiring";
+        case Stage::Finished: return "finished"; default: return "disabled";
+    }
+}
+void transition(Stage next) {
+    stage = next; stageStarted = GetTickCount64(); lastBlock.clear();
+    Log::instance().info(std::string("NativePrototype stage=") + stageName(next) + " maxOwned=1 gameplayCallback=1");
+}
+void blocked(const std::string& reason) {
+    const auto now = GetTickCount64();
+    if (reason != lastBlock || now-lastBlockLog >= 5000) {
+        Log::instance().warn(std::string("NativePrototype blocked=") + reason + " stage=" + stageName(stage));
+        lastBlock = reason; lastBlockLog = now;
+    }
+}
+float distance(SpatialVector3 a, SpatialVector3 b) {
+    const float dx=a.x-b.x, dy=a.y-b.y, dz=a.z-b.z;
+    return std::sqrt(dx*dx+dy*dy+dz*dz);
+}
+SpatialVector3 add(SpatialVector3 a, SpatialVector3 b, float scale) {
+    return {a.x+b.x*scale, a.y+b.y*scale, a.z+b.z*scale};
+}
+VehicleOrientedBox conservativeBox(const NativeRoadTarget& target, std::uint32_t key) {
+    SpatialVector3 forward{target.forward.x,target.forward.y,target.forward.z};
+    const float horizontal = std::sqrt(forward.x*forward.x + forward.z*forward.z);
+    if (!std::isfinite(horizontal) || horizontal < 0.5f) return {};
+    SpatialVector3 right{forward.z/horizontal,0,-forward.x/horizontal};
+    SpatialVector3 up{forward.y*right.z, forward.z*right.x-forward.x*right.z, -forward.y*right.x};
+    return makeVehicleOrientedBox(0, key,
+        {target.position.x,target.position.y+2.0f,target.position.z}, right,up,forward,{3.0f,2.0f,8.0f});
+}
+bool groundSafe(const VehicleOrientedBox& box) {
+    if (!box.valid) return false;
+    for (int i=0; i<5; ++i) {
+        auto point = add(box.center, box.up, -box.halfExtents.y);
+        if (i) {
+            point=add(point,box.right,(i<=2 ? -1.0f : 1.0f)*box.halfExtents.x);
+            point=add(point,box.forward,(i%2 ? -1.0f : 1.0f)*box.halfExtents.z);
+        }
+        const auto ground=interpretGroundCollision(point,WorldCollisionProbe::sampleGround(point));
+        if (!ground.groundVerified || !ground.groundValid || !ground.gradeVerified || ground.absoluteGrade>0.35f ||
+            ground.absoluteHeightDeltaWorldUnits>1.5f || ground.normal.y<0.5f) return false;
+    }
+    return true;
+}
+bool hiddenForPrototype(const VehicleOrientedBox& box, const RuntimeSnapshot& world,
+    const WorldMetricCalibration& metric) {
+    const auto camera=CameraFrustumProbe::sample();
+    const auto visibility=classifyPrimaryCameraFootprint(camera,box);
+    if (!visibility.queryVerified || visibility.visibility!=CameraBoxVisibility::OutsideFrustum) return false;
+    const SpatialVector3 eye{-camera.eyeRender.y,camera.eyeRender.z,camera.eyeRender.x};
+    const auto& p=world.playerMotion.position;
+    const auto cameraDistance=worldUnitsToMeters(distance(eye,{p.x,p.y,p.z}),metric);
+    if (!cameraDistance || *cameraDistance>30.0f) return false;
+    const auto margin=metersToWorldUnits(2.0f,metric);
+    if (!margin) return false;
+    // Prototype-specific conservative checks, NOT promotion of the domain's
+    // spawnVisibilityVerified flag or proof of mirrors/shadows/all render views.
+    for (int i=0; i<8; ++i) {
+        auto corner=add(box.center,box.right,(i&1 ? 1.0f : -1.0f)*box.halfExtents.x);
+        corner=add(corner,box.up,(i&2 ? 1.0f : -1.0f)*box.halfExtents.y);
+        corner=add(corner,box.forward,(i&4 ? 1.0f : -1.0f)*box.halfExtents.z);
+        const auto sample=WorldCollisionProbe::sampleWorldOcclusion(eye,corner);
+        if (!sample.callAvailable || !sample.callCompleted || !sample.hit || sample.hitType!=1 ||
+            !std::isfinite(sample.hitPoint.x) || !std::isfinite(sample.hitPoint.y) || !std::isfinite(sample.hitPoint.z) ||
+            distance(eye,sample.hitPoint)+*margin>=distance(eye,corner)) return false;
+    }
+    return true;
+}
+SpawnEnvironmentInput environment(const RuntimeSnapshot& current, PursuitSafetyState pursuit, bool ownedPresent) {
+    SpawnEnvironmentInput out{};
+    out.experimentalFeatureEnabled=true; out.supportedExecutable=true;
+    out.freeRoamCandidate=current.mode==WorldProbeMode::FreeRoamCandidate;
+    out.loading=current.raceStatusLoading; out.inNIS=current.inNIS; out.fade=current.fadeScreen;
+    out.playerAvailable=current.vehicles.playerIVehicle!=0;
+    out.independentPlayerCrossCheck=current.vehicles.independentPlayerCrossCheck;
+    out.roadNetworkAvailable=current.roadNetwork!=0; out.pursuitState=pursuit;
+    out.stableFreeRoamSamples=stable;
+    out.liveRivals=static_cast<int>(current.vehicles.racerVehicles)-(ownedPresent ? 1 : 0);
+    out.liveRivals=std::max(out.liveRivals,0); out.maxLiveRivals=1;
+    return out;
+}
+bool candidateSafe(const VehicleOrientedBox& box, const RuntimeSnapshot& current,
+    const WorldMetricCalibration& metric, SpawnCandidateInput& out) {
+    out={};
+    if (!box.valid || !validWorldMetricCalibration(metric) || !current.playerMotion.position.finite) {
+        blocked("geometry_or_metric_unavailable"); return false;
+    }
+    const auto& p=current.playerMotion.position;
+    const auto meters=worldUnitsToMeters(distance(box.center,{p.x,p.y,p.z}),metric);
+    if (!meters || *meters<350 || *meters>850) { blocked("candidate_distance_350_to_850m"); return false; }
+    const auto fleet=VehicleSpatialProbe::sample();
+    const auto overlap=evaluateFootprintAgainstFleet(box,fleet.boxes,fleet.registryComplete,
+        metric.worldUnitsPerMeter);
+    if (!overlap.verified || overlap.overlaps) { blocked("fresh_fleet_clearance"); return false; }
+    if (!groundSafe(box)) { blocked("ground_under_full_footprint"); return false; }
+    if (!hiddenForPrototype(box,current,metric)) { blocked("primary_camera_and_eight_world_rays"); return false; }
+    out.available=true; out.vehicleAvailable=true; out.roadValid=true; out.groundValid=true;
+    out.overlapsLiveVehicle=false; out.visibleToPlayer=false;
+    out.metricDistanceVerified=true; out.distanceFromPlayerMeters=*meters;
+    // Collision/graph access does not prove render/model streaming. No promotion.
+    out.streamingVerified=false;
+    return true;
+}
+void beginCleanup(const char* reason) {
+    Log::instance().warn(std::string("NativePrototype cleanup requested reason=")+reason);
+    transition(Stage::Retiring);
+}
+void mutationResult(NativeFactoryResult result, NativeFactoryResult expected, Stage next) {
+    if (result==expected) transition(next);
+    else if (result==NativeFactoryResult::Faulted) {
+        if (NativeVehicleFactory::snapshot().owned) beginCleanup("native_operation_failed");
+        else transition(Stage::Disabled);
+    } else blocked("native_operation_rejected");
+}
+}
+
+void configureNativeRivalPrototype(bool requested) {
+    enabled=requested && VersionGuard::checkCurrentExecutable().supported;
+    if (enabled) {
+        unsigned char bytes[256]{}; SIZE_T got=0;
+        std::uint64_t hash=14695981039346656037ull;
+        if (!ReadProcessMemory(GetCurrentProcess(),reinterpret_cast<void*>(0x7854B0),bytes,sizeof(bytes),&got) || got!=sizeof(bytes)) enabled=false;
+        else { for (auto byte:bytes) hash=(hash^byte)*1099511628211ull; enabled=hash==0x9e1818df51dff4b3ull; }
+    }
+    if (requested) Log::instance().info(enabled ?
+        "NativePrototype armed: F8 requests one stock Golf GTI; F8 again requests safe cleanup. Experimental engine integration; in-game validation pending." :
+        "NativePrototype blocked: exact supported executable required.");
+}
+void tickNativeRivalPrototype(const WorldMetricCalibration& metric) {
+    if (!enabled || !GameplayLoopHook::isInAfterCallback()) return;
+    const auto loop=GameplayLoopHook::snapshot();
+    if (!loop.installed || !loop.sourceVerified || !loop.threadConsistent || loop.threadId!=GetCurrentThreadId()) return;
+    const bool down=(GetAsyncKeyState(VK_F8)&0x8000)!=0;
+    const bool pressed=down&&!keyWasDown; keyWasDown=down;
+    if (pressed) {
+        if (stage==Stage::Idle && !attemptSpent) transition(Stage::Seeking);
+        else if (stage==Stage::Driving || stage==Stage::Loading || stage==Stage::PreparingRacer ||
+            stage==Stage::PreparingRoad || stage==Stage::Activating) beginCleanup("F8");
+        else if (stage==Stage::Seeking) transition(Stage::Idle);
+    }
+    const auto now=GetTickCount64();
+    if (lastTick && now-lastTick<250) return;
+    lastTick=now;
+    const auto current=GameBridge::sample();
+    const auto pursuit=NativeVehicleFactory::pursuitState();
+    const auto profile=current.career.profileKeyAvailable ? current.career.profileKey : 0;
+    const bool sameContext=lastPlayer==current.vehicles.playerIVehicle && lastRoad==current.roadNetwork &&
+        lastRace==current.raceStatus && lastProfile==profile;
+    if (sameContext && current.mode==WorldProbeMode::FreeRoamCandidate && pursuit==PursuitSafetyState::Clear) stable=std::min(stable+1u,6u);
+    else stable=0;
+    lastPlayer=current.vehicles.playerIVehicle; lastRoad=current.roadNetwork;
+    lastRace=current.raceStatus; lastProfile=profile;
+    if (stage==Stage::Idle || stage==Stage::Finished || stage==Stage::Disabled) return;
+    if (stage==Stage::Seeking && now-stageStarted>10000) {
+        blocked("no_safe_candidate_within_request_window_press_F8_to_retry"); transition(Stage::Idle); return;
+    }
+    const auto owned=NativeVehicleFactory::snapshot();
+    if (owned.owned && !owned.contextMatches) {
+        blocked("world_transition_no_old_pointer_reads"); return;
+    }
+    if (stage==Stage::Driving) {
+        if (!owned.available || owned.destroyed) { beginCleanup("owned_vehicle_unavailable_or_destroyed"); return; }
+        if (now-lastObservation>=1000) {
+            lastObservation=now;
+            const auto traveled=worldUnitsToMeters(distance(startPosition,owned.box.center),metric);
+            std::ostringstream line;
+            line<<"NativePrototype observation: active="<<owned.active<<" model=0x"<<std::hex<<owned.box.vehicleKey<<std::dec
+                <<" x="<<owned.box.center.x<<" y="<<owned.box.center.y<<" z="<<owned.box.center.z
+                <<" speedMps="<<owned.speed<<" displacementMeters="<<(traveled ? *traveled : -1)
+                <<" movementObserved="<<(traveled && *traveled>=5)<<" playerPursuitState="<<static_cast<int>(pursuit)
+                <<" lifecycleProven=0";
+            Log::instance().info(line.str());
+        }
+        return;
+    }
+    if (pursuit!=PursuitSafetyState::Clear || current.mode!=WorldProbeMode::FreeRoamCandidate) {
+        stable=0; blocked("pursuit_cooldown_or_world_context_unsafe"); return;
+    }
+    if (!validWorldMetricCalibration(metric)) { blocked("drive_to_obtain_metric_calibration"); return; }
+    if (stage==Stage::Seeking) {
+        const auto key=VehicleCatalogProbe::runtimeKeyForName("gti");
+        if (!key || current.playerMotion.vehicleKey!=*key) {
+            blocked("select_Golf_GTI_for_first_prototype_shared_model_resources"); return;
+        }
+        const auto env=environment(current,pursuit,false);
+        const auto readiness=evaluateSpawnEnvironment(env);
+        if (!readiness.allowed) { blocked(spawnRejectReasonName(readiness.reason)); return; }
+        unsigned checked=0;
+        for (const auto& target:NativeVehicleFactory::captureRoadTargets()) {
+            const auto box=conservativeBox(target,*key);
+            const auto& p=current.playerMotion.position;
+            const auto d=worldUnitsToMeters(distance(box.center,{p.x,p.y,p.z}),metric);
+            if (!d || *d<350 || *d>850) continue;
+            if (++checked>4) break;
+            SpawnCandidateInput candidate{};
+            if (!candidateSafe(box,current,metric,candidate)) continue;
+            NativeFactoryRequest request{};
+            request.environment=env; request.candidate=candidate; request.vehicleKey=*key;
+            request.roadTarget=target; request.position=target.position; request.forward=target.forward;
+            selectedTarget=target;
+            Log::instance().info("NativePrototype native construction begin: stock GTI, owned scalar road seed, inactive staging");
+            const auto result=NativeVehicleFactory::constructInactive(request);
+            attemptSpent=result!=NativeFactoryResult::Blocked;
+            mutationResult(result,NativeFactoryResult::ConstructedInactive,Stage::Loading);
+            return;
+        }
+        blocked("no_eligible_native_road_target"); return;
+    }
+    if (stage==Stage::Retiring) {
+        if (stable<6) { blocked("cleanup_requires_stable_clear_pursuit_window"); return; }
+        const auto observed=NativeVehicleFactory::observeRemoval();
+        if (observed==NativeFactoryResult::Removed) { transition(Stage::Finished); return; }
+        if (observed==NativeFactoryResult::RemovalPending) { blocked("waiting_for_both_native_registries"); return; }
+        if (!owned.available || owned.loading || !owned.box.valid) { blocked("cleanup_requires_fresh_loaded_identity"); return; }
+        const auto& p=current.playerMotion.position;
+        const auto d=worldUnitsToMeters(distance(owned.box.center,{p.x,p.y,p.z}),metric);
+        if (!d || *d<300 || !hiddenForPrototype(owned.box,current,metric)) {
+            blocked("cleanup_deferred_until_hidden_and_300m_away"); return;
+        }
+        Log::instance().info("NativePrototype native retirement begin: owned simable only");
+        const auto result=NativeVehicleFactory::requestRemoval();
+        if (result!=NativeFactoryResult::RemovalRequested) blocked("cleanup_native_request_rejected");
+        return;
+    }
+    if (!owned.available || owned.loading) {
+        if (now-selectedTarget.millis>4000) beginCleanup("loading_timeout");
+        else blocked("waiting_for_native_model_loading");
+        return;
+    }
+    if (now-selectedTarget.millis>4500) { beginCleanup("staging_or_road_seed_expired"); return; }
+    if (stage==Stage::Loading) { transition(Stage::PreparingRacer); return; }
+    if (stage==Stage::PreparingRacer) {
+        Log::instance().info("NativePrototype native Racer driver/goal preparation begin");
+        mutationResult(NativeVehicleFactory::prepareRacerInactive(),NativeFactoryResult::RacerPreparedInactive,Stage::PreparingRoad);
+        return;
+    }
+    if (stage==Stage::PreparingRoad) {
+        Log::instance().info("NativePrototype native reset to owned scalar road seed begin");
+        mutationResult(NativeVehicleFactory::resetRoadInactive(),NativeFactoryResult::RoadPreparedInactive,Stage::Activating);
+        return;
+    }
+    if (stage==Stage::Activating) {
+        if (!owned.box.valid || owned.box.halfExtents.x>3 || owned.box.halfExtents.y>2 || owned.box.halfExtents.z>8) {
+            beginCleanup("actual_dimensions_exceed_reserved_footprint"); return;
+        }
+        SpawnCandidateInput candidate{};
+        if (!candidateSafe(owned.box,current,metric,candidate)) { beginCleanup("activation_safety_revalidation_failed"); return; }
+        startPosition=owned.box.center;
+        Log::instance().info("NativePrototype activation begin: SetSpawned then native Racer goal then Activate");
+        mutationResult(NativeVehicleFactory::activatePrepared(environment(current,pursuit,true),candidate),
+            NativeFactoryResult::Activated,Stage::Driving);
+    }
+}
+}
