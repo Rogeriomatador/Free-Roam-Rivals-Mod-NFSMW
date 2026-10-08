@@ -161,7 +161,7 @@ Public reverse engineering maps:
 ```text
 AIVehicle::SetGoal / PushAIGoalByHash @ 0x422480
 SetAIRacerGoal                  @ 0x423010/0x42305f research naming
-CreateAIGoalRacerInstance       @ 0x43D330 (entry; 0x43D388 is INTERIOR, see docs/EXE_DUMP_V1_FINDINGS.md)
+AIVehicleRacecar constructor   @ 0x43D330 (NOT a goal factory; 0x43D388 is interior)
 CreateAIVehicleRacerInstance    @ 0x43EF70
 AIGoalRacer vtable              @ 0x892720
 AIVehicleRacer vtable           @ 0x892AD0

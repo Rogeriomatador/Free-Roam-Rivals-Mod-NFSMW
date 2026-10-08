@@ -1,5 +1,7 @@
 # Exe dump v2 findings (full 0x689820 and callees)
 
+Correction from direct executable inspection on 2026-10-08: 0x43D330 installs AIVehicleRacecar primary/AI vtables (0x892720 / 0x892640 at +0x4C). It is NOT an AIGoalRacer constructor or CreateAIGoalRacerInstance. Historical labels below are superseded. All eleven v2 1400-byte hashes were independently reproduced against the user upload.
+
 Provenance: imported Claude report. Original dumps/executable were not included
 with the patches, so disassembly/hashes have not been independently reproduced
 here. "Confirmed" below is the original report's classification, not permission
@@ -66,7 +68,7 @@ Raw bytes are intentionally not stored in the repo; compare hashes from
 | 0x4040F0 | VehicleParams::AddTypeName | 6500a20621552e422a1df4a0f68aef305d66f6ed79e6d6cb0c7827b2ef40c802 |
 | 0x6895A0 | Smackable factory | ff88c9adf2757bdfa6deb65d4d2b694446e7f1dcafd2aac57001368aab925737 |
 | 0x43EF70 | AIVehicleRacer constructor | 6111831f2eb4bbcad9c788ee619e7c4015d0ba6860764051e32c8105a06f9b9f |
-| 0x43D330 | AIGoalRacer constructor (real entry) | 384a29d3d2137e03610f27b46ba5605734052993dcb0234954e432dcfab0d41f |
+| 0x43D330 | AIVehicleRacecar constructor (corrected role) | 384a29d3d2137e03610f27b46ba5605734052993dcb0234954e432dcfab0d41f |
 | 0x43D388 | interior of 0x43D330 (NOT an entry) | e560df571587591e15c5a141ca938a37d9ef62e4d27b856705e4b94c17ccef72 |
 | 0x43D400 | AIGoalRacer pool wrapper | bc43ae2d060be9b36c6f4cf6dae8474605e08e4d80f8edd6a937ca295f1fc941 |
 | 0x4E4EA0 | attribute lookup (class 0x4A97EC8F = pvehicle per MWSDK db) | a905367e9b3bc34cc85c188cff0352981fdea0c142ccfc28b77ef7284af22560 |

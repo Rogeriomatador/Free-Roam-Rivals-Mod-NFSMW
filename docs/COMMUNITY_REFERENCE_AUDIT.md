@@ -90,7 +90,7 @@ Racer structures include `AIVehicleRacecar` / `IRacer` with
 The RE project independently maps the native racer stack:
 
 ```text
-CreateAIGoalRacerInstance    @ 0x43D330 / nearby RE label
+AIVehicleRacecar constructor @ 0x43D330 (goal factory label rejected by uploaded executable)
 CreateAIVehicleRacerInstance @ 0x43EF70
 AIVehicle::SetGoal           @ 0x422480
 SetAIRacerGoal               @ 0x423010 region
