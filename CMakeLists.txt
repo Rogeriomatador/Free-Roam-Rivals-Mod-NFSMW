@@ -271,3 +271,12 @@ add_test(NAME FreeRoamRivalsSpatialFactoryTests COMMAND FreeRoamRivalsSpatialFac
 add_executable(FreeRoamRivalsPostRaceTests tests/post_race_tests.cpp src/domain/PostRaceObservation.cpp)
 target_include_directories(FreeRoamRivalsPostRaceTests PRIVATE src)
 add_test(NAME FreeRoamRivalsPostRaceTests COMMAND FreeRoamRivalsPostRaceTests)
+
+# Exact-target native factory layout; does not execute any game code.
+add_executable(FreeRoamRivalsNativeFactoryAbiTests tests/native_factory_abi_tests.cpp)
+target_include_directories(FreeRoamRivalsNativeFactoryAbiTests PRIVATE "${nfsplugin_sdk_SOURCE_DIR}")
+target_compile_definitions(FreeRoamRivalsNativeFactoryAbiTests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+if(MSVC)
+    target_compile_options(FreeRoamRivalsNativeFactoryAbiTests PRIVATE /d1reportSingleClassLayoutPVehicle)
+endif()
+add_test(NAME FreeRoamRivalsNativeFactoryAbiTests COMMAND FreeRoamRivalsNativeFactoryAbiTests)

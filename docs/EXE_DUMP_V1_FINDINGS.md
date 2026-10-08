@@ -1,5 +1,7 @@
 # Exe dump v1 findings (speed.exe, MD5 C0516B48...)
 
+Correction from direct executable inspection on 2026-10-08: 0x43D330 installs AIVehicleRacecar primary/AI vtables (0x892720 / 0x892640 at +0x4C). It is NOT an AIGoalRacer constructor or CreateAIGoalRacerInstance. Historical labels below are superseded. All eleven v2 1400-byte hashes were independently reproduced against the user upload.
+
 Provenance: imported Claude report; original dumps were not supplied with these
 patches. No independent local reproduction or runtime execution is claimed.
 
