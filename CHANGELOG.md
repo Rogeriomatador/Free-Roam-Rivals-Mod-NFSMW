@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.0.35-dev
+
+- v34 PC evidence confirms 5–10 road targets captured, but ground/clearance gates rejected creation; no native construction occurred.
+- Fix the prototype ground-ray direction: native collision normals face the ray origin, so the old upward fallback conflicted with the required upward normal. Use a local downward Y+2 to Y-4 ray only for the prototype; retain all ground/height/slope/clearance/visibility/pursuit gates.
+- Add bounded rejection detail for actual ground calls and a flat-face direction regression with height/slope/barrier/no-hit rejection checks. Tests do not run the game.
+- Ignore repeated F8 presses while seeking instead of immediately cancelling the request and resetting readiness. Native cleanup behavior after construction is unchanged.
+- Creation, activation, movement and safe lifecycle remain unconfirmed in the game.
+
 ## 0.0.34-dev
 
 - User logs confirm enabled F8 requests but zero captured navigation targets and no construction attempt. The earlier startup closure has no recorded cause.
