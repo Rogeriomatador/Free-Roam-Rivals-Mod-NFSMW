@@ -5,6 +5,7 @@
 #include "../core/Log.h"
 #include <sstream>
 #include "../domain/NativeFactorySafety.h"
+#include "../domain/NativeSearchWindow.h"
 #include <windows.h>
 #include <MinHook.h>
 #include <mwsdk/game/mw05.hpp>
@@ -35,6 +36,7 @@ struct Owned {
     std::uint64_t lastAbsenceFrame = 0;
 };
 Owned owned;
+std::size_t sourceBatchCursor = 0;
 bool disabled = false, prepared = false;
 // Only the verified gameplay thread may access adapter state. During the
 // synchronous native constructor, suppress the capacity routine's eviction
@@ -428,13 +430,19 @@ domain::PursuitSafetyState NativeVehicleFactory::pursuitState() {
     if (!freshWorld(context) || !registry(list)) return domain::PursuitSafetyState::Unknown;
     return readPursuit(context, list);
 }
-std::vector<NativeRoadTarget> NativeVehicleFactory::captureRoadTargets() {
+std::vector<NativeRoadTarget> NativeVehicleFactory::captureRoadTargets(std::size_t& batchIndex) {
+    batchIndex = 0;
     std::vector<NativeRoadTarget> out;
     Context context{}; Registry before{}, after{};
     std::uintptr_t segments = 0;
     if (!freshWorld(context) || !registry(before) || !pursuitClear(context, before) ||
         !copy(0x9B38C0, &segments, sizeof(segments)) || !segments) return out;
-    for (unsigned i = 0; i < before.liveCount && out.size() < 32; ++i) {
+    const auto batch = domain::nextNativeSearchWindow((before.liveCount + 15u) / 16u, 1, sourceBatchCursor);
+    if (!batch.count) return out;
+    batchIndex = batch.index(0);
+    const auto start = static_cast<unsigned>(batchIndex * 16u);
+    const auto end = std::min(start + 16u, before.liveCount);
+    for (unsigned i = start; i < end; ++i) {
         for (bool future : {true,false}) {
             NativeRoadTarget target{};
             if (!readRoadTarget(before.live[i], future, target)) continue;

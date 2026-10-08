@@ -78,7 +78,7 @@ jobs:
           Copy-Item "docs/NATIVE_ROAMING_STREAMING_RESEARCH.md" "$pkg/NATIVE_ROAMING_STREAMING_RESEARCH.md"
 
           @"
-          NFSMW Free Roam Rivals v0.0.32-dev
+          NFSMW Free Roam Rivals v0.0.33-dev
 
           INSTALL:
           1. Extract into the game folder, replacing scripts\FreeRoamRivals.asi.
@@ -101,15 +101,15 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.32-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.33-dev.zip" -Force
 
-      - name: Publish v0.0.32-dev GitHub Release
+      - name: Publish v0.0.33-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.32-dev"
+          $tag = "v0.0.33-dev"
 
           $published = $false
           for ($attempt = 1; $attempt -le 3; $attempt++) {
@@ -119,17 +119,17 @@ jobs:
               if ($info.targetCommitish -ne "${{ github.sha }}") {
                 throw "Existing release target does not match this source commit."
               }
-              if ($info.assets.name -contains "FreeRoamRivals-v0.0.32-dev.zip") {
+              if ($info.assets.name -contains "FreeRoamRivals-v0.0.33-dev.zip") {
                 $published = $true
                 break
               }
-              gh release upload $tag "release/FreeRoamRivals-v0.0.32-dev.zip"
+              gh release upload $tag "release/FreeRoamRivals-v0.0.33-dev.zip"
             } else {
-              gh release create $tag "release/FreeRoamRivals-v0.0.32-dev.zip" `
+              gh release create $tag "release/FreeRoamRivals-v0.0.33-dev.zip" `
                 --target "${{ github.sha }}" `
-                --title "Free Roam Rivals v0.0.32-dev" `
+                --title "Free Roam Rivals v0.0.33-dev" `
                 --prerelease `
-                --notes "v0.0.32-dev: primeiro protótipo nativo de criação, navegação e ativação de um Golf GTI por F8, desativado por padrão. Compilação/testes automáticos não substituem teste no jogo. Leia NATIVE_RIVAL_PROTOTYPE.md antes de habilitar."
+                --notes "v0.0.33-dev: corrige a busca de locais para o protótipo GTI por F8: alterna grupos de veículos e candidatos, mantendo todas as verificações de segurança. Desativado por padrão. Compilação/testes automáticos não substituem teste no jogo. Leia NATIVE_RIVAL_PROTOTYPE.md antes de habilitar."
             }
             if ($LASTEXITCODE -eq 0) { $published = $true; break }
             if ($attempt -lt 3) { Start-Sleep -Seconds 5 }

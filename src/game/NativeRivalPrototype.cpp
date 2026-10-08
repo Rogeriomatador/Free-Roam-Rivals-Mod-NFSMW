@@ -8,8 +8,10 @@
 #include "WorldCollisionProbe.h"
 #include "../core/Log.h"
 #include "../core/VersionGuard.h"
+#include "../domain/NativeSearchWindow.h"
 #include <windows.h>
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <sstream>
 #include <string>
@@ -24,6 +26,8 @@ std::uint64_t lastTick = 0, stageStarted = 0, lastObservation = 0, lastBlockLog 
 unsigned stable = 0;
 std::uintptr_t lastPlayer = 0, lastRoad = 0, lastRace = 0;
 std::uint64_t lastProfile = 0;
+std::array<std::size_t, 32> candidateCursors{};
+std::uint64_t lastSearchReport = 0;
 std::string lastBlock;
 SpatialVector3 startPosition{};
 NativeRoadTarget selectedTarget{};
@@ -235,13 +239,30 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
         const auto env=environment(current,pursuit,false);
         const auto readiness=evaluateSpawnEnvironment(env);
         if (!readiness.allowed) { blocked(spawnRejectReasonName(readiness.reason)); return; }
-        unsigned checked=0;
-        for (const auto& target:NativeVehicleFactory::captureRoadTargets()) {
+        std::size_t batchIndex = 0;
+        const auto targets = NativeVehicleFactory::captureRoadTargets(batchIndex);
+        std::vector<std::size_t> eligible;
+        for (std::size_t i = 0; i < targets.size(); ++i) {
+            const auto& target = targets[i];
             const auto box=conservativeBox(target,*key);
             const auto& p=current.playerMotion.position;
             const auto d=worldUnitsToMeters(distance(box.center,{p.x,p.y,p.z}),metric);
             if (!d || *d<350 || *d>850) continue;
-            if (++checked>4) break;
+            eligible.push_back(i);
+        }
+        if (batchIndex >= candidateCursors.size()) { blocked("invalid_source_batch"); return; }
+        const auto window = nextNativeSearchWindow(eligible.size(), 4, candidateCursors[batchIndex]);
+        if (now-lastSearchReport >= 1000) {
+            lastSearchReport = now;
+            std::ostringstream line;
+            line << "NativePrototype search: sourceBatch=" << batchIndex << " capturedTargets=" << targets.size()
+                << " distanceEligible=" << eligible.size() << " safetyChecks=" << window.count
+                << " candidateStart=" << window.start;
+            Log::instance().info(line.str());
+        }
+        for (std::size_t i = 0; i < window.count; ++i) {
+            const auto& target = targets[eligible[window.index(i)]];
+            const auto box=conservativeBox(target,*key);
             SpawnCandidateInput candidate{};
             if (!candidateSafe(box,current,metric,candidate)) continue;
             NativeFactoryRequest request{};
@@ -254,7 +275,8 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
             mutationResult(result,NativeFactoryResult::ConstructedInactive,Stage::Loading);
             return;
         }
-        blocked("no_eligible_native_road_target"); return;
+        if (eligible.empty()) blocked("no_distance_eligible_target_in_current_batch");
+        return;
     }
     if (stage==Stage::Retiring) {
         if (stable<6) { blocked("cleanup_requires_stable_clear_pursuit_window"); return; }
