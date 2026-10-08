@@ -289,21 +289,40 @@ bool removalCall() {
 
 // Capture scalar navigation only. SDK GetCurrentRoad/GetFutureRoad call
 // UpdateRoads, so no navigation virtual getter is called on an anchor vehicle.
-bool readRoadTarget(std::uintptr_t identity, bool future, NativeRoadTarget& out) {
+bool readRoadTarget(std::uintptr_t identity, unsigned source, NativeRoadTarget& out, unsigned& rejection) {
+    rejection = 1;
 #if defined(_MSC_VER)
     __try {
 #endif
         auto* v = reinterpret_cast<IVehicle*>(identity);
         std::uintptr_t vt = 0;
         if (!copy(identity, &vt, sizeof(vt)) || vt != 0x8AA828 || !v->IsActive() || v->IsLoading() || v->IsDestroyed()) return false;
+        rejection = 2;
         const auto driver = v->GetDriverClass();
         if (driver != DriverClass::Traffic && driver != DriverClass::Racer) return false;
+        rejection = 3;
         auto* ai = v->GetAIVehiclePtr();
         if (!ai) return false;
         const auto table = *reinterpret_cast<const std::uintptr_t* const*>(ai);
-        if (!table || table[45] != 0x442A70 || table[46] != 0x442A90) return false;
+        if (!table) return false;
         auto* primary = static_cast<AIVehicle*>(ai);
-        const auto* nav = future ? reinterpret_cast<const WRoadNav*>(reinterpret_cast<std::uintptr_t>(ai)+0x3DC) : &primary->mCurrentRoad;
+        const WRoadNav* nav = nullptr;
+        if (source == 0) {
+            // Verified getter 0x431C50 is MOV EAX,[ECX+24h]; RET. Read the
+            // existing drive navigation without invoking source AI methods.
+            if (table[18] != 0x431C50) return false;
+            rejection = 4;
+            unsigned char code[4]{};
+            std::uintptr_t address = 0;
+            if (!copy(0x431C50, code, sizeof(code)) || code[0]!=0x8B || code[1]!=0x41 ||
+                code[2]!=0x24 || code[3]!=0xC3 ||
+                !copy(reinterpret_cast<std::uintptr_t>(ai)+0x24, &address, sizeof(address)) || !address) return false;
+            nav = reinterpret_cast<const WRoadNav*>(address);
+        } else {
+            if (table[45] != 0x442A70 || table[46] != 0x442A90) return false;
+            nav = source == 1 ? reinterpret_cast<const WRoadNav*>(reinterpret_cast<std::uintptr_t>(ai)+0x3DC) : &primary->mCurrentRoad;
+        }
+        rejection = 5;
         std::int8_t lane = -1, deadEnd = 0; float laneOffset = 0;
         const auto address = reinterpret_cast<std::uintptr_t>(nav);
         if (!copy(address+0x2C0, &deadEnd, sizeof(deadEnd)) || !copy(address+0x2C1, &lane, sizeof(lane)) ||
@@ -315,17 +334,25 @@ bool readRoadTarget(std::uintptr_t identity, bool future, NativeRoadTarget& out)
         if (!copy(address+0x2C1, &lane, sizeof(lane)) || !copy(address+0x2C4, &laneOffset, sizeof(laneOffset))) return false;
         const domain::NativeRoadSeed last{nav->fSegmentInd, nav->fNodeInd, lane,
             nav->fSegTime, laneOffset, nav->fValid};
-        if (!domain::validNativeRoadSeed(first) || !domain::validNativeRoadSeed(last) ||
-            first.segment != last.segment || first.node != last.node || first.lane != last.lane ||
-            first.segmentTime != last.segmentTime || first.laneOffset != last.laneOffset || deadEnd ||
-            !std::isfinite(pos.x) || !std::isfinite(pos.y) || !std::isfinite(pos.z)) return false;
+        rejection = 6;
+        if (!domain::validNativeRoadSeed(first) || !domain::validNativeRoadSeed(last) || deadEnd) return false;
+        rejection = 7;
+        if (source == 0) {
+            std::uintptr_t after = 0;
+            if (!copy(reinterpret_cast<std::uintptr_t>(ai)+0x24, &after, sizeof(after)) || after != address) return false;
+        }
+        if (first.segment != last.segment || first.node != last.node || first.lane != last.lane ||
+            first.segmentTime != last.segmentTime || first.laneOffset != last.laneOffset) return false;
+        rejection = 8;
+        if (!std::isfinite(pos.x) || !std::isfinite(pos.y) || !std::isfinite(pos.z)) return false;
         const float len = std::sqrt(forward.x*forward.x + forward.y*forward.y + forward.z*forward.z);
         if (!std::isfinite(len) || len < 0.95f || len > 1.05f) return false;
         out.seed = first; out.position = pos;
         out.forward = {forward.x/len, forward.y/len, forward.z/len};
+        rejection = 0;
         return true;
 #if defined(_MSC_VER)
-    } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+    } __except (EXCEPTION_EXECUTE_HANDLER) { rejection = 9; return false; }
 #endif
 }
 bool targetContext(const NativeRoadTarget& target, const Context& context) {
@@ -430,28 +457,46 @@ domain::PursuitSafetyState NativeVehicleFactory::pursuitState() {
     if (!freshWorld(context) || !registry(list)) return domain::PursuitSafetyState::Unknown;
     return readPursuit(context, list);
 }
-std::vector<NativeRoadTarget> NativeVehicleFactory::captureRoadTargets(std::size_t& batchIndex) {
+std::vector<NativeRoadTarget> NativeVehicleFactory::captureRoadTargets(std::size_t& batchIndex,
+    NativeRoadCaptureReport& report) {
     batchIndex = 0;
+    report = {};
     std::vector<NativeRoadTarget> out;
     Context context{}; Registry before{}, after{};
     std::uintptr_t segments = 0;
-    if (!freshWorld(context) || !registry(before) || !pursuitClear(context, before) ||
-        !copy(0x9B38C0, &segments, sizeof(segments)) || !segments) return out;
+    report.status = "world_context";
+    if (!freshWorld(context)) return out;
+    report.status = "registry";
+    if (!registry(before)) return out;
+    report.liveSlots = before.liveCount;
+    report.status = "pursuit";
+    if (!pursuitClear(context, before)) return out;
+    report.status = "road_segment_table";
+    if (!copy(0x9B38C0, &segments, sizeof(segments)) || !segments) return out;
+    report.status = "sampled";
     const auto batch = domain::nextNativeSearchWindow((before.liveCount + 15u) / 16u, 1, sourceBatchCursor);
     if (!batch.count) return out;
     batchIndex = batch.index(0);
     const auto start = static_cast<unsigned>(batchIndex * 16u);
     const auto end = std::min(start + 16u, before.liveCount);
+    report.sampledSlots = end-start;
     for (unsigned i = start; i < end; ++i) {
-        for (bool future : {true,false}) {
+        for (unsigned source = 0; source < 3; ++source) {
             NativeRoadTarget target{};
-            if (!readRoadTarget(before.live[i], future, target)) continue;
+            unsigned rejection = 0;
+            if (!readRoadTarget(before.live[i], source, target, rejection)) {
+                ++report.rejected[rejection]; continue;
+            }
             target.player = context.player; target.road = context.road; target.race = context.race;
             target.profile = context.profile; target.segmentTable = segments; target.millis = GetTickCount64();
             if (targetContext(target, context)) out.push_back(target);
+            else ++report.rejectedContext;
         }
     }
-    if (!registry(after) || before.liveCount != after.liveCount || before.storage != after.storage || !preserved(before, after)) out.clear();
+    if (!registry(after) || before.liveCount != after.liveCount || before.storage != after.storage || !preserved(before, after)) {
+        report.status = "registry_changed"; out.clear();
+    }
+    report.accepted = static_cast<unsigned>(out.size());
     return out;
 }
 NativeOwnedSnapshot NativeVehicleFactory::snapshot() {

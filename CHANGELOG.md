@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.0.34-dev
+
+- User logs confirm enabled F8 requests but zero captured navigation targets and no construction attempt. The earlier startup closure has no recorded cause.
+- Include the AI's existing DriveToNav as a scalar-only road source: verify native slot 18/getter 0x431C50, read IVehicleAI+0x24 directly and recheck the pointer. Do not invoke UpdateRoads or mutate the source vehicle.
+- Report source-capture early exits and rejection counts rather than presenting every zero-target result as a distance failure.
+- Skip additional native factory/world sampling while the prototype is idle/finished/disabled; rebuild readiness after F8. This is not a confirmed crash fix.
+- Extend coverage tests to up to 48 captured targets per batch and assert the native DriveToNav member offset. In-game creation/activation remains unconfirmed.
+
 ## 0.0.33-dev
 
 - Rotate native road-source batches (16 live slots maximum per sample) instead of stopping at the first 32 captured targets.

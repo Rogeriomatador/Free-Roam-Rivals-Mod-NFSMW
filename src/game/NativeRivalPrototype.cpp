@@ -186,6 +186,9 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
     const auto now=GetTickCount64();
     if (lastTick && now-lastTick<250) return;
     lastTick=now;
+    // No native factory/world reads while idle, including startup menus.
+    // A new F8 request builds its own fresh stable-clear window.
+    if (stage==Stage::Idle || stage==Stage::Finished || stage==Stage::Disabled) { stable=0; return; }
     const auto current=GameBridge::sample();
     const auto pursuit=NativeVehicleFactory::pursuitState();
     const auto profile=current.career.profileKeyAvailable ? current.career.profileKey : 0;
@@ -195,7 +198,6 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
     else stable=0;
     lastPlayer=current.vehicles.playerIVehicle; lastRoad=current.roadNetwork;
     lastRace=current.raceStatus; lastProfile=profile;
-    if (stage==Stage::Idle || stage==Stage::Finished || stage==Stage::Disabled) return;
     if (stage==Stage::Seeking && now-stageStarted>10000) {
         blocked("no_safe_candidate_within_request_window_press_F8_to_retry"); transition(Stage::Idle); return;
     }
@@ -240,7 +242,8 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
         const auto readiness=evaluateSpawnEnvironment(env);
         if (!readiness.allowed) { blocked(spawnRejectReasonName(readiness.reason)); return; }
         std::size_t batchIndex = 0;
-        const auto targets = NativeVehicleFactory::captureRoadTargets(batchIndex);
+        NativeRoadCaptureReport capture{};
+        const auto targets = NativeVehicleFactory::captureRoadTargets(batchIndex, capture);
         std::vector<std::size_t> eligible;
         for (std::size_t i = 0; i < targets.size(); ++i) {
             const auto& target = targets[i];
@@ -257,7 +260,13 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
             std::ostringstream line;
             line << "NativePrototype search: sourceBatch=" << batchIndex << " capturedTargets=" << targets.size()
                 << " distanceEligible=" << eligible.size() << " safetyChecks=" << window.count
-                << " candidateStart=" << window.start;
+                << " candidateStart=" << window.start << " captureStatus=" << capture.status
+                << " liveSlots=" << capture.liveSlots << " sampledSlots=" << capture.sampledSlots
+                << " rejectVehicle=" << capture.rejected[1] << " rejectDriver=" << capture.rejected[2]
+                << " rejectAI=" << capture.rejected[3] << " rejectNavPointer=" << capture.rejected[4]
+                << " rejectNavMemory=" << capture.rejected[5] << " rejectSeed=" << capture.rejected[6]
+                << " rejectChanged=" << capture.rejected[7] << " rejectGeometry=" << capture.rejected[8]
+                << " rejectFault=" << capture.rejected[9] << " rejectContext=" << capture.rejectedContext;
             Log::instance().info(line.str());
         }
         for (std::size_t i = 0; i < window.count; ++i) {

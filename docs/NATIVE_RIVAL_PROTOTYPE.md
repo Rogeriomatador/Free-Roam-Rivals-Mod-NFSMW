@@ -1,4 +1,4 @@
-# v0.0.33-dev — primeiro protótipo nativo de um rival
+# v0.0.34-dev — primeiro protótipo nativo de um rival
 
 Esta versão conecta código real de criação, navegação, ativação e pedido de
 remoção ao callback do jogo. **Ainda não foi executada no NFSMW nesta sessão.**
@@ -11,7 +11,7 @@ corridas ou a aparência/identidade persistente de Rico: é um Golf GTI de fábr
 
 ## Teste no PC
 
-1. Instale o ZIP **v0.0.33-dev** na pasta do jogo, substituindo
+1. Instale o ZIP **v0.0.34-dev** na pasta do jogo, substituindo
    `scripts/FreeRoamRivals.asi`. Preserve seus INIs editados.
 2. No arquivo `scripts/FreeRoamRivals/FreeRoamRivals.ini`, acrescente:
 
@@ -108,7 +108,7 @@ sozinho não prova que a IA causou esse movimento. O primeiro objetivo de teste 
 verificar se o GTI aparece, dirige por conta própria e pode ser retirado sem
 atingir outros carros. O sistema completo de rivais continua em desenvolvimento.
 
-## Busca corrigida na v0.0.33-dev
+## Busca corrigida na v0.0.34-dev
 
 A busca alterna grupos de até 16 entradas da lista de veículos e avalia no máximo
 quatro candidatos por atualização, com cursor separado para cada grupo. A v32
@@ -118,3 +118,25 @@ ocultação, colisão, terreno ou perseguição. O log `NativePrototype search` 
 o grupo, os alvos capturados, os elegíveis por distância e a janela avaliada.
 Mudanças na população/estrada podem mudar os alvos; o teste automático prova a
 cobertura com população estável, não a existência de um local seguro no jogo.
+
+## Alvos vazios observados no PC e fonte de navegação da v34
+
+O log 13:04:29–13:07:16 de 08/10/2026 confirmou `nativePrototype=1`,
+calibração e comandos F8, mas todas as buscas registraram `capturedTargets=0`.
+Nenhuma construção ou ativação foi tentada. O fechamento da primeira execução
+aconteceu antes da entrada no mundo; o log não determina sua causa.
+
+A v34 inclui a navegação própria de direção da IA (DriveToNav), além dos caches
+CurrentRoad/FutureRoad. No executável alvo, o getter 0x431C50 lê o ponteiro em
+IVehicleAI+0x24; a leitura verifica o slot 18 e os quatro bytes da entrada, sem
+chamá-lo. Apenas os seis escalares são copiados, com as mesmas validações.
+Os caches atual/futuro dependem de UpdateRoads e podem estar inválidos; este
+log anterior não identifica qual validação rejeitou cada carro. A nova fonte
+é uma correção de cobertura, não prova de que os alvos aparecerão no PC.
+
+`NativePrototype search` agora mostra `captureStatus`, entradas da lista,
+entradas examinadas e contadores de rejeição por veículo, driver, contrato de
+IA, ponteiro/memória de navegação, escalares, mudança, geometria e exceção.
+O protótipo também evita leituras adicionais de mundo/fábrica enquanto estiver
+Idle/Finished/Disabled; o F8 inicia uma nova janela estável. Isso reduz o trabalho
+antes da solicitação e não confirma a causa nem a resolução do fechamento.
