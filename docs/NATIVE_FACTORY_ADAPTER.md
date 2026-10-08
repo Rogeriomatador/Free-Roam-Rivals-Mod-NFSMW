@@ -23,7 +23,9 @@ BSD-licensed SDK; no implementation or binary from NativeFreeRoamRacers is copie
   six native entries must also match independently derived FNV-1a fingerprints;
   these are compatibility checks, not cryptographic authenticity proofs.
 - All access is restricted to the installed, verified, consistent gameplay thread.
-  Current player/profile/road/race context must still identify roaming without
+  A current outer post-update callback permit is also mandatory: a historical
+  successful update on that thread does not grant permission, and reentrant engine
+  calls cannot inherit the permit. Current player/profile/road/race context must still identify roaming without
   loading, NIS or fade.
 - A fresh player registry entry and the IVehicle vtable are checked before resolving
   its current AI. AI slot 40 must target the unmodified getter at `0x431D70`;

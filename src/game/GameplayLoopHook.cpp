@@ -19,6 +19,11 @@ std::atomic<std::uint64_t> g_entered{0}, g_completed{0};
 std::atomic<DWORD> g_thread{0};
 std::atomic<std::uintptr_t> g_site{0}, g_target{0};
 thread_local unsigned g_depth = 0;
+thread_local bool g_inAfterCallback = false;
+struct AfterCallbackScope {
+    AfterCallbackScope() { g_inAfterCallback = true; }
+    ~AfterCallbackScope() { g_inAfterCallback = false; }
+};
 
 void __cdecl detour(float tickerDifference) {
     const DWORD thread = GetCurrentThreadId();
@@ -31,7 +36,10 @@ void __cdecl detour(float tickerDifference) {
     // Callback state and trampoline are published before enabling this entry.
     if (const auto original = g_original.load()) original(tickerDifference);
     ++g_completed;
-    if (outer && g_consistent.load() && g_after) g_after(tickerDifference);
+    if (outer && g_consistent.load() && g_after) {
+        AfterCallbackScope scope;
+        g_after(tickerDifference);
+    }
     --g_depth;
 }
 
@@ -180,6 +188,10 @@ bool GameplayLoopHook::install(Callback before, Callback after) {
     const bool installed = attach(found.target, before, after);
     g_verified.store(installed);
     return installed;
+}
+
+bool GameplayLoopHook::isInAfterCallback() {
+    return g_inAfterCallback && g_depth == 1;
 }
 
 GameplayLoopSnapshot GameplayLoopHook::snapshot() {

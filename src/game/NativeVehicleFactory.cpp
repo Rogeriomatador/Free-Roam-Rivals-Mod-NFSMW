@@ -27,7 +27,7 @@ struct Owned {
     Context context{};
     std::uintptr_t p = 0, iv = 0, sim = 0;
     std::uint32_t handle = 0, key = 0;
-    bool removing = false;
+    bool removing = false, racerPrepared = false;
     unsigned absentSamples = 0;
     std::uint64_t lastAbsenceFrame = 0;
 };
@@ -54,7 +54,7 @@ std::uint64_t fingerprint(std::uintptr_t address) {
 }
 bool gameplayThread() {
     const auto loop = GameplayLoopHook::snapshot();
-    return loop.installed && loop.sourceVerified && loop.threadConsistent &&
+    return GameplayLoopHook::isInAfterCallback() && loop.installed && loop.sourceVerified && loop.threadConsistent &&
         loop.completed && loop.threadId == GetCurrentThreadId();
 }
 bool __cdecl capacityDetour(const void* position, bool extended) {
@@ -295,11 +295,12 @@ NativeFactoryResult NativeVehicleFactory::constructInactive(const NativeFactoryR
 }
 NativeFactoryResult NativeVehicleFactory::prepareRacerInactive() {
     if (!gameplayThread()) return NativeFactoryResult::Blocked;
-    if (disabled || !owned.p || owned.removing) return NativeFactoryResult::Blocked;
+    if (disabled || !owned.p || owned.removing || owned.racerPrepared) return NativeFactoryResult::Blocked;
     Context context{}; Registry list{};
     if (!freshWorld(context) || !same(context, owned.context) || !registry(list) || !pursuitClear(context, list))
         return NativeFactoryResult::Blocked;
     if (!identity(list, owned, true) || !racerCall()) return fault();
+    owned.racerPrepared = true;
     return NativeFactoryResult::RacerPreparedInactive;
 }
 NativeFactoryResult NativeVehicleFactory::requestRemoval() {

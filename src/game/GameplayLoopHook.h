@@ -17,6 +17,8 @@ public:
     using Callback = void (*)(float);
     static bool install(Callback before, Callback after);
     static GameplayLoopSnapshot snapshot();
+    // Current call boundary only; callers must separately check provenance.
+    static bool isInAfterCallback();
 #ifdef FRR_GAMEPLAY_HOOK_TESTING
     static bool attachForTest(void* target, Callback before, Callback after);
     static void detachForTest();
