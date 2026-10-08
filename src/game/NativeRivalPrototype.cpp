@@ -160,7 +160,7 @@ void configureNativeRivalPrototype(bool requested) {
     }
     if (requested) Log::instance().info(enabled ?
         "NativePrototype armed: F8 requests one stock Golf GTI; F8 again requests safe cleanup. Experimental engine integration; in-game validation pending." :
-        "NativePrototype blocked: exact supported executable required.");
+        "NativePrototype blocked: exact supported executable and unchanged world-collision entry required.");
 }
 void tickNativeRivalPrototype(const WorldMetricCalibration& metric) {
     if (!enabled || !GameplayLoopHook::isInAfterCallback()) return;

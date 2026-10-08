@@ -86,10 +86,12 @@ coloque `NativeRivalPrototypeEnabled=0` e reinicie o jogo.
 GetCurrentRoad (`0x442A70`), GetFutureRoad (`0x442A90`) e os getters de posição
 futura/seek-ahead chamam UpdateRoads: não são leitura pura. O diagnóstico agora
 lê os campos embutidos, sem chamá-los no render. As entradas nativas mostram
-CurrentRoad em IVehicleAI+0xF4 e FutureRoad em IVehicleAI+0x3DC. O SDK descreve
-apenas um prefixo de WRoadNav; o campo futuro não pode ser calculado supondo que
-esse prefixo tem o tamanho completo nativo. A alteração usa o endereço interno
-verificado para FutureRoad e somente os campos de prefixo confirmados.
+CurrentRoad em IVehicleAI+0xF4 e FutureRoad em IVehicleAI+0x3DC. O layout WRoadNav/USpline/Matrix4 do SDK não corresponde ao layout completo
+nativo: os offsets de pista e o tamanho de WRoadNav diferem. A alteração usa o
+endereço interno verificado para FutureRoad, os campos iniciais confirmados e
+leituras explícitas de fim de estrada/pista/offset lateral em +0x2C0/+0x2C1/+0x2C4.
+As verificações compiladas detectam essa diferença; não alocamos ou copiamos
+objetos nativos pelo tamanho declarado no SDK.
 
 ## O que continua pendente
 

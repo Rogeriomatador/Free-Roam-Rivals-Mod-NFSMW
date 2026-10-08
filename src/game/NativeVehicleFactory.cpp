@@ -145,6 +145,8 @@ bool freshWorld(Context& out) {
     if (current.mode != WorldProbeMode::FreeRoamCandidate || current.fadeScreen || current.inNIS ||
         current.raceStatusLoading || !current.vehicles.independentPlayerCrossCheck ||
         !current.career.profileKeyAvailable || !current.roadNetwork || !current.raceStatus) return false;
+    if (reinterpret_cast<std::uintptr_t>(static_cast<IVehicle*>(reinterpret_cast<PVehicle*>(current.vehicles.playerPVehicle))) !=
+        current.vehicles.playerIVehicle) return false;
     out = {current.vehicles.playerIVehicle, current.roadNetwork, current.raceStatus, current.career.profileKey};
     return true;
 }
@@ -289,15 +291,20 @@ bool readRoadTarget(std::uintptr_t identity, bool future, NativeRoadTarget& out)
         if (!table || table[45] != 0x442A70 || table[46] != 0x442A90) return false;
         auto* primary = static_cast<AIVehicle*>(ai);
         const auto* nav = future ? reinterpret_cast<const WRoadNav*>(reinterpret_cast<std::uintptr_t>(ai)+0x3DC) : &primary->mCurrentRoad;
-        domain::NativeRoadSeed first{nav->fSegmentInd, nav->fNodeInd, nav->fLaneInd,
-            nav->fSegTime, nav->fLaneOffset, nav->fValid};
+        std::int8_t lane = -1, deadEnd = 0; float laneOffset = 0;
+        const auto address = reinterpret_cast<std::uintptr_t>(nav);
+        if (!copy(address+0x2C0, &deadEnd, sizeof(deadEnd)) || !copy(address+0x2C1, &lane, sizeof(lane)) ||
+            !copy(address+0x2C4, &laneOffset, sizeof(laneOffset))) return false;
+        domain::NativeRoadSeed first{nav->fSegmentInd, nav->fNodeInd, lane,
+            nav->fSegTime, laneOffset, nav->fValid};
         const auto pos = canonicalMwVector(nav->fPosition);
         const auto forward = canonicalMwVector(nav->fForwardVector);
-        const domain::NativeRoadSeed last{nav->fSegmentInd, nav->fNodeInd, nav->fLaneInd,
-            nav->fSegTime, nav->fLaneOffset, nav->fValid};
+        if (!copy(address+0x2C1, &lane, sizeof(lane)) || !copy(address+0x2C4, &laneOffset, sizeof(laneOffset))) return false;
+        const domain::NativeRoadSeed last{nav->fSegmentInd, nav->fNodeInd, lane,
+            nav->fSegTime, laneOffset, nav->fValid};
         if (!domain::validNativeRoadSeed(first) || !domain::validNativeRoadSeed(last) ||
             first.segment != last.segment || first.node != last.node || first.lane != last.lane ||
-            first.segmentTime != last.segmentTime || first.laneOffset != last.laneOffset || nav->fDeadEnd ||
+            first.segmentTime != last.segmentTime || first.laneOffset != last.laneOffset || deadEnd ||
             !std::isfinite(pos.x) || !std::isfinite(pos.y) || !std::isfinite(pos.z)) return false;
         const float len = std::sqrt(forward.x*forward.x + forward.y*forward.y + forward.z*forward.z);
         if (!std::isfinite(len) || len < 0.95f || len > 1.05f) return false;
