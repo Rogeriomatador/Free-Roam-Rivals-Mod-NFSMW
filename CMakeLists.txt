@@ -104,6 +104,7 @@ nfsmw_add_plugin(FreeRoamRivals
         src/game/ChallengeInputProbe.cpp
         src/game/GameplayLoopHook.cpp
         src/game/GameBridge.cpp
+        src/game/NativeVehicleFactory.cpp
         src/game/PlayerMotionProbe.cpp
         src/game/PostRaceRacerProbe.cpp
         src/game/RoadCandidateProbe.cpp
@@ -280,3 +281,7 @@ if(MSVC)
     target_compile_options(FreeRoamRivalsNativeFactoryAbiTests PRIVATE /d1reportSingleClassLayoutPVehicle)
 endif()
 add_test(NAME FreeRoamRivalsNativeFactoryAbiTests COMMAND FreeRoamRivalsNativeFactoryAbiTests)
+
+add_executable(FreeRoamRivalsNativeFactorySafetyTests tests/native_factory_safety_tests.cpp)
+target_include_directories(FreeRoamRivalsNativeFactorySafetyTests PRIVATE src)
+add_test(NAME FreeRoamRivalsNativeFactorySafetyTests COMMAND FreeRoamRivalsNativeFactorySafetyTests)

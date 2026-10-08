@@ -1,5 +1,7 @@
 #include <windows.h>
 #include <NFSPluginSDK/Game.MW05/Types/PVehicle.h>
+#include <NFSPluginSDK/Game.MW05/Types/AIVehicle.h>
+#include <NFSPluginSDK/Game.MW05/Types/GRaceStatus.h>
 #include <cstddef>
 #include <cstdio>
 #include <type_traits>
@@ -31,7 +33,14 @@ static_assert(offsetof(PVehicle, mAI) == 0x100);
 static_assert(sizeof(PVehicle) == 0x160);
 static_assert(sizeof(PVehicle) < 0x1AC);
 
+static_assert(offsetof(AIVehicle, mCurrentGoal) == 0xB8);
+static_assert(offsetof(AIVehicle, mPursuit) == 0xBC);
+static_assert(offsetof(ISimable, _mHandle) == 0x08);
+
 int main() {
+    std::printf("Native pursuit ABI: goal=%zu pursuit=%zu handle=%zu cooldown=%zu; no engine calls\n",
+        offsetof(AIVehicle, mCurrentGoal), offsetof(AIVehicle, mPursuit),
+        offsetof(ISimable, _mHandle), offsetof(GRaceStatus, mPlayerPursuitInCooldown));
     std::printf("Native factory ABI: VehicleParams=%zu PVehiclePrefix=%zu nativeAllocation=428 driver=%zu AI=%zu; no engine calls\n",
         sizeof(VehicleParams), sizeof(PVehicle),
         offsetof(PVehicle, mDriverClass), offsetof(PVehicle, mAI));
