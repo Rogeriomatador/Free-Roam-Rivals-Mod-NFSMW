@@ -78,7 +78,7 @@ jobs:
           Copy-Item "docs/NATIVE_ROAMING_STREAMING_RESEARCH.md" "$pkg/NATIVE_ROAMING_STREAMING_RESEARCH.md"
 
           @"
-          NFSMW Free Roam Rivals v0.0.36-dev
+          NFSMW Free Roam Rivals v0.0.37-dev
 
           INSTALL:
           1. Extract into the game folder, replacing scripts\FreeRoamRivals.asi.
@@ -103,15 +103,15 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.36-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.37-dev.zip" -Force
 
-      - name: Publish v0.0.36-dev GitHub Release
+      - name: Publish v0.0.37-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.36-dev"
+          $tag = "v0.0.37-dev"
 
           $published = $false
           for ($attempt = 1; $attempt -le 3; $attempt++) {
@@ -121,17 +121,17 @@ jobs:
               if ($info.targetCommitish -ne "${{ github.sha }}") {
                 throw "Existing release target does not match this source commit."
               }
-              if ($info.assets.name -contains "FreeRoamRivals-v0.0.36-dev.zip") {
+              if ($info.assets.name -contains "FreeRoamRivals-v0.0.37-dev.zip") {
                 $published = $true
                 break
               }
-              gh release upload $tag "release/FreeRoamRivals-v0.0.36-dev.zip"
+              gh release upload $tag "release/FreeRoamRivals-v0.0.37-dev.zip"
             } else {
-              gh release create $tag "release/FreeRoamRivals-v0.0.36-dev.zip" `
+              gh release create $tag "release/FreeRoamRivals-v0.0.37-dev.zip" `
                 --target "${{ github.sha }}" `
-                --title "Free Roam Rivals v0.0.36-dev" `
+                --title "Free Roam Rivals v0.0.37-dev" `
                 --prerelease `
-                --notes "v0.0.36-dev: adiciona modo de teste visível perto do jogador (20-120m): NativeRivalPrototypeNearPlayer=1 junto de NativeRivalPrototypeEnabled=1. Mantém chão, espaço livre, estrada e bloqueios de perseguição. Criação no jogo ainda não confirmada. Desativado por padrão. Compilação/testes automáticos não substituem teste no jogo. Leia NATIVE_RIVAL_PROTOTYPE.md antes de habilitar."
+                --notes "v0.0.37-dev: diagnóstico de compatibilidade compara todas as 11 funções em memória e no speed.exe, mostra os primeiros bytes e a primeira diferença. Divergência continua bloqueando a criação; nenhum hash foi relaxado. Mantém o modo próximo opt-in da v36. Criação no jogo ainda não confirmada."
             }
             if ($LASTEXITCODE -eq 0) { $published = $true; break }
             if ($attempt -lt 3) { Start-Sleep -Seconds 5 }
