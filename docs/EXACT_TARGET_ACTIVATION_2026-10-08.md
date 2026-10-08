@@ -60,3 +60,7 @@ The hashes below include padding or following code when the function is shorter;
 | Vehicle off-screen time | `0x688120` | `cf07553269a37d1c4f326151ed70d54f1da35ca1112a013e80e37f1de6404f1d` |
 | Param type-check failure callee | `0x45CD20` | `00ef972b7fefb7e1ac701e0536c63387ad1404634902d2b849fd3e2de79c47ff` |
 
+
+## Win32 compiler layout evidence
+
+MSVC CI run 37746665390 emitted PVehicle size 352 (0x160), ISimable base +44 (0x2C), IVehicle base +172 (0xAC), mAI +256 (0x100), driver +320 (0x140). All VehicleParams and member offset assertions passed. The initial full-size assertion failed because this SDK describes a prefix, not the 428-byte native allocation. The corrected test explicitly checks the known 0x160 prefix and forbids conflating SDK sizeof with engine allocation size. Verify the final rerun before considering the build accepted.
