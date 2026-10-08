@@ -11,7 +11,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.30-dev";
+constexpr const char* kVersion = "0.0.31-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -116,7 +116,7 @@ int bootstrap() {
     }
 
     log.info(
-        "v0.0.30-dev adds opt-in post-race racer identity observations on the completed gameplay loop. Correlation does not prove lifetime; construction and AI mutation remain disabled."
+        "v0.0.31-dev adds opt-in post-race racer identity observations on the completed gameplay loop. Correlation does not prove lifetime; construction and AI mutation remain disabled."
     );
 
     return NFSMW_OK;
@@ -126,7 +126,7 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.30-dev",
+    "0.0.31-dev",
     "Rogeriomatador"
 )
 

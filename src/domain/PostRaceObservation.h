@@ -57,15 +57,20 @@ struct PostRaceIdentityMatch {
     float displacementSincePreviousRoamingSample = 0;
     bool displacementAvailable = false;
     bool aiIdentityChanged = false;
+    bool correlationInterruptedByFade = false;
 };
 
 class PostRaceObserver {
 public:
     // Correlation across consecutive samples, NOT proof of uninterrupted object
-    // lifetime. Absence, incomplete reads, loading, context changes, and gaps
+    // lifetime. Short race-end fades retain explicitly interrupted evidence.
+    // Absence, incomplete reads, loading, context changes, and other gaps
     // revoke matches. No mutation/spawn-readiness gate consumes these results.
     std::vector<PostRaceIdentityMatch> observe(const RaceVehicleObservation& sample);
     void reset();
+    // Preserve plain numeric evidence, never game read authorization.
+    bool suspendForRaceFade(std::uint64_t millis);
+    std::size_t capturedRaceCount() const { return entries_.size(); }
 private:
     struct Entry {
         ObservedRaceVehicle race{};
@@ -79,5 +84,8 @@ private:
     std::uint64_t lastMillis_ = 0;
     std::uint64_t lastRaceMillis_ = 0;
     std::vector<Entry> entries_{};
+    bool fadeSuspended_ = false;
+    bool correlationInterrupted_ = false;
+    std::uint64_t fadeStartMillis_ = 0;
 };
 } // namespace frr::domain

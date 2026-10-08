@@ -44,6 +44,11 @@ SpawnDecision evaluateSpawnEnvironment(
         return {false, SpawnRejectReason::RoadNetworkUnavailable};
     }
 
+    if (input.pursuitState == PursuitSafetyState::Unknown)
+        return {false, SpawnRejectReason::PursuitStateUnavailable};
+    if (input.pursuitState != PursuitSafetyState::Clear)
+        return {false, SpawnRejectReason::PursuitUnsafe};
+
     if (input.stableFreeRoamSamples <
         std::max(tuning.requiredStableSamples, 1u)) {
         return {false, SpawnRejectReason::StabilityWindowNotMet};
@@ -135,6 +140,8 @@ const char* spawnRejectReasonName(SpawnRejectReason reason) {
         case SpawnRejectReason::PlayerUnavailable: return "PlayerUnavailable";
         case SpawnRejectReason::PlayerCrossCheckFailed: return "PlayerCrossCheckFailed";
         case SpawnRejectReason::RoadNetworkUnavailable: return "RoadNetworkUnavailable";
+        case SpawnRejectReason::PursuitStateUnavailable: return "PursuitStateUnavailable";
+        case SpawnRejectReason::PursuitUnsafe: return "PursuitUnsafe";
         case SpawnRejectReason::StabilityWindowNotMet: return "StabilityWindowNotMet";
         case SpawnRejectReason::PopulationBudgetFull: return "PopulationBudgetFull";
         case SpawnRejectReason::VehicleUnavailable: return "VehicleUnavailable";

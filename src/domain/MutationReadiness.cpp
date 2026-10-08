@@ -93,6 +93,11 @@ MutationReadinessReport evaluateMutationReadiness(
         return out;
     }
 
+    if (!input.pursuitClearVerified) {
+        out.blocker = MutationReadinessBlocker::PursuitSafetyUnverified;
+        return out;
+    }
+
     out.blocker = MutationReadinessBlocker::None;
     out.readyForConstructionExperiment = true;
     return out;
@@ -102,6 +107,8 @@ const char* mutationReadinessBlockerName(
     MutationReadinessBlocker blocker
 ) {
     switch (blocker) {
+        case MutationReadinessBlocker::PursuitSafetyUnverified:
+            return "PursuitSafetyUnverified";
         case MutationReadinessBlocker::None:
             return "None";
         case MutationReadinessBlocker::FrameTickProbeDisabled:

@@ -672,6 +672,8 @@ void updateRuntimeSessionAndSpawnPreflight(
     }
 
     frr::domain::SpawnEnvironmentInput environment{};
+    // No exact-target pursuit reader is verified yet. Unknown blocks preflight.
+    // Racer/cop counts and heat are not pursuit-state proof.
     environment.experimentalFeatureEnabled = true;
     environment.supportedExecutable = true;
     environment.freeRoamCandidate =

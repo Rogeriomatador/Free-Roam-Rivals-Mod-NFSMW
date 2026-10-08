@@ -507,6 +507,11 @@ int main() {
 
     readiness.spawnCandidateVerified = true;
     readinessReport = evaluateMutationReadiness(readiness);
+    require(!readinessReport.readyForConstructionExperiment &&
+        readinessReport.blocker == MutationReadinessBlocker::PursuitSafetyUnverified,
+        "complete spatial evidence cannot bypass unknown pursuit state");
+    readiness.pursuitClearVerified = true;
+    readinessReport = evaluateMutationReadiness(readiness);
     require(
         readinessReport.readyForConstructionExperiment &&
         readinessReport.blocker ==
@@ -828,6 +833,7 @@ int main() {
     );
 
     SpawnEnvironmentInput promotedSpawnEnv{};
+    promotedSpawnEnv.pursuitState = PursuitSafetyState::Clear;
     promotedSpawnEnv.experimentalFeatureEnabled = true;
     promotedSpawnEnv.supportedExecutable = true;
     promotedSpawnEnv.freeRoamCandidate = true;
@@ -974,6 +980,7 @@ int main() {
     );
 
     SpawnEnvironmentInput spawnEnv{};
+    spawnEnv.pursuitState = PursuitSafetyState::Clear;
     spawnEnv.experimentalFeatureEnabled = true;
     spawnEnv.supportedExecutable = true;
     spawnEnv.freeRoamCandidate = true;
@@ -983,6 +990,17 @@ int main() {
     spawnEnv.stableFreeRoamSamples = 6;
     spawnEnv.liveRivals = 0;
     spawnEnv.maxLiveRivals = 1;
+
+    for (auto pursuit : {PursuitSafetyState::Unknown, PursuitSafetyState::Active,
+            PursuitSafetyState::Cooldown, PursuitSafetyState::Busted}) {
+        spawnEnv.pursuitState = pursuit;
+        const auto blocked = evaluateSpawnEnvironment(spawnEnv);
+        require(!blocked.allowed && blocked.reason ==
+            (pursuit == PursuitSafetyState::Unknown ? SpawnRejectReason::PursuitStateUnavailable :
+                SpawnRejectReason::PursuitUnsafe), "unsafe or unread pursuit blocks construction preflight");
+    }
+    spawnEnv.pursuitState = PursuitSafetyState::Clear;
+    require(evaluateSpawnEnvironment(spawnEnv).allowed, "verified clear pursuit permits remaining checks");
 
     SpawnCandidateInput spawnCandidate{};
     spawnCandidate.available = true;

@@ -18,7 +18,8 @@ enum class MutationReadinessBlocker {
     VehicleFootprintUnavailable,
     GroundEvidenceUnavailable,
     MetricCalibrationUnverified,
-    SpawnCandidateUnverified
+    SpawnCandidateUnverified,
+    PursuitSafetyUnverified
 };
 
 struct MutationReadinessInput {
@@ -46,6 +47,8 @@ struct MutationReadinessInput {
     bool groundEvidenceVerified = false;
     bool metricCalibrationVerified = false;
     bool spawnCandidateVerified = false;
+    // Fresh exact-target pursuit state must be verified Clear before readiness.
+    bool pursuitClearVerified = false;
 };
 
 struct MutationReadinessReport {

@@ -15,6 +15,8 @@ enum class SpawnRejectReason {
     PlayerUnavailable,
     PlayerCrossCheckFailed,
     RoadNetworkUnavailable,
+    PursuitStateUnavailable,
+    PursuitUnsafe,
     StabilityWindowNotMet,
     PopulationBudgetFull,
     VehicleUnavailable,
@@ -34,7 +36,11 @@ struct SpawnSafetyTuning {
     unsigned requiredStableSamples = 6;
 };
 
+// Clear requires verified fresh native evidence, not the absence of cop cars.
+enum class PursuitSafetyState { Unknown, Clear, Active, Cooldown, Busted };
+
 struct SpawnEnvironmentInput {
+    PursuitSafetyState pursuitState = PursuitSafetyState::Unknown;
     bool experimentalFeatureEnabled = false;
     bool supportedExecutable = false;
     bool freeRoamCandidate = false;

@@ -62,6 +62,7 @@ jobs:
           New-Item -ItemType Directory -Force "$pkg/tools" | Out-Null
           Copy-Item "tools/analyze_motion_capture.py" "$pkg/tools/"
           Copy-Item "tools/dump_exe_functions.py" "$pkg/tools/"
+          Copy-Item "docs/TARGET_CAPTURE_V30_POST_RACE.md" "$pkg/TARGET_CAPTURE_V30_POST_RACE.md"
           Copy-Item "docs/MOTION_CAPTURE.md" "$pkg/MOTION_CAPTURE.md"
           Copy-Item "docs/RENDER_HOOK_RECOVERY.md" "$pkg/RENDER_HOOK_RECOVERY.md"
           Copy-Item "docs/GAMEPLAY_LOOP_RECOVERY.md" "$pkg/GAMEPLAY_LOOP_RECOVERY.md"
@@ -76,7 +77,7 @@ jobs:
           Copy-Item "docs/NATIVE_ROAMING_STREAMING_RESEARCH.md" "$pkg/NATIVE_ROAMING_STREAMING_RESEARCH.md"
 
           @"
-          NFSMW Free Roam Rivals v0.0.30-dev
+          NFSMW Free Roam Rivals v0.0.31-dev
 
           INSTALL:
           1. Extract this ZIP into the game folder.
@@ -88,11 +89,14 @@ jobs:
           5. Send scripts\FreeRoamRivals\FreeRoamRivals.log.
              See POST_RACE_RACER_RESEARCH.md for evidence limits.
 
-          v0.0.30 adds opt-in, read-only post-race identity observations.
+          v0.0.31 adds opt-in, read-only post-race identity observations.
           It does not create rivals or take ownership of native race cars.
           PostRace diagnostics do not require FrameTickProbeEnabled;
           the verified completed main-loop hook supplies their thread guard.
           WorldCollisionDiagnostics still requires FrameTickProbeEnabled.
+          Short race-end fades retain numeric evidence for at most 10 seconds.
+          Matches after fade report correlationInterruptedByFade=1, lifetimeProven=0.
+          Unknown pursuit state blocks experimental creation preflight.
           ExperimentalSpawnEnabled still enables preflight only.
 
           Supported development target:
@@ -101,15 +105,15 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.30-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.31-dev.zip" -Force
 
-      - name: Publish v0.0.30-dev GitHub Release
+      - name: Publish v0.0.31-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.30-dev"
+          $tag = "v0.0.31-dev"
 
           $published = $false
           for ($attempt = 1; $attempt -le 3; $attempt++) {
@@ -119,17 +123,17 @@ jobs:
               if ($info.targetCommitish -ne "${{ github.sha }}") {
                 throw "Existing release target does not match this source commit."
               }
-              if ($info.assets.name -contains "FreeRoamRivals-v0.0.30-dev.zip") {
+              if ($info.assets.name -contains "FreeRoamRivals-v0.0.31-dev.zip") {
                 $published = $true
                 break
               }
-              gh release upload $tag "release/FreeRoamRivals-v0.0.30-dev.zip"
+              gh release upload $tag "release/FreeRoamRivals-v0.0.31-dev.zip"
             } else {
-              gh release create $tag "release/FreeRoamRivals-v0.0.30-dev.zip" `
+              gh release create $tag "release/FreeRoamRivals-v0.0.31-dev.zip" `
                 --target "${{ github.sha }}" `
-                --title "Free Roam Rivals v0.0.30-dev" `
+                --title "Free Roam Rivals v0.0.31-dev" `
                 --prerelease `
-                --notes "v0.0.30-dev: diagnóstico opcional de corredores nativos após corrida, pesquisa pública de QuitRace/IA e ferramenta de dumps protegida contra sobrescrita. Criação de rivais ainda desativada; validação dentro do jogo pendente."
+                --notes "v0.0.31-dev: diagnóstico opcional de corredores nativos após corrida, pesquisa pública de QuitRace/IA e ferramenta de dumps protegida contra sobrescrita. Criação de rivais ainda desativada; validação dentro do jogo pendente."
             }
             if ($LASTEXITCODE -eq 0) { $published = $true; break }
             if ($attempt -lt 3) { Start-Sleep -Seconds 5 }
