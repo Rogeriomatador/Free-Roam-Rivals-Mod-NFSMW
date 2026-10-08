@@ -38,7 +38,7 @@ enum class NativeFactoryResult {
 class NativeVehicleFactory {
 public:
     static domain::PursuitSafetyState pursuitState();
-    static std::vector<NativeRoadTarget> captureRoadTargets();
+    static std::vector<NativeRoadTarget> captureRoadTargets(std::size_t& batchIndex);
     static NativeOwnedSnapshot snapshot();
     static NativeFactoryResult constructInactive(const NativeFactoryRequest& request);
     static NativeFactoryResult prepareRacerInactive();

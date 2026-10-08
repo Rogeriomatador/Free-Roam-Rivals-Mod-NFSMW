@@ -1,4 +1,4 @@
-# v0.0.32-dev — primeiro protótipo nativo de um rival
+# v0.0.33-dev — primeiro protótipo nativo de um rival
 
 Esta versão conecta código real de criação, navegação, ativação e pedido de
 remoção ao callback do jogo. **Ainda não foi executada no NFSMW nesta sessão.**
@@ -11,7 +11,7 @@ corridas ou a aparência/identidade persistente de Rico: é um Golf GTI de fábr
 
 ## Teste no PC
 
-1. Instale o ZIP **v0.0.32-dev** na pasta do jogo, substituindo
+1. Instale o ZIP **v0.0.33-dev** na pasta do jogo, substituindo
    `scripts/FreeRoamRivals.asi`. Preserve seus INIs editados.
 2. No arquivo `scripts/FreeRoamRivals/FreeRoamRivals.ini`, acrescente:
 
@@ -107,3 +107,14 @@ a lógica nativa de destruí-lo. `movementObserved` registra deslocamento medido
 sozinho não prova que a IA causou esse movimento. O primeiro objetivo de teste é
 verificar se o GTI aparece, dirige por conta própria e pode ser retirado sem
 atingir outros carros. O sistema completo de rivais continua em desenvolvimento.
+
+## Busca corrigida na v0.0.33-dev
+
+A busca alterna grupos de até 16 entradas da lista de veículos e avalia no máximo
+quatro candidatos por atualização, com cursor separado para cada grupo. A v32
+repetia os primeiros alvos e os primeiros quatro candidatos elegíveis; um local
+válido mais adiante podia nunca ser examinado. Não há relaxamento de distância,
+ocultação, colisão, terreno ou perseguição. O log `NativePrototype search` mostra
+o grupo, os alvos capturados, os elegíveis por distância e a janela avaliada.
+Mudanças na população/estrada podem mudar os alvos; o teste automático prova a
+cobertura com população estável, não a existência de um local seguro no jogo.
