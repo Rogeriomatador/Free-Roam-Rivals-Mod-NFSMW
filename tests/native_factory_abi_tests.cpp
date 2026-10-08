@@ -1,3 +1,4 @@
+#include <windows.h>
 #include <NFSPluginSDK/Game.MW05/Types/PVehicle.h>
 #include <cstddef>
 #include <cstdio>
