@@ -1,4 +1,4 @@
-# v0.0.36-dev — primeiro protótipo nativo de um rival
+# v0.0.37-dev — primeiro protótipo nativo de um rival
 
 Esta versão conecta código real de criação, navegação, ativação e pedido de
 remoção ao callback do jogo. **Ainda não foi executada no NFSMW nesta sessão.**
@@ -11,7 +11,7 @@ corridas ou a aparência/identidade persistente de Rico: é um Golf GTI de fábr
 
 ## Teste no PC
 
-1. Instale o ZIP **v0.0.36-dev** na pasta do jogo, substituindo
+1. Instale o ZIP **v0.0.37-dev** na pasta do jogo, substituindo
    `scripts/FreeRoamRivals.asi`. Preserve seus INIs editados.
 2. No arquivo `scripts/FreeRoamRivals/FreeRoamRivals.ini`, acrescente:
 
@@ -202,3 +202,44 @@ atrás ou numa rua próxima; sem marcador, ainda é necessário confirmar sua
 presença visualmente. Testes automáticos verificam política e regressões,
 não executam o jogo. A primeira criação/ativação/movimentação real permanece
 pendente até o novo log e observação no PC.
+
+## Compatibilidade bloqueada no PC e auditoria da v37
+
+O log da v36 de 08/10/2026, 16:14:39–16:17, contém 125 solicitações de
+construção, todas recusadas no teste de assinatura de SetGoal (0x422480):
+esperado 0x849130427be78946, memória 0x06790c5598f847e8. Solicitar construção
+não significa invocar o construtor. Nenhum GTI foi alocado por esse caminho.
+
+Os 11 hashes foram recalculados no arquivo speed.exe disponível, com tamanho
+6029312 e MD5 C0516B485065FABDD69579816B5DF763; todos correspondem aos valores
+esperados. Isso exclui erro desses valores em relação a esse arquivo, mas o
+log anterior não contém bytes suficientes para atribuir a diferença em
+memória a um plugin ou a outro mecanismo. A posição exata da diferença e a
+identidade de um eventual hook ainda são desconhecidas.
+
+A v37 não troca nem ignora assinaturas. Antes de instalar o hook de capacidade
+ou chamar o construtor, compara TODAS as 11 janelas de 256 bytes com seus
+hashes esperados e com a leitura do executável em disco. A leitura usa a
+correspondência RVA/offset da seção .text do alvo exato, somente após o guard
+de tamanho/MD5 e com limites de janela. Cada função registra legibilidade,
+hash de memória, hash de arquivo e resultado. Leitura indisponível bloqueia.
+
+Para divergências, o log registra os primeiros 32 bytes da memória/arquivo,
+o primeiro offset diferente e uma janela de 32 bytes ao redor. Se houver
+formato E9 ou FF25 na entrada, mostra o destino legível e o nome do módulo
+que contém esse endereço, quando resolvível. Um formato de salto sozinho não
+prova hook de terceiros, e sua ausência não exclui patch interno à função.
+Esses bytes são diagnósticos locais do teste, não fixtures do jogo no repo.
+
+Após auditar as 11 funções, qualquer divergência interrompe novas tentativas
+nessa sessão, sem executar o construtor ou instalar o hook da fábrica. Isso
+substitui os 125 avisos repetidos por uma auditoria completa. Reinicie após
+resolver o conflito. `native construction request` identifica a solicitação;
+`NativeFactory constructor invoke` distingue a chamada efetiva, que só ocorre
+após compatibilidade e os demais requisitos passarem.
+
+Para obter a evidência, instale a v37 preservando o INI próximo da v36, entre
+no Free Roam com GTI, calibre dirigindo e aperte F8 uma vez. Envie o log
+completo. Não é necessário remover plugins para essa primeira auditoria.
+Um teste separado com menos plugins só deverá ocorrer após salvar sua
+configuração e identificar as diferenças; não sabemos ainda qual é o responsável.

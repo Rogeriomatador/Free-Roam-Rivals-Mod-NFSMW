@@ -37,7 +37,7 @@ struct NativeFactoryRequest {
     NativeRoadTarget roadTarget{};
 };
 enum class NativeFactoryResult {
-    Blocked, ConstructedInactive, RacerPreparedInactive,
+    Blocked, CompatibilityBlocked, ConstructedInactive, RacerPreparedInactive,
     RoadPreparedInactive, Activated,
     RemovalRequested, RemovalPending, Removed, RemovedByEngine, Faulted
 };

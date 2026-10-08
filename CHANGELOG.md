@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.0.37-dev
+
+- v36 PC log confirms 125 construction requests rejected by the live 0x422480 signature. No native constructor invocation occurred. All 11 expected FNV-1a hashes match a fresh offline read of the exact supported executable; the source of the live difference remains unknown.
+- Audit all 11 native function windows instead of stopping at the first mismatch. Compare live and disk windows against unchanged expected signatures after the exact executable guard; missing disk/live reads also block.
+- For mismatches log first 32 bytes, first differing offset/address and nearby 32-byte windows. Classify entry E9/FF25 jump shapes and resolve target modules where possible without claiming that shape proves a foreign hook.
+- Halt prototype attempts for the session after the complete failed audit, before capacity-hook installation or constructor calls. Distinguish construction requests from actual constructor invocations in logs.
+- Add portable fingerprint, window-difference, entry-shape and exact supported .text file-offset boundary regressions. No relaxed compatibility signature and no in-game rival success claimed.
+
+
 ## 0.0.36-dev
 
 - Add explicit `NativeRivalPrototypeNearPlayer=1` manual F8 test: visible creation/activation at verified free road targets 20–120 metres away. Both prototype flags default to off.

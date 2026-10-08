@@ -4,7 +4,11 @@
 #include "../core/VersionGuard.h"
 #include "../core/Log.h"
 #include <sstream>
+#include <iomanip>
+#include <array>
+#include <algorithm>
 #include "../domain/NativeFactorySafety.h"
+#include "../domain/NativeCodeCompatibility.h"
 #include "../domain/NativeSearchWindow.h"
 #include <windows.h>
 #include <MinHook.h>
@@ -37,7 +41,7 @@ struct Owned {
 };
 Owned owned;
 std::size_t sourceBatchCursor = 0;
-bool disabled = false, prepared = false;
+bool disabled = false, prepared = false, compatibilityRejected = false;
 // Only the verified gameplay thread may access adapter state. During the
 // synchronous native constructor, suppress the capacity routine's eviction
 // path. Outside that narrow scope the original behavior remains in place.
@@ -50,12 +54,56 @@ bool copy(std::uintptr_t address, void* out, std::size_t size) {
     return address && ReadProcessMemory(GetCurrentProcess(), reinterpret_cast<void*>(address),
         out, size, &got) && got == size;
 }
-std::uint64_t fingerprint(std::uintptr_t address) {
-    unsigned char bytes[256]{};
-    if (!copy(address, bytes, sizeof(bytes))) return 0;
-    std::uint64_t hash = 14695981039346656037ull;
-    for (auto byte : bytes) hash = (hash ^ byte) * 1099511628211ull;
-    return hash;
+// Read the exact MD5-guarded executable from disk, never map/execute it.
+struct ExecutableCodeFile {
+    HANDLE file=INVALID_HANDLE_VALUE;
+    ExecutableCodeFile() {
+        wchar_t path[32768]{};
+        const auto size=GetModuleFileNameW(nullptr,path,32768);
+        if (!size || size>=32768 || reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr))!=0x400000u) return;
+        file=CreateFileW(path,GENERIC_READ,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,
+            nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
+        if (file==INVALID_HANDLE_VALUE) return;
+        LARGE_INTEGER length{};
+        if (!GetFileSizeEx(file,&length) || length.QuadPart!=6029312) { CloseHandle(file); file=INVALID_HANDLE_VALUE; }
+    }
+    ~ExecutableCodeFile() { if (file!=INVALID_HANDLE_VALUE) CloseHandle(file); }
+    bool read(std::uint32_t address, unsigned char* bytes, std::size_t size) {
+        std::uint32_t offset=0;
+        if (file==INVALID_HANDLE_VALUE || !domain::supportedNativeCodeFileOffset(address,size,offset)) return false;
+        LARGE_INTEGER position{}; position.QuadPart=offset;
+        DWORD got=0;
+        return SetFilePointerEx(file,position,nullptr,FILE_BEGIN) &&
+            ReadFile(file,bytes,static_cast<DWORD>(size),&got,nullptr) && got==size;
+    }
+};
+std::string codeBytes(const unsigned char* bytes, std::size_t size) {
+    std::ostringstream out; out<<std::hex<<std::setfill('0');
+    for (std::size_t i=0;i<size;++i) { if (i) out<<' '; out<<std::setw(2)<<unsigned(bytes[i]); }
+    return out.str();
+}
+void logEntryJump(std::uintptr_t address, const unsigned char* bytes) {
+    const auto shape=domain::nativeEntryJump(bytes,32);
+    if (shape==domain::NativeEntryJump::None) {
+        Log::instance().info("NativeFactory entryJump=none; interior patches remain possible"); return;
+    }
+    std::uint32_t operand=0,target=0; bool readable=true;
+    if (shape==domain::NativeEntryJump::RelativeE9) {
+        std::memcpy(&operand,bytes+1,4); target=static_cast<std::uint32_t>(address)+5u+operand;
+    } else {
+        std::memcpy(&operand,bytes+2,4); readable=copy(operand,&target,sizeof(target));
+    }
+    HMODULE module=nullptr; char path[32768]{};
+    if (readable && target && GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|
+            GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,reinterpret_cast<LPCSTR>(static_cast<std::uintptr_t>(target)),&module))
+        GetModuleFileNameA(module,path,32768);
+    path[32767]='\0';
+    const char* name=std::strrchr(path,'\\'); name=name ? name+1 : path;
+    std::ostringstream out;
+    out<<"NativeFactory entryJump="<<(shape==domain::NativeEntryJump::RelativeE9 ? "E9" : "FF25")
+        <<" targetReadable="<<readable<<" target=0x"<<std::hex<<target
+        <<" targetModule="<<(*name ? name : "unknown")<<" jumpShapeIsNotHookProof=1";
+    Log::instance().warn(out.str());
 }
 bool gameplayThread() {
     const auto loop = GameplayLoopHook::snapshot();
@@ -72,6 +120,7 @@ bool __cdecl capacityDetour(const void* position, bool extended) {
 }
 bool prepareCalls() {
     if (prepared) return true;
+    if (compatibilityRejected) return false;
     if (!VersionGuard::checkCurrentExecutable().supported) return false;
     struct Expected { std::uintptr_t address; std::uint64_t hash; };
     constexpr Expected functions[] = {
@@ -82,16 +131,44 @@ bool prepareCalls() {
         {0x415D00, 0x0f74f27ee4f83c3full}, {0x6693A0, 0xe9546f91bb8f8271ull},
         {0x6693C0, 0x8712e1436a826881ull}
     };
+    ExecutableCodeFile disk;
+    unsigned mismatches=0;
     for (const auto& f : functions) {
-        const auto actual=fingerprint(f.address);
-        if (actual!=f.hash) {
-            std::ostringstream line;
-            line<<"NativeFactory compatibility blocked address=0x"<<std::hex<<f.address
-                <<" expected=0x"<<f.hash<<" actual=0x"<<actual;
-            Log::instance().warn(line.str());
-            return false;
+        std::array<unsigned char,256> live{},file{};
+        const bool liveReadable=copy(f.address,live.data(),live.size());
+        const bool fileReadable=disk.read(static_cast<std::uint32_t>(f.address),file.data(),file.size());
+        const auto actual=liveReadable ? domain::nativeCodeFingerprint(live.data(),live.size()) : 0;
+        const auto fileHash=fileReadable ? domain::nativeCodeFingerprint(file.data(),file.size()) : 0;
+        const bool matches=liveReadable && fileReadable && actual==f.hash && fileHash==f.hash;
+        std::ostringstream line;
+        line<<"NativeFactory compatibility audit address=0x"<<std::hex<<f.address
+            <<" expected=0x"<<f.hash<<" actual=0x"<<actual<<" file=0x"<<fileHash
+            <<std::dec<<" liveReadable="<<liveReadable<<" fileReadable="<<fileReadable<<" match="<<matches;
+        Log::instance().info(line.str());
+        if (matches) continue;
+        ++mismatches;
+        std::ostringstream failure;
+        failure<<"NativeFactory compatibility blocked address=0x"<<std::hex<<f.address
+            <<" expected=0x"<<f.hash<<" actual=0x"<<actual;
+        Log::instance().warn(failure.str());
+        if (liveReadable) { Log::instance().warn("NativeFactory liveFirst32="+codeBytes(live.data(),32)); logEntryJump(f.address,live.data()); }
+        if (fileReadable) Log::instance().info("NativeFactory fileFirst32="+codeBytes(file.data(),32));
+        if (liveReadable && fileReadable) {
+            const auto first=domain::firstNativeCodeDifference(live.data(),file.data(),live.size());
+            if (first<live.size()) {
+                const auto start=std::min(first>8 ? first-8 : std::size_t(0),live.size()-32);
+                std::ostringstream difference;
+                difference<<"NativeFactory difference firstOffset=0x"<<std::hex<<first<<" firstAddress=0x"<<(f.address+first)
+                    <<" windowOffset=0x"<<start<<" liveWindow32="<<codeBytes(live.data()+start,32)
+                    <<" fileWindow32="<<codeBytes(file.data()+start,32);
+                Log::instance().warn(difference.str());
+            }
         }
     }
+    std::ostringstream summary;
+    summary<<"NativeFactory compatibility audit complete checked=11 mismatches="<<mismatches<<" signaturesMatch="<<(mismatches==0);
+    Log::instance().info(summary.str());
+    if (mismatches) { compatibilityRejected=true; return false; }
     const auto init = MH_Initialize();
     if (init != MH_OK && init != MH_ERROR_ALREADY_INITIALIZED) return false;
     void* original = nullptr;
@@ -542,8 +619,9 @@ NativeFactoryResult NativeVehicleFactory::constructInactive(const NativeFactoryR
         !std::isfinite(length) || length < 0.99f || length > 1.01f) return NativeFactoryResult::Blocked;
     Context context{};
     Registry before{};
-    if (!freshWorld(context) || !registry(before) || !pursuitClear(context, before) || !prepareCalls())
+    if (!freshWorld(context) || !registry(before) || !pursuitClear(context, before))
         return NativeFactoryResult::Blocked;
+    if (!prepareCalls()) return compatibilityRejected ? NativeFactoryResult::CompatibilityBlocked : NativeFactoryResult::Blocked;
     std::uint32_t physicalCount = 0;
     if (!domain::nativeFactoryCapacitySafe(copy(0x9377C8, &physicalCount, sizeof(physicalCount)), physicalCount, true))
         return NativeFactoryResult::Blocked;
@@ -553,6 +631,7 @@ NativeFactoryResult NativeVehicleFactory::constructInactive(const NativeFactoryR
         request.position.z != request.roadTarget.position.z) return NativeFactoryResult::Blocked;
     created.context = context;
     created.roadTarget = request.roadTarget;
+    Log::instance().info("NativeFactory constructor invoke: compatibility passed; stock GTI inactive staging");
     InterlockedExchange(&constructionThread, static_cast<LONG>(GetCurrentThreadId()));
     const bool constructed = constructCall(request, created);
     InterlockedExchange(&constructionThread, 0);

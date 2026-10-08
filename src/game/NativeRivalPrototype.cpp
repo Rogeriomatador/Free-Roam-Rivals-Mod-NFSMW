@@ -167,6 +167,10 @@ void beginCleanup(const char* reason) {
 }
 void mutationResult(NativeFactoryResult result, NativeFactoryResult expected, Stage next) {
     if (result==expected) transition(next);
+    else if (result==NativeFactoryResult::CompatibilityBlocked) {
+        Log::instance().warn("NativePrototype compatibility audit failed; no constructor called; restart after resolving the reported code difference.");
+        transition(Stage::Disabled);
+    }
     else if (result==NativeFactoryResult::Faulted) {
         if (NativeVehicleFactory::snapshot().owned) beginCleanup("native_operation_failed");
         else transition(Stage::Disabled);
@@ -310,7 +314,7 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
             request.roadTarget=target; request.position=target.position; request.forward=target.forward;
             selectedTarget=target;
             std::ostringstream creation;
-            creation << "NativePrototype native construction begin: stock GTI, owned scalar road seed, inactive staging"
+            creation << "NativePrototype native construction request: stock GTI, owned scalar road seed, inactive staging"
                 << " nearPlayerDebug=" << nearPlayerDebug << " distanceMeters=" << candidate.distanceFromPlayerMeters
                 << " x=" << target.position.x << " y=" << target.position.y << " z=" << target.position.z;
             Log::instance().info(creation.str());
