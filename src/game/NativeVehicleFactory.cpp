@@ -96,7 +96,7 @@ bool registry(Registry& out) {
 #endif
         out = Registry{};
         out.liveCount = mwsdk::mw05::vehicle_count();
-        out.storage = reinterpret_cast<std::uintptr_t>(mwsdk::runtime::read_absolute<void*>(
+        out.storage = reinterpret_cast<std::uintptr_t>(mwsdk::mw05::read<void**>(
             mwsdk::mw05::process(), mwsdk::mw05::db::data::PVehicle_mVehicleListData));
         if (out.liveCount >= kMaxRegistry || (out.liveCount && !out.storage)) return false;
         for (unsigned i = 0; i < out.liveCount; ++i) {
@@ -110,7 +110,7 @@ bool registry(Registry& out) {
         }
         if (out.physicalCount == kMaxRegistry) return false;
         if (mwsdk::mw05::vehicle_count() != out.liveCount ||
-            reinterpret_cast<std::uintptr_t>(mwsdk::runtime::read_absolute<void*>(mwsdk::mw05::process(),
+            reinterpret_cast<std::uintptr_t>(mwsdk::mw05::read<void**>(mwsdk::mw05::process(),
                 mwsdk::mw05::db::data::PVehicle_mVehicleListData)) != out.storage) return false;
         for (unsigned i = 0; i < out.liveCount; ++i)
             if (out.live[i] != reinterpret_cast<std::uintptr_t>(mwsdk::mw05::vehicle_at(i))) return false;
