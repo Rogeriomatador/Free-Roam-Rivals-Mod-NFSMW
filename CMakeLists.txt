@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.30
+    VERSION 0.0.31
     LANGUAGES C CXX
 )
 

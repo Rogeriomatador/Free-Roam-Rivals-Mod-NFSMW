@@ -51,6 +51,22 @@ void PostRaceObserver::reset() {
     phase_ = RaceObservationPhase::Unavailable;
     lastMillis_ = lastRaceMillis_ = 0;
     entries_.clear();
+    fadeSuspended_ = correlationInterrupted_ = false;
+    fadeStartMillis_ = 0;
+}
+
+bool PostRaceObserver::suspendForRaceFade(std::uint64_t millis) {
+    // A fade is not a lifetime bridge. Keep only a just-observed Racing cohort.
+    if (!haveClock_ || phase_ != RaceObservationPhase::Racing || entries_.empty() ||
+        millis <= lastMillis_ || millis - lastMillis_ > 2000 ||
+        (fadeSuspended_ && millis - fadeStartMillis_ > 10000)) {
+        reset();
+        return false;
+    }
+    if (!fadeSuspended_) fadeStartMillis_ = millis;
+    fadeSuspended_ = correlationInterrupted_ = true;
+    lastMillis_ = millis;
+    return true;
 }
 
 std::vector<PostRaceIdentityMatch> PostRaceObserver::observe(const RaceVehicleObservation& s) {
@@ -66,14 +82,18 @@ std::vector<PostRaceIdentityMatch> PostRaceObserver::observe(const RaceVehicleOb
     }
     if (invalid) { reset(); return out; }
     if ((haveContext_ && !(s.context == context_)) ||
-        (haveClock_ && (s.millis <= lastMillis_ || s.millis - lastMillis_ > 2000))) {
+        (haveClock_ && (s.millis <= lastMillis_ || s.millis - lastMillis_ > 2000)) ||
+        (fadeSuspended_ && (s.millis - fadeStartMillis_ > 10000 ||
+            s.phase != RaceObservationPhase::Roaming))) {
         reset();
     }
+    fadeSuspended_ = false;
     context_ = s.context;
     haveContext_ = haveClock_ = true;
     lastMillis_ = s.millis;
 
     if (s.phase == RaceObservationPhase::Racing) {
+        correlationInterrupted_ = false;
         entries_.clear();
         for (const auto& v : s.vehicles)
             if (v.racer) entries_.push_back({v, {}, 0});
@@ -87,6 +107,7 @@ std::vector<PostRaceIdentityMatch> PostRaceObserver::observe(const RaceVehicleOb
             if (match == s.vehicles.end()) { it = entries_.erase(it); continue; }
             PostRaceIdentityMatch result{};
             result.current = *match;
+            result.correlationInterruptedByFade = correlationInterrupted_;
             result.millisSinceLastRaceSample = s.millis - lastRaceMillis_;
             result.aiIdentityChanged = match->ai != it->race.ai ||
                 match->aiInterfaceVtable != it->race.aiInterfaceVtable;

@@ -1,4 +1,5 @@
 #include "PostRaceRacerProbe.h"
+#include <algorithm>
 
 #include "GameBridge.h"
 #include "GameplayLoopHook.h"
@@ -107,12 +108,17 @@ void samplePostRaceRacers() {
         current.raceStatus, current.career.profileKeyAvailable ? current.career.profileKey : 0};
     if (!current.inWorld || current.inNIS || current.fadeScreen || current.raceStatusLoading ||
         !current.vehicles.independentPlayerCrossCheck) {
-        observer.reset();
+        const bool fadeOnly = current.inWorld && current.fadeScreen && !current.inNIS &&
+            !current.raceStatusLoading && current.vehicles.independentPlayerCrossCheck;
+        const bool retained = fadeOnly && observer.suspendForRaceFade(now);
+        if (!retained) observer.reset();
         std::ostringstream line;
         line << "PostRace observation revoked: inWorld=" << current.inWorld
             << " nis=" << current.inNIS << " fade=" << current.fadeScreen
             << " loading=" << current.raceStatusLoading
             << " playerCrossCheck=" << current.vehicles.independentPlayerCrossCheck
+            << " raceEvidenceRetained=" << retained
+            << " capturedRaceCount=" << observer.capturedRaceCount()
             << " readOnly=1 lifetimeProven=0";
         Log::instance().info(line.str());
         return;
@@ -152,6 +158,9 @@ void samplePostRaceRacers() {
     summary << "PostRace observation: phase=" << racePlayModeName(current.racePlayMode)
         << " complete=" << sample.complete << " liveCount=" << before.count
         << " registryStatus=" << frr::domain::registrySnapshotStatusName(registryStatus)
+        << " observedRacerCount=" << std::count_if(sample.vehicles.begin(), sample.vehicles.end(),
+            [](const auto& v) { return v.racer; })
+        << " capturedRaceCount=" << observer.capturedRaceCount()
         << " matchingRaceIdentities=" << matches.size()
         << " readOnly=1 lifetimeProven=0";
     Log::instance().info(summary.str());
@@ -167,6 +176,7 @@ void samplePostRaceRacers() {
             << " displacementAvailable=" << match.displacementAvailable
             << " displacementWorld=" << match.displacementSincePreviousRoamingSample
             << " aiIdentityChanged=" << match.aiIdentityChanged
+            << " correlationInterruptedByFade=" << match.correlationInterruptedByFade
             << " lifetimeProven=0";
         Log::instance().info(line.str());
     }

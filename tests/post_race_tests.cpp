@@ -90,5 +90,38 @@ int main() {
     for (int i = 0; i < 240; ++i) { s.millis += 500; observer.observe(s); }
     s.millis += 500;
     require(observer.observe(s).empty(), "correlation expires after two minutes");
+    // Replay the failure found in the actual v30 capture: Racing -> fade -> Roaming.
+    observer.reset(); s = racing(); observer.observe(s);
+    require(observer.suspendForRaceFade(1500), "race fade preserves numeric evidence");
+    require(observer.suspendForRaceFade(2000), "subsequent fade sample retains bounded evidence");
+    s.phase = RaceObservationPhase::Roaming; s.millis = 2500;
+    matches = observer.observe(s);
+    require(matches.size() == 1 && matches[0].correlationInterruptedByFade &&
+        !matches[0].displacementAvailable, "resume is explicitly interrupted, never race-to-roam motion");
+    s.millis += 500; s.vehicles[0].x += 3;
+    matches = observer.observe(s);
+    require(matches.size() == 1 && matches[0].correlationInterruptedByFade &&
+        matches[0].displacementAvailable, "only resumed roaming samples measure displacement");
+    require(!observer.suspendForRaceFade(3500), "fade after roaming revokes instead of bridging");
+    for (int fault = 0; fault < 5; ++fault) {
+        observer.reset(); s = racing(); observer.observe(s);
+        require(observer.suspendForRaceFade(1500), "setup race-end fade");
+        s.phase = RaceObservationPhase::Roaming; s.millis = 2000;
+        if (fault == 0) s.context.profile++;
+        if (fault == 1) s.context.player++;
+        if (fault == 2) s.complete = false;
+        if (fault == 3) s.vehicles[0].simable++;
+        if (fault == 4) s.phase = RaceObservationPhase::Unavailable;
+        require(observer.observe(s).empty(), "fade retention does not bypass invalid/context checks");
+    }
+    observer.reset(); s = racing(); observer.observe(s);
+    for (std::uint64_t t = 1500; t <= 11500; t += 500)
+        require(observer.suspendForRaceFade(t), "fade within total deadline");
+    require(!observer.suspendForRaceFade(12000) && observer.capturedRaceCount() == 0,
+        "repeated fades cannot extend the ten-second deadline");
+    s.phase = RaceObservationPhase::Roaming; s.millis = 12500;
+    require(observer.observe(s).empty(), "expired archive cannot resurrect addresses");
+    observer.reset(); s = racing(); observer.observe(s);
+    require(!observer.suspendForRaceFade(4001), "unobserved clock gap still revokes");
     std::cout << "Post-race observation tests passed\n";
 }

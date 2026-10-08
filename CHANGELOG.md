@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.0.31-dev
+
+- Fix the loss of numeric race evidence during the short race-end fade observed in the actual v30 PC capture. Retention is limited to ten seconds, fresh guards and context checks remain required, and all resumed matches are explicitly interrupted/lifetime-unproven.
+- Log observed racer count, retained cohort count and fade retention to distinguish an empty archive from failed correlation.
+- Block spawn preflight for unknown/active/cooldown/busted pursuit states. The runtime pursuit reader is not verified; it stays Unknown. This is a conservative policy, not implemented rival police AI or a native reader.
+- Add regression coverage for the captured transition, expiry, context changes, clock gaps and pursuit policy.
+
 ## 0.0.30-dev
 
 - Deepen pinned-source roaming/streaming/cache research: separate racer goal/class, candidate-section activation, mutating road-nav queries, deferred cleanup and companion resource limits.
