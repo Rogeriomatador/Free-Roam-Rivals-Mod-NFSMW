@@ -14,6 +14,7 @@ struct RuntimeProbeConfig {
     unsigned sampleEveryFrames = 30;
     unsigned heartbeatFrames = 600;
 
+    bool nativeRivalPrototypeEnabled = false;
     bool experimentalSpawnEnabled = false;
     unsigned stableFreeRoamSamplesBeforeSpawn = 6;
     int maxActiveRivals = 1;

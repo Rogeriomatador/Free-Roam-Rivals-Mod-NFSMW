@@ -23,7 +23,7 @@ jobs:
         run: cmake --build build --config Release
 
       - name: Run domain/system tests
-        run: ctest --test-dir build -C Release --output-on-failure
+        run: ctest --test-dir build -C Release --output-on-failure --verbose
 
       - name: Audit motion capture tests
         run: python -m unittest discover -s tests -p test_motion_capture.py
@@ -73,31 +73,27 @@ jobs:
           Copy-Item "docs/COORDINATE_CONVENTIONS.md" "$pkg/COORDINATE_CONVENTIONS.md"
           Copy-Item "docs/TARGET_CAPTURE_V29_ALL_DIAGNOSTICS_2026-10-07.md" "$pkg/TARGET_CAPTURE_V29_ALL_DIAGNOSTICS_2026-10-07.md"
           Copy-Item "docs/EXE_DUMP_V2_FINDINGS.md" "$pkg/EXE_DUMP_V2_FINDINGS.md"
+          Copy-Item "docs/NATIVE_RIVAL_PROTOTYPE.md" "$pkg/NATIVE_RIVAL_PROTOTYPE.md"
           Copy-Item "docs/POST_RACE_RACER_RESEARCH.md" "$pkg/POST_RACE_RACER_RESEARCH.md"
           Copy-Item "docs/NATIVE_ROAMING_STREAMING_RESEARCH.md" "$pkg/NATIVE_ROAMING_STREAMING_RESEARCH.md"
 
           @"
-          NFSMW Free Roam Rivals v0.0.31-dev
+          NFSMW Free Roam Rivals v0.0.32-dev
 
           INSTALL:
-          1. Extract this ZIP into the game folder.
-          2. Replace scripts\FreeRoamRivals.asi and keep your edited INIs.
-          3. Optional post-race test: add PostRaceRacerDiagnosticsEnabled=1
-             under [Diagnostics] in your existing INI.
-          4. Complete a normal career race, return to Free Roam and follow
-             an opponent if one remains visible for 30-60 seconds.
-          5. Send scripts\FreeRoamRivals\FreeRoamRivals.log.
-             See POST_RACE_RACER_RESEARCH.md for evidence limits.
+          1. Extract into the game folder, replacing scripts\FreeRoamRivals.asi.
+          2. Keep your INIs; add NativeRivalPrototypeEnabled=1 under [Experimental]
+             only when ready to test the new native integration.
+          3. Use a Golf GTI in ordinary Free Roam. Keep RenderProbeEnabled=1.
+          4. Drive steadily to obtain world metric calibration, then press F8.
+          5. F8 again requests removal, deferred until hidden/300m away and no pursuit.
+          6. Send scripts\FreeRoamRivals\FreeRoamRivals.log.
+          See NATIVE_RIVAL_PROTOTYPE.md for candidate gates and exact limits.
 
-          v0.0.31 adds opt-in, read-only post-race identity observations.
-          It does not create rivals or take ownership of native race cars.
-          PostRace diagnostics do not require FrameTickProbeEnabled;
-          the verified completed main-loop hook supplies their thread guard.
-          WorldCollisionDiagnostics still requires FrameTickProbeEnabled.
-          Short race-end fades retain numeric evidence for at most 10 seconds.
-          Matches after fade report correlationInterruptedByFade=1, lifetimeProven=0.
-          Unknown pursuit state blocks experimental creation preflight.
-          ExperimentalSpawnEnabled still enables preflight only.
+          This is the first connected creation/activation prototype, not an
+          in-game-validated stable release. It is disabled by default. One
+          constructed vehicle per session; native driving/cleanup test pending.
+          Legacy ExperimentalSpawnEnabled remains preflight-only.
 
           Supported development target:
           speed.exe size: 6029312 bytes
@@ -105,15 +101,15 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.31-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.32-dev.zip" -Force
 
-      - name: Publish v0.0.31-dev GitHub Release
+      - name: Publish v0.0.32-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.31-dev"
+          $tag = "v0.0.32-dev"
 
           $published = $false
           for ($attempt = 1; $attempt -le 3; $attempt++) {
@@ -123,17 +119,17 @@ jobs:
               if ($info.targetCommitish -ne "${{ github.sha }}") {
                 throw "Existing release target does not match this source commit."
               }
-              if ($info.assets.name -contains "FreeRoamRivals-v0.0.31-dev.zip") {
+              if ($info.assets.name -contains "FreeRoamRivals-v0.0.32-dev.zip") {
                 $published = $true
                 break
               }
-              gh release upload $tag "release/FreeRoamRivals-v0.0.31-dev.zip"
+              gh release upload $tag "release/FreeRoamRivals-v0.0.32-dev.zip"
             } else {
-              gh release create $tag "release/FreeRoamRivals-v0.0.31-dev.zip" `
+              gh release create $tag "release/FreeRoamRivals-v0.0.32-dev.zip" `
                 --target "${{ github.sha }}" `
-                --title "Free Roam Rivals v0.0.31-dev" `
+                --title "Free Roam Rivals v0.0.32-dev" `
                 --prerelease `
-                --notes "v0.0.31-dev: diagnóstico opcional de corredores nativos após corrida, pesquisa pública de QuitRace/IA e ferramenta de dumps protegida contra sobrescrita. Criação de rivais ainda desativada; validação dentro do jogo pendente."
+                --notes "v0.0.32-dev: primeiro protótipo nativo de criação, navegação e ativação de um Golf GTI por F8, desativado por padrão. Compilação/testes automáticos não substituem teste no jogo. Leia NATIVE_RIVAL_PROTOTYPE.md antes de habilitar."
             }
             if ($LASTEXITCODE -eq 0) { $published = $true; break }
             if ($attempt -lt 3) { Start-Sleep -Seconds 5 }

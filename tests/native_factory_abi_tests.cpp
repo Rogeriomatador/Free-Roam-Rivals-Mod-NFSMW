@@ -35,9 +35,19 @@ static_assert(sizeof(PVehicle) < 0x1AC);
 
 static_assert(offsetof(AIVehicle, mCurrentGoal) == 0xB8);
 static_assert(offsetof(AIVehicle, mPursuit) == 0xBC);
+static_assert(offsetof(AIVehicle, mCurrentRoad) == 0x140);
+// The SDK USpline/Matrix4 declaration changes trailing road offsets. Never
+// use SDK sizeof/offsetof for the full native navigation object.
+static_assert(offsetof(WRoadNav, fValid) == 0x50);
+static_assert(offsetof(WRoadNav, fNodeInd) == 0x8C);
+static_assert(offsetof(WRoadNav, fSegmentInd) == 0x8E);
+static_assert(offsetof(WRoadNav, fSegTime) == 0x90);
+static_assert(offsetof(WRoadNav, fLaneInd) != 0x2C1);
+static_assert(offsetof(WRoadNav, fLaneOffset) != 0x2C4);
 static_assert(offsetof(ISimable, _mHandle) == 0x08);
 
 int main() {
+    std::printf("Road ABI mismatch: SDK WRoadNav=%zu SDK future=%zu native future=1064 SDK lane=%zu native lane=705 SDK laneOffset=%zu native laneOffset=708; no navigation getter calls\n", sizeof(WRoadNav), offsetof(AIVehicle, mFutureRoad), offsetof(WRoadNav, fLaneInd), offsetof(WRoadNav, fLaneOffset));
     std::printf("Native pursuit ABI: goal=%zu pursuit=%zu handle=%zu cooldown=%zu; no engine calls\n",
         offsetof(AIVehicle, mCurrentGoal), offsetof(AIVehicle, mPursuit),
         offsetof(ISimable, _mHandle), offsetof(GRaceStatus, mPlayerPursuitInCooldown));

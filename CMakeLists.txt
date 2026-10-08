@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.31
+    VERSION 0.0.32
     LANGUAGES C CXX
 )
 
@@ -105,6 +105,7 @@ nfsmw_add_plugin(FreeRoamRivals
         src/game/GameplayLoopHook.cpp
         src/game/GameBridge.cpp
         src/game/NativeVehicleFactory.cpp
+        src/game/NativeRivalPrototype.cpp
         src/game/PlayerMotionProbe.cpp
         src/game/PostRaceRacerProbe.cpp
         src/game/RoadCandidateProbe.cpp
@@ -285,3 +286,7 @@ add_test(NAME FreeRoamRivalsNativeFactoryAbiTests COMMAND FreeRoamRivalsNativeFa
 add_executable(FreeRoamRivalsNativeFactorySafetyTests tests/native_factory_safety_tests.cpp)
 target_include_directories(FreeRoamRivalsNativeFactorySafetyTests PRIVATE src)
 add_test(NAME FreeRoamRivalsNativeFactorySafetyTests COMMAND FreeRoamRivalsNativeFactorySafetyTests)
+
+add_executable(FreeRoamRivalsNativeRoadSeedTests tests/native_road_seed_tests.cpp)
+target_include_directories(FreeRoamRivalsNativeRoadSeedTests PRIVATE src)
+add_test(NAME FreeRoamRivalsNativeRoadSeedTests COMMAND FreeRoamRivalsNativeRoadSeedTests)

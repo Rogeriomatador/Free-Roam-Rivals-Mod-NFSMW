@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 
 namespace frr::game {
 namespace {
@@ -118,7 +119,7 @@ RoadNavPointProbe probeRoad(
     if (!road ||
         !isReadable(
             reinterpret_cast<std::uintptr_t>(road),
-            sizeof(NFSPluginSDK::MW05::WRoadNav))) {
+            0x2C8)) {
         return out;
     }
 
@@ -128,14 +129,20 @@ RoadNavPointProbe probeRoad(
         out.address =
             reinterpret_cast<std::uintptr_t>(road);
         out.valid = road->fValid;
-        out.deadEnd = road->fDeadEnd != 0;
+        // SDK USpline/Matrix4 layout differs from the target; trailing
+        // lane/dead-end fields must use verified native offsets.
+        const auto* bytes = reinterpret_cast<const unsigned char*>(road);
+        std::int8_t deadEnd = 0, laneIndex = -1;
+        std::memcpy(&deadEnd, bytes+0x2C0, sizeof(deadEnd));
+        std::memcpy(&laneIndex, bytes+0x2C1, sizeof(laneIndex));
+        out.deadEnd = deadEnd != 0;
         out.occludedFromBehind =
             road->bOccludedFromBehind;
 
         out.segmentIndex =
             static_cast<std::int32_t>(road->fSegmentInd);
         out.laneIndex =
-            static_cast<std::int32_t>(road->fLaneInd);
+            static_cast<std::int32_t>(laneIndex);
 
         out.roadOcclusion =
             road->nRoadOcclusion;
@@ -226,17 +233,21 @@ PlayerRoadNavigationProbe RoadNavProbe::sample(
         out.playerPosition =
             copyVector(player->GetPosition());
 
-        out.current = probeRoad(ai->GetCurrentRoad());
-        out.future = probeRoad(ai->GetFutureRoad());
-
-        out.seekAheadPosition =
-            copyVector(ai->GetSeekAheadPosition());
-
-        out.farFuturePosition =
-            copyVector(ai->GetFarFuturePosition());
-
-        out.farFutureDirection =
-            copyVector(ai->GetFarFutureDirection());
+        // These native "getters" call UpdateRoads and mutate the AI. Read
+        // the compiled/target-verified embedded fields instead of invoking
+        // them from render-side diagnostics.
+        const auto table = *reinterpret_cast<const std::uintptr_t* const*>(ai);
+        if (!table || table[45] != 0x442A70 || table[46] != 0x442A90) return {};
+        auto* primary = static_cast<AIVehicle*>(ai);
+        if (!isReadable(reinterpret_cast<std::uintptr_t>(primary), 0x140)) return {};
+        out.current = probeRoad(&primary->mCurrentRoad);
+        // The pinned WRoadNav/USpline declaration differs from native layout.
+        // Its AIVehicle::mFutureRoad offsetof must NOT be used. The verified
+        // native getter returns IVehicleAI+0x3DC, without calling it here.
+        out.future = probeRoad(reinterpret_cast<WRoadNav*>(reinterpret_cast<std::uintptr_t>(ai)+0x3DC));
+        out.seekAheadPosition = copyVector(primary->mSeekAheadPosition);
+        out.farFuturePosition = copyVector(primary->mFarFuturePosition);
+        out.farFutureDirection = copyVector(primary->mFarFutureDirection);
 
         out.currentToFutureWorldUnits = distance(
             out.current.position,

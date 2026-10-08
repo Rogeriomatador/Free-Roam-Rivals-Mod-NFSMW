@@ -2,14 +2,13 @@
 
 ## Deliverable and limits
 
-`src/game/NativeVehicleFactory.cpp` now implements native construction, immediate
-inactivation, racer driver conversion, native Racer goal selection and native
-retirement requests. It is compiled into the plugin's source target. **RuntimeProbe
-has no call to this adapter. It cannot currently create a rival for the player.**
-No activation entry point is exposed yet. The remaining integration must provide
-an owned, initialized road-navigation seed, prove the candidate remains hidden and
-clear, activate on the verified gameplay thread, observe native movement and
-exercise delayed retirement in the actual game. No game execution is claimed.
+`src/game/NativeVehicleFactory.cpp` implements native construction, staging,
+Racer driver/goal preparation, owned scalar road reset, activation and retirement.
+**v0.0.32 connects these methods to an explicit opt-in F8 prototype**, disabled by
+default. See [NATIVE_RIVAL_PROTOTYPE.md](NATIVE_RIVAL_PROTOTYPE.md) for exact test
+instructions and limits. No game execution or successful in-game lifecycle is
+claimed. The previous PR #43 adapter was inactive-only and undispatched; this
+new connection supersedes that earlier limitation.
 
 This is independently implemented from the uploaded executable and the pinned
 BSD-licensed SDK; no implementation or binary from NativeFreeRoamRacers is copied.
@@ -20,7 +19,7 @@ BSD-licensed SDK; no implementation or binary from NativeFreeRoamRacers is copie
   decisions must permit the request. No borrowed cache, customization or performance
   object survives the call. Position and normalized forward vectors are local.
 - File identity must match the supported executable. The first 256 loaded bytes of
-  six native entries must also match independently derived FNV-1a fingerprints;
+  eleven native entries must also match independently derived FNV-1a fingerprints;
   these are compatibility checks, not cryptographic authenticity proofs.
 - All access is restricted to the installed, verified, consistent gameplay thread.
   A current outer post-update callback permit is also mandatory: a historical
@@ -70,7 +69,10 @@ Driver conversion can replace the AI, so it is resolved again afterwards. Only t
 observed racecar AI interface vtable 0x892640 is accepted. Native SetGoal 0x422480
 owns goal replacement; the SDK inline helper is deliberately avoided because it
 also clears the old goal. The resulting goal must use Racer vtable 0x892D30.
-Preparation leaves the vehicle inactive; it does not make the car move.
+Preparation leaves the vehicle inactive. The prototype then resets its owned
+road navigation, rechecks its actual body and uses SetSpawned -> native SetGoal
+-> Activate. SetSpawned clears the earlier goal via ResetInternals; goal assignment
+therefore occurs again after that call. Movement is not presumed from activation.
 
 Cleanup requires fresh registry membership and matching simable/native handle/model
 in the same safe world context. It invokes native Deactivate and `0x6851D0` on the
