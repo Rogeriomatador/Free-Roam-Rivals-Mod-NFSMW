@@ -15,6 +15,7 @@ struct Config {
     unsigned runtimeProbeHeartbeatFrames = 600;
 
     bool nativeRivalPrototypeEnabled = false;
+    bool nativeRivalPrototypeNearPlayer = false;
     bool experimentalSpawnEnabled = false;
     bool experimentalAIControlEnabled = false;
     unsigned stableFreeRoamSamplesBeforeSpawn = 6;

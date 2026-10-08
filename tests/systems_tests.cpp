@@ -17,6 +17,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 #include <vector>
 
 namespace {
@@ -1055,6 +1056,69 @@ int main() {
         spawn.allowed,
         "far spawn allowed only with streaming proof"
     );
+
+    // Manual near-player test is a bounded visibility exception, not a bypass
+    // of construction/activation safety. Normal policy above is unchanged.
+    auto debugEnv=spawnEnv;
+    debugEnv.nearPlayerDebugRequested=true;
+    auto debugCandidate=spawnCandidate;
+    debugCandidate.visibleToPlayer=true;
+    debugCandidate.streamingVerified=false;
+    for (float meters : {20.0f, 50.0f, 120.0f}) {
+        debugCandidate.distanceFromPlayerMeters=meters;
+        require(evaluateSpawnCandidate(debugEnv,debugCandidate).allowed,
+            "explicit visible debug candidate allowed only inside near-player interval");
+        require(!evaluateSpawnCandidate(spawnEnv,debugCandidate).allowed,
+            "near-player visibility exception never leaks into normal policy");
+    }
+    for (float meters : {-1.0f, 0.0f, 19.99f, 120.01f, 500.0f}) {
+        debugCandidate.distanceFromPlayerMeters=meters;
+        debugCandidate.streamingVerified=true;
+        require(!evaluateSpawnCandidate(debugEnv,debugCandidate).allowed,
+            "streaming proof cannot widen debug interval");
+    }
+    for (float meters : {std::numeric_limits<float>::quiet_NaN(),
+            std::numeric_limits<float>::infinity()}) {
+        debugCandidate.distanceFromPlayerMeters=meters;
+        require(!evaluateSpawnCandidate(debugEnv,debugCandidate).allowed,
+            "non-finite distances fail closed in debug and normal policies");
+        require(!evaluateSpawnCandidate(spawnEnv,debugCandidate).allowed,
+            "normal spawn also rejects non-finite distances");
+    }
+    debugCandidate.distanceFromPlayerMeters=50.0f;
+    for (auto state : {PursuitSafetyState::Unknown, PursuitSafetyState::Active,
+            PursuitSafetyState::Cooldown, PursuitSafetyState::Busted}) {
+        auto unsafe=debugEnv; unsafe.pursuitState=state;
+        require(!evaluateSpawnCandidate(unsafe,debugCandidate).allowed,
+            "visible debug spawn still blocks every unsafe pursuit state");
+    }
+    for (auto field : {&SpawnEnvironmentInput::experimentalFeatureEnabled,
+            &SpawnEnvironmentInput::supportedExecutable, &SpawnEnvironmentInput::freeRoamCandidate,
+            &SpawnEnvironmentInput::playerAvailable, &SpawnEnvironmentInput::independentPlayerCrossCheck,
+            &SpawnEnvironmentInput::roadNetworkAvailable}) {
+        auto unsafe=debugEnv; unsafe.*field=false;
+        require(!evaluateSpawnCandidate(unsafe,debugCandidate).allowed,
+            "debug spawn keeps executable/world/player/road gates");
+    }
+    for (auto field : {&SpawnEnvironmentInput::loading, &SpawnEnvironmentInput::inNIS,
+            &SpawnEnvironmentInput::fade}) {
+        auto unsafe=debugEnv; unsafe.*field=true;
+        require(!evaluateSpawnCandidate(unsafe,debugCandidate).allowed,
+            "debug spawn keeps loading/NIS/fade gates");
+    }
+    auto unstableDebug=debugEnv; unstableDebug.stableFreeRoamSamples=5;
+    require(!evaluateSpawnCandidate(unstableDebug,debugCandidate).allowed,"debug keeps stable window");
+    auto fullDebug=debugEnv; fullDebug.liveRivals=1;
+    require(!evaluateSpawnCandidate(fullDebug,debugCandidate).allowed,"debug keeps population budget");
+    for (auto field : {&SpawnCandidateInput::available, &SpawnCandidateInput::vehicleAvailable,
+            &SpawnCandidateInput::roadValid, &SpawnCandidateInput::groundValid,
+            &SpawnCandidateInput::metricDistanceVerified}) {
+        auto unsafe=debugCandidate; unsafe.*field=false;
+        require(!evaluateSpawnCandidate(debugEnv,unsafe).allowed,
+            "debug spawn keeps model/road/ground/metric evidence gates");
+    }
+    auto occupiedDebug=debugCandidate; occupiedDebug.overlapsLiveVehicle=true;
+    require(!evaluateSpawnCandidate(debugEnv,occupiedDebug).allowed,"debug never permits occupied position");
 
     OutrunTuning outrunTuning{};
     outrunTuning.winLeadMeters = 100.0f;

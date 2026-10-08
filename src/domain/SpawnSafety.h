@@ -26,6 +26,7 @@ enum class SpawnRejectReason {
     VehicleOverlap,
     DistanceScaleUnverified,
     TooClose,
+    DebugDistanceOutOfRange,
     VisiblePopInRisk,
     TooFarWithoutStreamingProof
 };
@@ -42,6 +43,9 @@ enum class PursuitSafetyState { Unknown, Clear, Active, Cooldown, Busted };
 struct SpawnEnvironmentInput {
     PursuitSafetyState pursuitState = PursuitSafetyState::Unknown;
     bool experimentalFeatureEnabled = false;
+    // Explicit manual prototype test only: allow visible creation at 20-120 m.
+    // This does not certify visibility or streaming for ordinary spawning.
+    bool nearPlayerDebugRequested = false;
     bool supportedExecutable = false;
     bool freeRoamCandidate = false;
     bool loading = false;

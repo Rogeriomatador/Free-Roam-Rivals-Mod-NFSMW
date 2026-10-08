@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.0.36-dev
+
+- Add explicit `NativeRivalPrototypeNearPlayer=1` manual F8 test: visible creation/activation at verified free road targets 20–120 metres away. Both prototype flags default to off.
+- Preserve ground, full fleet clearance, metric calibration, world/player/model, pursuit/cooldown, stable-window and population/capacity checks. Cleanup still requires hidden/300m conditions.
+- Record debug mode, measured distance and position at construction; prefer closer eligible targets within each capture batch. Do not invent player-relative road seeds or claim hidden/streaming proof.
+- Reject non-finite metric distances and test debug interval boundaries plus unchanged normal and pursuit/occupancy policies.
+- v35 PC log reached hidden-camera/ray rejection after ground checks but contains no native construction. Real GTI appearance/driving remains unconfirmed.
+
+
 ## 0.0.35-dev
 
 - v34 PC evidence confirms 5–10 road targets captured, but ground/clearance gates rejected creation; no native construction occurred.
