@@ -1623,7 +1623,7 @@ RuntimeProbeInstallResult RuntimeProbe::install(
     const RuntimeProbeConfig& config
 ) {
     g_config = config;
-    configureNativeRivalPrototype(config.nativeRivalPrototypeEnabled);
+    configureNativeRivalPrototype(config.nativeRivalPrototypeEnabled, config.nativeRivalPrototypeNearPlayer);
     g_motionCaptureId = GetTickCount64();
 
     RuntimeProbeInstallResult result{};

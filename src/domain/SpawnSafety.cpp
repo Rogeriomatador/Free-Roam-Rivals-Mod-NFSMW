@@ -1,6 +1,7 @@
 #include "SpawnSafety.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace frr::domain {
 
@@ -94,11 +95,17 @@ SpawnDecision evaluateSpawnCandidate(
         return {false, SpawnRejectReason::VehicleOverlap};
     }
 
-    if (!candidate.metricDistanceVerified) {
+    if (!candidate.metricDistanceVerified || !std::isfinite(candidate.distanceFromPlayerMeters)) {
         return {
             false,
             SpawnRejectReason::DistanceScaleUnverified
         };
+    }
+
+    if (environment.nearPlayerDebugRequested) {
+        if (candidate.distanceFromPlayerMeters < 20.0f || candidate.distanceFromPlayerMeters > 120.0f)
+            return {false, SpawnRejectReason::DebugDistanceOutOfRange};
+        return {true, SpawnRejectReason::None};
     }
 
     const float minimumDistance =
@@ -150,6 +157,7 @@ const char* spawnRejectReasonName(SpawnRejectReason reason) {
         case SpawnRejectReason::GroundInvalid: return "GroundInvalid";
         case SpawnRejectReason::VehicleOverlap: return "VehicleOverlap";
         case SpawnRejectReason::DistanceScaleUnverified: return "DistanceScaleUnverified";
+        case SpawnRejectReason::DebugDistanceOutOfRange: return "DebugDistanceOutOfRange";
         case SpawnRejectReason::TooClose: return "TooClose";
         case SpawnRejectReason::VisiblePopInRisk: return "VisiblePopInRisk";
         case SpawnRejectReason::TooFarWithoutStreamingProof: return "TooFarWithoutStreamingProof";

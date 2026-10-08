@@ -198,6 +198,7 @@ Config Config::load() {
             )
         );
 
+    cfg.nativeRivalPrototypeNearPlayer = iniInt(ini, "Experimental", "NativeRivalPrototypeNearPlayer", 0) != 0;
     cfg.nativeRivalPrototypeEnabled = iniInt(ini, "Experimental", "NativeRivalPrototypeEnabled", 0) != 0;
 
     cfg.experimentalSpawnEnabled =

@@ -1,4 +1,4 @@
-# v0.0.35-dev — primeiro protótipo nativo de um rival
+# v0.0.36-dev — primeiro protótipo nativo de um rival
 
 Esta versão conecta código real de criação, navegação, ativação e pedido de
 remoção ao callback do jogo. **Ainda não foi executada no NFSMW nesta sessão.**
@@ -11,13 +11,14 @@ corridas ou a aparência/identidade persistente de Rico: é um Golf GTI de fábr
 
 ## Teste no PC
 
-1. Instale o ZIP **v0.0.35-dev** na pasta do jogo, substituindo
+1. Instale o ZIP **v0.0.36-dev** na pasta do jogo, substituindo
    `scripts/FreeRoamRivals.asi`. Preserve seus INIs editados.
 2. No arquivo `scripts/FreeRoamRivals/FreeRoamRivals.ini`, acrescente:
 
    ```ini
    [Experimental]
    NativeRivalPrototypeEnabled=1
+   NativeRivalPrototypeNearPlayer=1
    ```
 
    Use a seção existente, sem duplicá-la. Os antigos `ExperimentalSpawnEnabled`
@@ -30,7 +31,12 @@ corridas ou a aparência/identidade persistente de Rico: é um Golf GTI de fábr
    para obter a calibração de distância. O log registra `World metric calibration
    verified`. Não há escala de metros inventada nem temporizador que substitua
    essa evidência.
-4. Pressione **F8** uma vez. O protótipo busca um candidato por até 10 segundos.
+4. Com `NativeRivalPrototypeNearPlayer=1`, o teste permite aparecer à vista
+   em um alvo livre de estrada a **20–120 metros**, dando prioridade aos mais
+   próximos de cada grupo. Não garante um carro exatamente ao lado: depende
+   de uma navegação válida capturada das IAs e espaço livre. Para a busca
+   oculta original a 350–850 m, use `NativeRivalPrototypeNearPlayer=0`.
+   Pressione **F8** uma vez. O protótipo busca um candidato por até 10 segundos.
    Se não houver local seguro, a tentativa termina sem criar veículo; pode
    dirigir para outra rua e pressionar F8 novamente. O log informa o bloqueio.
 5. Se o log chegar a `NativePrototype stage=active`, houve retorno bem-sucedido
@@ -166,3 +172,33 @@ normal, altura, inclinação, tipo e conclusão da chamada.
 Novos apertos de F8 durante Seeking não cancelam a busca nem reiniciam
 a janela estável. Aguarde até 10 segundos. F8 após construção/ativação
 ainda solicita retirada segura. Criação e movimento continuam pendentes.
+
+## Teste visível perto do jogador na v36
+
+O log de 08/10/2026, 15:44:39–15:45:38, registra alvos capturados e
+rejeições por `primary_camera_and_eight_world_rays`, além de posições com
+altura/cantos inadequados. A ocultação é verificada depois do chão e espaço
+livre: alguns candidatos chegaram a essa etapa. Nenhuma construção foi
+registrada. Isso não prova renderização, IA ou estabilidade do rival.
+
+`NativeRivalPrototypeNearPlayer=1` é uma exceção explícita de visibilidade e
+distância somente no teste manual F8 habilitado. Tanto construção quanto
+ativação usam a mesma política de 20–120 m. A visibilidade é marcada como
+possivelmente presente, sem fabricar prova de ocultação ou streaming.
+Distâncias não finitas e fora do intervalo são rejeitadas, mesmo com prova
+de streaming. A faixa normal continua 350–850 m no protótipo, com ocultação.
+
+O teste mantém GTI do jogador, contexto, calibração, janela estável,
+perseguição/cooldown, população, capacidade, terreno sob todo o volume e
+lista completa de veículos sem sobreposição. Não copia a posição do jogador,
+não desloca arbitrariamente uma semente de estrada e não remove o tráfego.
+Pode terminar sem candidato quando as posições próximas estiverem ocupadas.
+A remoção continua exigindo ocultação e distância de 300 m também neste modo.
+
+O log da construção registra modo, distância medida e posição. Reinicie o
+jogo para carregar o INI alterado. Procure um trecho reto/plano com tráfego,
+calibre dirigindo e pressione F8 uma vez. O carro pode aparecer à frente,
+atrás ou numa rua próxima; sem marcador, ainda é necessário confirmar sua
+presença visualmente. Testes automáticos verificam política e regressões,
+não executam o jogo. A primeira criação/ativação/movimentação real permanece
+pendente até o novo log e observação no PC.

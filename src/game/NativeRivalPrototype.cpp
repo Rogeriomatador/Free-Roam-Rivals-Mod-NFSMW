@@ -22,6 +22,7 @@ namespace {
 using namespace domain;
 enum class Stage { Idle, Seeking, Loading, PreparingRacer, PreparingRoad, Activating, Active, Retiring, Finished, Disabled };
 Stage stage = Stage::Idle;
+bool nearPlayerDebug = false;
 bool enabled = false, keyWasDown = false, attemptSpent = false;
 std::uint64_t lastTick = 0, stageStarted = 0, lastObservation = 0, lastBlockLog = 0;
 unsigned stable = 0;
@@ -122,6 +123,7 @@ bool hiddenForPrototype(const VehicleOrientedBox& box, const RuntimeSnapshot& wo
 }
 SpawnEnvironmentInput environment(const RuntimeSnapshot& current, PursuitSafetyState pursuit, bool ownedPresent) {
     SpawnEnvironmentInput out{};
+    out.nearPlayerDebugRequested=nearPlayerDebug;
     out.experimentalFeatureEnabled=true; out.supportedExecutable=true;
     out.freeRoamCandidate=current.mode==WorldProbeMode::FreeRoamCandidate;
     out.loading=current.raceStatusLoading; out.inNIS=current.inNIS; out.fade=current.fadeScreen;
@@ -141,15 +143,19 @@ bool candidateSafe(const VehicleOrientedBox& box, const RuntimeSnapshot& current
     }
     const auto& p=current.playerMotion.position;
     const auto meters=worldUnitsToMeters(distance(box.center,{p.x,p.y,p.z}),metric);
-    if (!meters || *meters<350 || *meters>850) { blocked("candidate_distance_350_to_850m"); return false; }
+    const float minDistance=nearPlayerDebug ? 20.0f : 350.0f;
+    const float maxDistance=nearPlayerDebug ? 120.0f : 850.0f;
+    if (!meters || !std::isfinite(*meters) || *meters<minDistance || *meters>maxDistance) {
+        blocked(nearPlayerDebug ? "candidate_distance_debug_20_to_120m" : "candidate_distance_350_to_850m"); return false;
+    }
     const auto fleet=VehicleSpatialProbe::sample();
     const auto overlap=evaluateFootprintAgainstFleet(box,fleet.boxes,fleet.registryComplete,
         metric.worldUnitsPerMeter);
     if (!overlap.verified || overlap.overlaps) { blocked("fresh_fleet_clearance"); return false; }
     if (!groundSafe(box)) { blocked("ground_under_full_footprint"); return false; }
-    if (!hiddenForPrototype(box,current,metric)) { blocked("primary_camera_and_eight_world_rays"); return false; }
+    if (!nearPlayerDebug && !hiddenForPrototype(box,current,metric)) { blocked("primary_camera_and_eight_world_rays"); return false; }
     out.available=true; out.vehicleAvailable=true; out.roadValid=true; out.groundValid=true;
-    out.overlapsLiveVehicle=false; out.visibleToPlayer=false;
+    out.overlapsLiveVehicle=false; out.visibleToPlayer=nearPlayerDebug; // Unknown/visible in debug mode, never claim hidden.
     out.metricDistanceVerified=true; out.distanceFromPlayerMeters=*meters;
     // Collision/graph access does not prove render/model streaming. No promotion.
     out.streamingVerified=false;
@@ -168,7 +174,8 @@ void mutationResult(NativeFactoryResult result, NativeFactoryResult expected, St
 }
 }
 
-void configureNativeRivalPrototype(bool requested) {
+void configureNativeRivalPrototype(bool requested, bool nearPlayer) {
+    nearPlayerDebug=requested && nearPlayer;
     enabled=requested && VersionGuard::checkCurrentExecutable().supported;
     if (enabled) {
         unsigned char bytes[256]{}; SIZE_T got=0;
@@ -176,6 +183,7 @@ void configureNativeRivalPrototype(bool requested) {
         if (!ReadProcessMemory(GetCurrentProcess(),reinterpret_cast<void*>(0x7854B0),bytes,sizeof(bytes),&got) || got!=sizeof(bytes)) enabled=false;
         else { for (auto byte:bytes) hash=(hash^byte)*1099511628211ull; enabled=hash==0x9e1818df51dff4b3ull; }
     }
+    if (enabled && nearPlayerDebug) Log::instance().warn("NativePrototype near-player debug enabled: visible creation allowed at 20-120m; road, ground, clearance and pursuit checks retained; cleanup still hidden/300m.");
     if (requested) Log::instance().info(enabled ?
         "NativePrototype armed: F8 requests one stock Golf GTI; F8 again requests safe cleanup. Experimental engine integration; in-game validation pending." :
         "NativePrototype blocked: exact supported executable and unchanged world-collision entry required.");
@@ -264,8 +272,17 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
             const auto box=conservativeBox(target,*key);
             const auto& p=current.playerMotion.position;
             const auto d=worldUnitsToMeters(distance(box.center,{p.x,p.y,p.z}),metric);
-            if (!d || *d<350 || *d>850) continue;
+            if (!d || !std::isfinite(*d) || *d<(nearPlayerDebug ? 20.0f : 350.0f) ||
+                *d>(nearPlayerDebug ? 120.0f : 850.0f)) continue;
             eligible.push_back(i);
+        }
+        if (nearPlayerDebug) {
+            const auto& p=current.playerMotion.position;
+            const SpatialVector3 player{p.x,p.y,p.z};
+            std::stable_sort(eligible.begin(),eligible.end(),[&](std::size_t a,std::size_t b) {
+                return distance(conservativeBox(targets[a],*key).center,player)<
+                    distance(conservativeBox(targets[b],*key).center,player);
+            });
         }
         if (batchIndex >= candidateCursors.size()) { blocked("invalid_source_batch"); return; }
         const auto window = nextNativeSearchWindow(eligible.size(), 4, candidateCursors[batchIndex]);
@@ -292,7 +309,11 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
             request.environment=env; request.candidate=candidate; request.vehicleKey=*key;
             request.roadTarget=target; request.position=target.position; request.forward=target.forward;
             selectedTarget=target;
-            Log::instance().info("NativePrototype native construction begin: stock GTI, owned scalar road seed, inactive staging");
+            std::ostringstream creation;
+            creation << "NativePrototype native construction begin: stock GTI, owned scalar road seed, inactive staging"
+                << " nearPlayerDebug=" << nearPlayerDebug << " distanceMeters=" << candidate.distanceFromPlayerMeters
+                << " x=" << target.position.x << " y=" << target.position.y << " z=" << target.position.z;
+            Log::instance().info(creation.str());
             const auto result=NativeVehicleFactory::constructInactive(request);
             attemptSpent=result!=NativeFactoryResult::Blocked;
             mutationResult(result,NativeFactoryResult::ConstructedInactive,Stage::Loading);
