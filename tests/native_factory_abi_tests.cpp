@@ -36,6 +36,9 @@ static_assert(sizeof(PVehicle) < 0x1AC);
 static_assert(offsetof(AIVehicle, mCurrentGoal) == 0xB8);
 static_assert(offsetof(AIVehicle, mPursuit) == 0xBC);
 static_assert(offsetof(AIVehicle, mCurrentRoad) == 0x140);
+// Native IVehicleAI+0x24, primary AIVehicle+0x70. 0x431C50 reads
+// this existing navigation pointer; no source getter/update is invoked.
+static_assert(offsetof(AIVehicle, mDriveToNav) == 0x70);
 // The SDK USpline/Matrix4 declaration changes trailing road offsets. Never
 // use SDK sizeof/offsetof for the full native navigation object.
 static_assert(offsetof(WRoadNav, fValid) == 0x50);

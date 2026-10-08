@@ -13,6 +13,14 @@ struct NativeRoadTarget {
     std::uintptr_t player = 0, road = 0, race = 0, segmentTable = 0;
     std::uint64_t profile = 0, millis = 0;
 };
+struct NativeRoadCaptureReport {
+    const char* status = "not_sampled";
+    unsigned liveSlots = 0, sampledSlots = 0, accepted = 0;
+    // 0 success; 1 vehicle; 2 driver; 3 AI contract; 4 nav pointer;
+    // 5 nav memory; 6 invalid scalar seed; 7 unstable seed; 8 geometry; 9 fault.
+    unsigned rejected[10]{};
+    unsigned rejectedContext = 0;
+};
 struct NativeOwnedSnapshot {
     bool owned = false, available = false, contextMatches = false;
     bool loading = false, active = false, destroyed = false, racerPrepared = false, roadPrepared = false;
@@ -38,7 +46,8 @@ enum class NativeFactoryResult {
 class NativeVehicleFactory {
 public:
     static domain::PursuitSafetyState pursuitState();
-    static std::vector<NativeRoadTarget> captureRoadTargets(std::size_t& batchIndex);
+    static std::vector<NativeRoadTarget> captureRoadTargets(std::size_t& batchIndex,
+        NativeRoadCaptureReport& report);
     static NativeOwnedSnapshot snapshot();
     static NativeFactoryResult constructInactive(const NativeFactoryRequest& request);
     static NativeFactoryResult prepareRacerInactive();
