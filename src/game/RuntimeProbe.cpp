@@ -1419,7 +1419,7 @@ void onRenderFrame(void*) {
     }
 }
 
-void onGameplayLoopAfter(float) {
+void onGameplayLoopAfter(float updateDelta) {
     if (++g_gameplayCallbacks == 1)
         Log::instance().info("First verified gameplay-loop callback delivered after original update; native inputPolls remains separate.");
     if (g_config.inputProbeEnabled) {
@@ -1429,7 +1429,7 @@ void onGameplayLoopAfter(float) {
             Log::instance().info("Fallback challenge key edge observed on gameplay loop (read-only; encounter dispatch not enabled).");
     }
     processWorldCollisionRequest();
-    if (g_config.nativeRivalPrototypeEnabled) tickNativeRivalPrototype(metricCalibrationSnapshot());
+    if (g_config.nativeRivalPrototypeEnabled) tickNativeRivalPrototype(metricCalibrationSnapshot(),updateDelta);
     if (g_config.postRaceRacerDiagnosticsEnabled)
         samplePostRaceRacers();
 }

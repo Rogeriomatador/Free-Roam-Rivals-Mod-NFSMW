@@ -162,12 +162,17 @@ void configureNativeRivalPrototype(bool requested) {
         "NativePrototype armed: F8 requests one stock Golf GTI; F8 again requests safe cleanup. Experimental engine integration; in-game validation pending." :
         "NativePrototype blocked: exact supported executable and unchanged world-collision entry required.");
 }
-void tickNativeRivalPrototype(const WorldMetricCalibration& metric) {
+void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float updateDelta) {
     if (!enabled || !GameplayLoopHook::isInAfterCallback()) return;
     const auto loop=GameplayLoopHook::snapshot();
     if (!loop.installed || !loop.sourceVerified || !loop.threadConsistent || loop.threadId!=GetCurrentThreadId()) return;
     const bool down=(GetAsyncKeyState(VK_F8)&0x8000)!=0;
-    const bool pressed=down&&!keyWasDown; keyWasDown=down;
+    DWORD foregroundProcess=0;
+    GetWindowThreadProcessId(GetForegroundWindow(),&foregroundProcess);
+    const bool pressed=down&&!keyWasDown&&foregroundProcess==GetCurrentProcessId()&&
+        std::isfinite(updateDelta)&&updateDelta>0;
+    keyWasDown=down;
+    if (!std::isfinite(updateDelta) || updateDelta<=0) return;
     if (pressed) {
         if (stage==Stage::Idle && !attemptSpent) transition(Stage::Seeking);
         else if (stage==Stage::Driving || stage==Stage::Loading || stage==Stage::PreparingRacer ||

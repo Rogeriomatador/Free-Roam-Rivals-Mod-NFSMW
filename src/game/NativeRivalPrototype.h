@@ -4,5 +4,5 @@ namespace frr::game {
 // Explicit opt-in. Configure before hook installation; tick only after the
 // original gameplay update. F8 requests one creation or safe retirement.
 void configureNativeRivalPrototype(bool enabled);
-void tickNativeRivalPrototype(const domain::WorldMetricCalibration& metric);
+void tickNativeRivalPrototype(const domain::WorldMetricCalibration& metric, float updateDelta);
 }

@@ -2,6 +2,8 @@
 #include "GameBridge.h"
 #include "GameplayLoopHook.h"
 #include "../core/VersionGuard.h"
+#include "../core/Log.h"
+#include <sstream>
 #include "../domain/NativeFactorySafety.h"
 #include <windows.h>
 #include <MinHook.h>
@@ -78,7 +80,16 @@ bool prepareCalls() {
         {0x415D00, 0x0f74f27ee4f83c3full}, {0x6693A0, 0xe9546f91bb8f8271ull},
         {0x6693C0, 0x8712e1436a826881ull}
     };
-    for (const auto& f : functions) if (fingerprint(f.address) != f.hash) return false;
+    for (const auto& f : functions) {
+        const auto actual=fingerprint(f.address);
+        if (actual!=f.hash) {
+            std::ostringstream line;
+            line<<"NativeFactory compatibility blocked address=0x"<<std::hex<<f.address
+                <<" expected=0x"<<f.hash<<" actual=0x"<<actual;
+            Log::instance().warn(line.str());
+            return false;
+        }
+    }
     const auto init = MH_Initialize();
     if (init != MH_OK && init != MH_ERROR_ALREADY_INITIALIZED) return false;
     void* original = nullptr;

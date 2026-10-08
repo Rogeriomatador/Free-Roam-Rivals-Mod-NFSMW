@@ -119,7 +119,7 @@ RoadNavPointProbe probeRoad(
     if (!road ||
         !isReadable(
             reinterpret_cast<std::uintptr_t>(road),
-            0x2C8))) {
+            0x2C8)) {
         return out;
     }
 
