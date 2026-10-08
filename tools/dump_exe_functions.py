@@ -34,6 +34,15 @@ TARGETS = {
     "AIGoalRacer interior address (do not call)": (0x43D388, "Claude dump findings; not a callable entry"),
     "AI goal racer pool wrapper (found in dump v1)": (0x43D400, "dump v1: function starting after ret 4 of 0x43D330"),
     "Object creation callee of 0x689820": (0x4E4EA0, "dump v1: call at 0x6898BC"),
+    'Activate vehicle': (0x6693A0, "NFRR public Runtime.cpp at c8e728809bdc77bfd11e31d975bb2bc7e0cce2bd; foreign-target lead only, not verified for FRR"),
+    'Deactivate vehicle': (0x6693C0, "NFRR public Runtime.cpp at c8e728809bdc77bfd11e31d975bb2bc7e0cce2bd; foreign-target lead only, not verified for FRR"),
+    'SetDriverClass': (0x6876E0, "NFRR public Runtime.cpp at c8e728809bdc77bfd11e31d975bb2bc7e0cce2bd; foreign-target lead only, not verified for FRR"),
+    'AI ResetVehicleToRoadNav': (0x422690, "NFRR public Runtime.cpp at c8e728809bdc77bfd11e31d975bb2bc7e0cce2bd; foreign-target lead only, not verified for FRR"),
+    'AI SetSpawned': (0x415D00, "NFRR public Runtime.cpp at c8e728809bdc77bfd11e31d975bb2bc7e0cce2bd; foreign-target lead only, not verified for FRR"),
+    'AIVehicle SetGoal': (0x422480, "NFRR public Runtime.cpp at c8e728809bdc77bfd11e31d975bb2bc7e0cce2bd; foreign-target lead only, not verified for FRR"),
+    'Racer goal ChooseAction': (0x42B070, "NFRR public Runtime.cpp at c8e728809bdc77bfd11e31d975bb2bc7e0cce2bd; foreign-target lead only, not verified for FRR"),
+    'KillSimable retirement entry': (0x6851D0, "NFRR public Runtime.cpp at c8e728809bdc77bfd11e31d975bb2bc7e0cce2bd; foreign-target lead only, not verified for FRR"),
+    'Vehicle off-screen time': (0x688120, "NFRR public Runtime.cpp at c8e728809bdc77bfd11e31d975bb2bc7e0cce2bd; foreign-target lead only, not verified for FRR"),
     "Param type-check failure callee": (0x45CD20, "dump v1: call at 0x689870"),
 }
 
