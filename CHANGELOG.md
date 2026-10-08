@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.0.33-dev
+
+- Rotate native road-source batches (16 live slots maximum per sample) instead of stopping at the first 32 captured targets.
+- Give each source batch its own rotating four-candidate evaluation window so earlier rejected candidates do not permanently exclude later targets.
+- Preserve detailed safety rejection reasons and log candidate-search counts once per second. All distance, pursuit, identity, clearance, ground and hidden-position gates remain unchanged.
+- Add coverage tests for all 32 source batches, shared population/budget divisors, empty populations and population shrinkage. Actual-game appearance/driving and lifecycle safety remain unvalidated.
+
 ## 0.0.32-dev
 
 - Connect an explicit opt-in F8 native one-GTI prototype to the verified outer gameplay post-update callback; one construction per session, disabled by default.
