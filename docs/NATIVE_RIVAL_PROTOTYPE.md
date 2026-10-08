@@ -33,7 +33,7 @@ corridas ou a aparência/identidade persistente de Rico: é um Golf GTI de fábr
 4. Pressione **F8** uma vez. O protótipo busca um candidato por até 10 segundos.
    Se não houver local seguro, a tentativa termina sem criar veículo; pode
    dirigir para outra rua e pressionar F8 novamente. O log informa o bloqueio.
-5. Se o log chegar a `NativePrototype stage=driving`, houve retorno bem-sucedido
+5. Se o log chegar a `NativePrototype stage=active`, houve retorno bem-sucedido
    das chamadas de construção, reset da estrada e ativação. Isso ainda não prova
    movimento ou renderização. As observações seguintes incluem modelo, posição,
    velocidade, deslocamento e estado de perseguição do jogador. Procure o GTI e

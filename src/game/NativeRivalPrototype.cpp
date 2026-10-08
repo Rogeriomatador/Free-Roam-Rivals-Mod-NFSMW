@@ -17,7 +17,7 @@
 namespace frr::game {
 namespace {
 using namespace domain;
-enum class Stage { Idle, Seeking, Loading, PreparingRacer, PreparingRoad, Activating, Driving, Retiring, Finished, Disabled };
+enum class Stage { Idle, Seeking, Loading, PreparingRacer, PreparingRoad, Activating, Active, Retiring, Finished, Disabled };
 Stage stage = Stage::Idle;
 bool enabled = false, keyWasDown = false, attemptSpent = false;
 std::uint64_t lastTick = 0, stageStarted = 0, lastObservation = 0, lastBlockLog = 0;
@@ -33,7 +33,7 @@ const char* stageName(Stage s) {
         case Stage::Idle: return "idle"; case Stage::Seeking: return "seeking";
         case Stage::Loading: return "loading"; case Stage::PreparingRacer: return "preparing_racer";
         case Stage::PreparingRoad: return "preparing_road"; case Stage::Activating: return "activating";
-        case Stage::Driving: return "driving"; case Stage::Retiring: return "retiring";
+        case Stage::Active: return "active"; case Stage::Retiring: return "retiring";
         case Stage::Finished: return "finished"; default: return "disabled";
     }
 }
@@ -175,7 +175,7 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
     if (!std::isfinite(updateDelta) || updateDelta<=0) return;
     if (pressed) {
         if (stage==Stage::Idle && !attemptSpent) transition(Stage::Seeking);
-        else if (stage==Stage::Driving || stage==Stage::Loading || stage==Stage::PreparingRacer ||
+        else if (stage==Stage::Active || stage==Stage::Loading || stage==Stage::PreparingRacer ||
             stage==Stage::PreparingRoad || stage==Stage::Activating) beginCleanup("F8");
         else if (stage==Stage::Seeking) transition(Stage::Idle);
     }
@@ -199,8 +199,17 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
     if (owned.owned && !owned.contextMatches) {
         blocked("world_transition_no_old_pointer_reads"); return;
     }
-    if (stage==Stage::Driving) {
-        if (!owned.available || owned.destroyed) { beginCleanup("owned_vehicle_unavailable_or_destroyed"); return; }
+    if (stage==Stage::Active) {
+        if (!owned.available || owned.destroyed) {
+            const auto external=NativeVehicleFactory::observeExternalRemoval();
+            if (external==NativeFactoryResult::RemovedByEngine) {
+                Log::instance().warn("NativePrototype native engine retired the vehicle; mod cleanup was not executed; lifetimeProven=0");
+                transition(Stage::Disabled);
+            } else if (external==NativeFactoryResult::RemovalPending) blocked("confirming_external_native_retirement");
+            else beginCleanup("owned_vehicle_unavailable_or_destroyed");
+            return;
+        }
+        if (!owned.active) blocked("native_vehicle_inactive_no_forced_reactivation");
         if (now-lastObservation>=1000) {
             lastObservation=now;
             const auto traveled=worldUnitsToMeters(distance(startPosition,owned.box.center),metric);
@@ -252,6 +261,12 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
         const auto observed=NativeVehicleFactory::observeRemoval();
         if (observed==NativeFactoryResult::Removed) { transition(Stage::Finished); return; }
         if (observed==NativeFactoryResult::RemovalPending) { blocked("waiting_for_both_native_registries"); return; }
+        const auto external=NativeVehicleFactory::observeExternalRemoval();
+        if (external==NativeFactoryResult::RemovedByEngine) {
+            Log::instance().warn("NativePrototype native engine retired the vehicle before mod cleanup; lifetimeProven=0");
+            transition(Stage::Disabled); return;
+        }
+        if (external==NativeFactoryResult::RemovalPending) { blocked("confirming_external_native_retirement"); return; }
         if (!owned.available || owned.loading || !owned.box.valid) { blocked("cleanup_requires_fresh_loaded_identity"); return; }
         const auto& p=current.playerMotion.position;
         const auto d=worldUnitsToMeters(distance(owned.box.center,{p.x,p.y,p.z}),metric);
@@ -289,7 +304,7 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
         startPosition=owned.box.center;
         Log::instance().info("NativePrototype activation begin: SetSpawned then native Racer goal then Activate");
         mutationResult(NativeVehicleFactory::activatePrepared(environment(current,pursuit,true),candidate),
-            NativeFactoryResult::Activated,Stage::Driving);
+            NativeFactoryResult::Activated,Stage::Active);
     }
 }
 }

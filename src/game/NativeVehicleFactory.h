@@ -31,7 +31,7 @@ struct NativeFactoryRequest {
 enum class NativeFactoryResult {
     Blocked, ConstructedInactive, RacerPreparedInactive,
     RoadPreparedInactive, Activated,
-    RemovalRequested, RemovalPending, Removed, Faulted
+    RemovalRequested, RemovalPending, Removed, RemovedByEngine, Faulted
 };
 // One owned object maximum; every engine operation requires a current verified
 // outer post-update callback, fresh identity and compatible world context.
@@ -47,5 +47,6 @@ public:
         const domain::SpawnCandidateInput& candidate);
     static NativeFactoryResult requestRemoval();
     static NativeFactoryResult observeRemoval();
+    static NativeFactoryResult observeExternalRemoval();
 };
 }

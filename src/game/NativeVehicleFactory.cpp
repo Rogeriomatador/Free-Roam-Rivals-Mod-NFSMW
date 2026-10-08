@@ -542,6 +542,20 @@ NativeFactoryResult NativeVehicleFactory::requestRemoval() {
     owned.removing = true;
     return NativeFactoryResult::RemovalRequested;
 }
+NativeFactoryResult NativeVehicleFactory::observeExternalRemoval() {
+    if (!gameplayThread() || !owned.p || owned.removing) return NativeFactoryResult::Blocked;
+    Context context{}; Registry list{};
+    if (!freshWorld(context) || !same(context, owned.context) || !registry(list)) return NativeFactoryResult::Blocked;
+    if (contains(list.live,list.liveCount,owned.iv) || contains(list.physical,list.physicalCount,owned.p)) {
+        owned.absentSamples=0;
+        return NativeFactoryResult::Blocked;
+    }
+    const auto frame=GameplayLoopHook::snapshot().completed;
+    if (owned.lastAbsenceFrame!=frame) { owned.lastAbsenceFrame=frame; ++owned.absentSamples; }
+    if (owned.absentSamples<2) return NativeFactoryResult::RemovalPending;
+    owned=Owned{}; disabled=true;
+    return NativeFactoryResult::RemovedByEngine;
+}
 NativeFactoryResult NativeVehicleFactory::observeRemoval() {
     if (!gameplayThread() || !owned.removing) return NativeFactoryResult::Blocked;
     Context context{}; Registry list{};
