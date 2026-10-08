@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.34
+    VERSION 0.0.35
     LANGUAGES C CXX
 )
 
@@ -294,3 +294,7 @@ add_test(NAME FreeRoamRivalsNativeRoadSeedTests COMMAND FreeRoamRivalsNativeRoad
 add_executable(FreeRoamRivalsNativeSearchWindowTests tests/native_search_window_tests.cpp)
 target_include_directories(FreeRoamRivalsNativeSearchWindowTests PRIVATE src)
 add_test(NAME FreeRoamRivalsNativeSearchWindowTests COMMAND FreeRoamRivalsNativeSearchWindowTests)
+
+add_executable(FreeRoamRivalsPrototypeGroundTests tests/prototype_ground_probe_tests.cpp src/domain/WorldCollisionEvidence.cpp)
+target_include_directories(FreeRoamRivalsPrototypeGroundTests PRIVATE src)
+add_test(NAME FreeRoamRivalsPrototypeGroundTests COMMAND FreeRoamRivalsPrototypeGroundTests)

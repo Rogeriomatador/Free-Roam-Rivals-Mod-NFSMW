@@ -1,4 +1,4 @@
-# v0.0.34-dev — primeiro protótipo nativo de um rival
+# v0.0.35-dev — primeiro protótipo nativo de um rival
 
 Esta versão conecta código real de criação, navegação, ativação e pedido de
 remoção ao callback do jogo. **Ainda não foi executada no NFSMW nesta sessão.**
@@ -11,7 +11,7 @@ corridas ou a aparência/identidade persistente de Rico: é um Golf GTI de fábr
 
 ## Teste no PC
 
-1. Instale o ZIP **v0.0.34-dev** na pasta do jogo, substituindo
+1. Instale o ZIP **v0.0.35-dev** na pasta do jogo, substituindo
    `scripts/FreeRoamRivals.asi`. Preserve seus INIs editados.
 2. No arquivo `scripts/FreeRoamRivals/FreeRoamRivals.ini`, acrescente:
 
@@ -108,7 +108,7 @@ sozinho não prova que a IA causou esse movimento. O primeiro objetivo de teste 
 verificar se o GTI aparece, dirige por conta própria e pode ser retirado sem
 atingir outros carros. O sistema completo de rivais continua em desenvolvimento.
 
-## Busca corrigida na v0.0.34-dev
+## Busca corrigida na v0.0.35-dev
 
 A busca alterna grupos de até 16 entradas da lista de veículos e avalia no máximo
 quatro candidatos por atualização, com cursor separado para cada grupo. A v32
@@ -140,3 +140,29 @@ IA, ponteiro/memória de navegação, escalares, mudança, geometria e exceção
 O protótipo também evita leituras adicionais de mundo/fábrica enquanto estiver
 Idle/Finished/Disabled; o F8 inicia uma nova janela estável. Isso reduz o trabalho
 antes da solicitação e não confirma a causa nem a resolução do fechamento.
+
+## Terreno corrigido na v35
+
+O log da v34 de 14:24:35–14:27:45 confirmou a captura de 5–10 alvos de
+estrada, com até seis na faixa de distância. Não houve construção: as
+rejeições registradas foram terreno sob a footprint e espaço ocupado.
+
+O protótipo exigia normal.y >= 0.5, mas usava o fallback diagnóstico
+que lança um raio de baixo para cima. O executável 0x78574F–0x7857B7
+calcula normal dot (origem − impacto) e nega os componentes quando negativo
+(as instruções de troca de sinal estão em 0x78579D/0x7857A7). Logo, uma
+face plana vista de baixo devolve normal para baixo e falha nessa condição.
+O log não continha a normal; a incompatibilidade foi confirmada estaticamente,
+não por medição do resultado da chamada no PC.
+
+A v35 usa somente no protótipo um raio local de Y+2 até Y−4 unidades de
+mundo. Mantém normal para cima, delta de altura <=1.5, inclinação <=0.35,
+centro e quatro cantos, lista completa, distância, perseguição e ocultação.
+O probe diagnóstico antigo permanece disponível. Uma regressão analítica
+valida direção/normal e mantém rejeições de inclinação, altura, barreira e
+chão ausente; não executa o motor do jogo. Rejeições passam a registrar
+normal, altura, inclinação, tipo e conclusão da chamada.
+
+Novos apertos de F8 durante Seeking não cancelam a busca nem reiniciam
+a janela estável. Aguarde até 10 segundos. F8 após construção/ativação
+ainda solicita retirada segura. Criação e movimento continuam pendentes.

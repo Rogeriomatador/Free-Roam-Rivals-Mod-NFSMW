@@ -19,6 +19,9 @@ public:
     sampleGround(
         const frr::domain::SpatialVector3& point
     );
+    // Local downward face query for the prototype's upward-normal gate.
+    static frr::domain::WorldCollisionSample samplePrototypeGround(
+        const frr::domain::SpatialVector3& point);
 
     // World/barrier occlusion probe between two points. This is NOT camera
     // frustum visibility and must not directly set visibilityVerified.

@@ -9,6 +9,7 @@
 #include "../core/Log.h"
 #include "../core/VersionGuard.h"
 #include "../domain/NativeSearchWindow.h"
+#include "../domain/PrototypeGroundProbe.h"
 #include <windows.h>
 #include <algorithm>
 #include <array>
@@ -76,9 +77,22 @@ bool groundSafe(const VehicleOrientedBox& box) {
             point=add(point,box.right,(i<=2 ? -1.0f : 1.0f)*box.halfExtents.x);
             point=add(point,box.forward,(i%2 ? -1.0f : 1.0f)*box.halfExtents.z);
         }
-        const auto ground=interpretGroundCollision(point,WorldCollisionProbe::sampleGround(point));
-        if (!ground.groundVerified || !ground.groundValid || !ground.gradeVerified || ground.absoluteGrade>0.35f ||
-            ground.absoluteHeightDeltaWorldUnits>1.5f || ground.normal.y<0.5f) return false;
+        const auto sample=WorldCollisionProbe::samplePrototypeGround(point);
+        const auto ground=interpretGroundCollision(point,sample);
+        if (!prototypeGroundAcceptable(ground)) {
+            static std::uint64_t lastGroundLog = 0;
+            const auto now=GetTickCount64();
+            if (now-lastGroundLog>=1000) {
+                lastGroundLog=now;
+                std::ostringstream line;
+                line << "NativePrototype ground rejected: footprintPoint=" << i << " available=" << sample.callAvailable
+                    << " completed=" << sample.callCompleted << " hit=" << sample.hit << " type=" << unsigned(sample.hitType)
+                    << " normalY=" << ground.normal.y << " heightDelta=" << ground.absoluteHeightDeltaWorldUnits
+                    << " grade=" << ground.absoluteGrade << " candidateY=" << point.y << " hitY=" << sample.hitPoint.y;
+                Log::instance().warn(line.str());
+            }
+            return false;
+        }
     }
     return true;
 }
@@ -181,7 +195,7 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
         if (stage==Stage::Idle && !attemptSpent) transition(Stage::Seeking);
         else if (stage==Stage::Active || stage==Stage::Loading || stage==Stage::PreparingRacer ||
             stage==Stage::PreparingRoad || stage==Stage::Activating) beginCleanup("F8");
-        else if (stage==Stage::Seeking) transition(Stage::Idle);
+        else if (stage==Stage::Seeking) blocked("search_already_in_progress_wait_10_seconds");
     }
     const auto now=GetTickCount64();
     if (lastTick && now-lastTick<250) return;

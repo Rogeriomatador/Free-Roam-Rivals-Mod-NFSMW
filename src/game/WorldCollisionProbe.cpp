@@ -1,4 +1,5 @@
 #include "WorldCollisionProbe.h"
+#include "../domain/PrototypeGroundProbe.h"
 
 #include <windows.h>
 
@@ -230,6 +231,13 @@ WorldCollisionProbe::sampleGround(
         to,
         1u
     );
+}
+
+frr::domain::WorldCollisionSample
+WorldCollisionProbe::samplePrototypeGround(const frr::domain::SpatialVector3& point) {
+    if (!finiteVector(point)) return {};
+    const auto segment = frr::domain::prototypeGroundSegment(point);
+    return callCheckHitWorld(segment[0], segment[1], 1u);
 }
 
 frr::domain::WorldCollisionSample
