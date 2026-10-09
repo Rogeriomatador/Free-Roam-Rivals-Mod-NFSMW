@@ -14,7 +14,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.40-dev";
+constexpr const char* kVersion = "0.0.41-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -139,7 +139,7 @@ int bootstrap() {
     }
 
     log.info(
-        "v0.0.40-dev adds a process-wide native exception observer for the reported pre-world startup exit. Root cause remains unproven; native driving and retirement remain unverified. v0.0.39 constructor confirmation and safety guards are retained."
+        "v0.0.41-dev checks full-fleet preservation synchronously at construction, then confirms player and GTI identity/pursuits on two completed frames without freezing unrelated traffic. Native driving and retirement still require game validation. Exception tracing remains enabled."
     );
 
     return NFSMW_OK;
@@ -149,7 +149,7 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.40-dev",
+    "0.0.41-dev",
     "Rogeriomatador"
 )
 
