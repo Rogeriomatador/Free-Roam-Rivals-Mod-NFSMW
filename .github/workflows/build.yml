@@ -89,7 +89,7 @@ jobs:
           NFSMW Free Roam Rivals v0.0.39-dev
 
           INSTALL:
-          1. Extract into the game folder, replacing scripts\FreeRoamRivals.asi.
+          1. Replace only scripts\FreeRoamRivals.asi with the new ASI. Preserve your configured INIs.
           2. Keep your INIs; add NativeRivalPrototypeEnabled=1 under [Experimental]
              only when ready to test the new native integration.
              For a visible nearby test, also add NativeRivalPrototypeNearPlayer=1.

@@ -652,9 +652,9 @@ NativeOwnedSnapshot NativeVehicleFactory::snapshot() {
     return out;
 }
 NativeFactoryResult NativeVehicleFactory::resetRoadInactive() {
-    beginNativeOperation("road_preparation");
     if (!gameplayThread() || disabled || !owned.p || !owned.racerPrepared || owned.roadPrepared || owned.removing)
         return NativeFactoryResult::Blocked;
+    beginNativeOperation("road_preparation");
     Context context{}; Registry list{};
     if (!freshWorld(context) || !same(context, owned.context) || !registry(list) || !pursuitClear(context, list) ||
         !targetContext(owned.roadTarget, context)) return NativeFactoryResult::Blocked;
@@ -667,9 +667,9 @@ NativeFactoryResult NativeVehicleFactory::resetRoadInactive() {
 }
 NativeFactoryResult NativeVehicleFactory::activatePrepared(const domain::SpawnEnvironmentInput& environment,
     const domain::SpawnCandidateInput& candidate) {
-    beginNativeOperation("activation");
     if (!gameplayThread() || disabled || !owned.p || !owned.roadPrepared || owned.removing ||
         !domain::evaluateSpawnCandidate(environment, candidate).allowed) return NativeFactoryResult::Blocked;
+    beginNativeOperation("activation");
     Context context{}; Registry list{};
     if (!freshWorld(context) || !same(context, owned.context) || !registry(list) || !pursuitClear(context, list) ||
         !targetContext(owned.roadTarget, context)) return NativeFactoryResult::Blocked;
@@ -680,8 +680,8 @@ NativeFactoryResult NativeVehicleFactory::activatePrepared(const domain::SpawnEn
     return NativeFactoryResult::Activated;
 }
 NativeFactoryResult NativeVehicleFactory::constructInactive(const NativeFactoryRequest& request) {
-    beginNativeOperation("construction_preflight");
     if (!gameplayThread()) return NativeFactoryResult::Blocked;
+    beginNativeOperation("construction_preflight");
     if (disabled || owned.p || pending.p || !domain::evaluateSpawnCandidate(request.environment, request.candidate).allowed ||
         !request.vehicleKey) return NativeFactoryResult::Blocked;
     const auto& p = request.position;
@@ -712,20 +712,27 @@ NativeFactoryResult NativeVehicleFactory::constructInactive(const NativeFactoryR
     if (!constructed) return fault("constructor_failed_or_partial");
     if (contains(before.physical,before.physicalCount,created.p) ||
         contains(before.live,before.liveCount,created.iv)) return fault("constructor_returned_existing_identity");
+    // Capture the returned allocation's scalar generation before waiting.
+    // ReadProcessMemory only; no virtual method or mutation before membership.
+    // A reused address with a different native handle must never be adopted.
+    std::uintptr_t simVtable=0;
+    if (!copy(created.sim,&simVtable,sizeof(simVtable)) || simVtable!=0x8AA940 ||
+        !copy(created.sim+0x08,&created.handle,sizeof(created.handle)))
+        return fault("constructor_returned_scalar_identity_invalid");
     pending=created;
     pendingBaseline=before;
     pendingSince=GetTickCount64(); pendingLastFrame=0; pendingConfirmations=0;
     std::ostringstream result;
     result<<"NativeFactory constructor returned p=0x"<<std::hex<<created.p
         <<" iv=0x"<<created.iv<<" sim=0x"<<created.sim<<std::dec
-        <<" baselineLive="<<before.liveCount<<" baselinePhysical="<<before.physicalCount
+        <<" handle="<<created.handle<<" baselineLive="<<before.liveCount<<" baselinePhysical="<<before.physicalCount
         <<" awaitingTwoCompletedFrames=1";
     Log::instance().info(result.str());
     return NativeFactoryResult::ConstructionPending;
 }
 NativeFactoryResult NativeVehicleFactory::confirmConstructionInactive() {
-    beginNativeOperation("construction_confirmation");
     if (!gameplayThread() || disabled || !pending.p) return NativeFactoryResult::Blocked;
+    beginNativeOperation("construction_confirmation");
     if (GetTickCount64()-pendingSince>2000) return fault("construction_confirmation_timeout");
     Context context{}; Registry list{};
     if (!freshWorld(context) || !same(context,pending.context)) { pendingConfirmations=0; return NativeFactoryResult::ConstructionPending; }
@@ -746,7 +753,7 @@ NativeFactoryResult NativeVehicleFactory::confirmConstructionInactive() {
         Log::instance().info(wait.str());
         return NativeFactoryResult::ConstructionPending;
     }
-    if (!identity(list,pending,false)) return fault("construction_identity_rejected");
+    if (!identity(list,pending,true)) return fault("construction_identity_rejected");
     owned=pending; pending={}; pendingBaseline={};
     nativePhase="deactivate_and_handle_stamp";
     if (!deactivateAndStamp(owned)) return fault("deactivate_and_handle_stamp_failed");
@@ -755,8 +762,8 @@ NativeFactoryResult NativeVehicleFactory::confirmConstructionInactive() {
 }
 
 NativeFactoryResult NativeVehicleFactory::prepareRacerInactive() {
-    beginNativeOperation("Racer_preparation");
     if (!gameplayThread()) return NativeFactoryResult::Blocked;
+    beginNativeOperation("Racer_preparation");
     if (disabled || !owned.p || owned.removing || owned.racerPrepared) return NativeFactoryResult::Blocked;
     Context context{}; Registry list{};
     if (!freshWorld(context) || !same(context, owned.context) || !registry(list) || !pursuitClear(context, list))
@@ -772,8 +779,8 @@ NativeFactoryResult NativeVehicleFactory::prepareRacerInactive() {
     return NativeFactoryResult::RacerPreparedInactive;
 }
 NativeFactoryResult NativeVehicleFactory::requestRemoval() {
-    beginNativeOperation("retirement");
     if (!gameplayThread()) return NativeFactoryResult::Blocked;
+    beginNativeOperation("retirement");
     // Cleanup may still be attempted after an AI preparation fault, but only
     // with the same fresh native identity and a clear pursuit/world context.
     if (!owned.p || owned.removing) return NativeFactoryResult::Blocked;

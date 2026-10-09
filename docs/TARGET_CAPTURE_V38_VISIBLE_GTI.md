@@ -16,7 +16,7 @@ Earlier sessions show an E9 at 0x4224B0. The recorded displacement leads to 0x71
 
 ## v39 implementation
 
-A successful native return is retained as a pending scalar identity. No ownership-dependent virtual reads or writes occur until the object is present in BOTH fresh registries in two distinct completed gameplay samples, in the original world/profile and with a clear pursuit state. The preconstruction identities must remain present. Confirmation has a two-second wall-clock limit. Incomplete reads, absent membership, changed context or uncertain pursuit reset the streak. A constructor is never retried.
+A successful native return is retained as a pending scalar identity. Bounded ReadProcessMemory reads check the returned ISimable table and capture its native handle immediately; confirmation requires the same handle, preventing adoption of a reused address with a different generation. No ownership-dependent virtual reads or writes occur until the object is present in BOTH fresh registries in two distinct completed gameplay samples, in the original world/profile and with a clear pursuit state. The preconstruction identities must remain present. Confirmation has a two-second wall-clock limit. Incomplete reads, absent membership, changed context or uncertain pursuit reset the streak. A constructor is never retried.
 
 After confirmation, the original strict vtable/simable/key/non-player checks still run. Only then does the mod record ownership, deactivate the car and stamp its handle. Racer conversion, navigation reset, SetSpawned/goal/Activate and removal retain their existing guards. Pending confirmation is not a movement fix proven in the game.
 
