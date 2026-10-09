@@ -508,11 +508,11 @@ bool ownedRead(NativeOwnedSnapshot& out) {
     } __except (captureNativeException(GetExceptionInformation())) { return false; }
 #endif
 }
-bool ownedPursuitClear() {
+bool vehiclePursuitClear(std::uintptr_t iv) {
 #if defined(_MSC_VER)
     __try {
 #endif
-        auto* ai = reinterpret_cast<IVehicle*>(owned.iv)->GetAIVehiclePtr();
+        auto* ai = reinterpret_cast<IVehicle*>(iv)->GetAIVehiclePtr();
         if (!ai) return false;
         const auto table = *reinterpret_cast<const std::uintptr_t* const*>(ai);
         std::uintptr_t pursuit = 0;
@@ -521,6 +521,7 @@ bool ownedPursuitClear() {
     } __except (captureNativeException(GetExceptionInformation())) { return false; }
 #endif
 }
+bool ownedPursuitClear() { return vehiclePursuitClear(owned.iv); }
 bool roadResetCall() {
 #if defined(_MSC_VER)
     __try {
@@ -754,6 +755,11 @@ NativeFactoryResult NativeVehicleFactory::confirmConstructionInactive() {
         return NativeFactoryResult::ConstructionPending;
     }
     if (!identity(list,pending,true)) return fault("construction_identity_rejected");
+    if (!vehiclePursuitClear(pending.iv)) {
+        pendingConfirmations=0;
+        Log::instance().warn("NativeFactory construction pending: owned pursuit active or unknown; no deactivate/AI writes");
+        return NativeFactoryResult::ConstructionPending;
+    }
     owned=pending; pending={}; pendingBaseline={};
     nativePhase="deactivate_and_handle_stamp";
     if (!deactivateAndStamp(owned)) return fault("deactivate_and_handle_stamp_failed");
