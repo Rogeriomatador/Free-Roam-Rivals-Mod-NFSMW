@@ -80,15 +80,16 @@ jobs:
           Copy-Item "docs/COORDINATE_CONVENTIONS.md" "$pkg/COORDINATE_CONVENTIONS.md"
           Copy-Item "docs/TARGET_CAPTURE_V29_ALL_DIAGNOSTICS_2026-10-07.md" "$pkg/TARGET_CAPTURE_V29_ALL_DIAGNOSTICS_2026-10-07.md"
           Copy-Item "docs/EXE_DUMP_V2_FINDINGS.md" "$pkg/EXE_DUMP_V2_FINDINGS.md"
+          Copy-Item "docs/TARGET_CAPTURE_V38_VISIBLE_GTI.md" "$pkg/TARGET_CAPTURE_V38_VISIBLE_GTI.md"
           Copy-Item "docs/NATIVE_RIVAL_PROTOTYPE.md" "$pkg/NATIVE_RIVAL_PROTOTYPE.md"
           Copy-Item "docs/POST_RACE_RACER_RESEARCH.md" "$pkg/POST_RACE_RACER_RESEARCH.md"
           Copy-Item "docs/NATIVE_ROAMING_STREAMING_RESEARCH.md" "$pkg/NATIVE_ROAMING_STREAMING_RESEARCH.md"
 
           @"
-          NFSMW Free Roam Rivals v0.0.38-dev
+          NFSMW Free Roam Rivals v0.0.39-dev
 
           INSTALL:
-          1. Extract into the game folder, replacing scripts\FreeRoamRivals.asi.
+          1. Replace only scripts\FreeRoamRivals.asi with the new ASI. Preserve your configured INIs.
           2. Keep your INIs; add NativeRivalPrototypeEnabled=1 under [Experimental]
              only when ready to test the new native integration.
              For a visible nearby test, also add NativeRivalPrototypeNearPlayer=1.
@@ -101,7 +102,8 @@ jobs:
           7. Send scripts\FreeRoamRivals\FreeRoamRivals.log.
           See NATIVE_RIVAL_PROTOTYPE.md for candidate gates and exact limits.
 
-          This is the first connected creation/activation prototype, not an
+          Keep NFSMWBartender.asi outside the game folder during this test.
+          This is a connected creation/activation prototype, not an
           in-game-validated stable release. It is disabled by default. One
           constructed vehicle per session; native driving/cleanup test pending.
           Legacy ExperimentalSpawnEnabled remains preflight-only.
@@ -112,15 +114,15 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.38-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.39-dev.zip" -Force
 
-      - name: Publish v0.0.38-dev GitHub Release
+      - name: Publish v0.0.39-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.38-dev"
+          $tag = "v0.0.39-dev"
 
           $published = $false
           for ($attempt = 1; $attempt -le 3; $attempt++) {
@@ -130,17 +132,17 @@ jobs:
               if ($info.targetCommitish -ne "${{ github.sha }}") {
                 throw "Existing release target does not match this source commit."
               }
-              if ($info.assets.name -contains "FreeRoamRivals-v0.0.38-dev.zip") {
+              if ($info.assets.name -contains "FreeRoamRivals-v0.0.39-dev.zip") {
                 $published = $true
                 break
               }
-              gh release upload $tag "release/FreeRoamRivals-v0.0.38-dev.zip"
+              gh release upload $tag "release/FreeRoamRivals-v0.0.39-dev.zip"
             } else {
-              gh release create $tag "release/FreeRoamRivals-v0.0.38-dev.zip" `
+              gh release create $tag "release/FreeRoamRivals-v0.0.39-dev.zip" `
                 --target "${{ github.sha }}" `
-                --title "Free Roam Rivals v0.0.38-dev" `
+                --title "Free Roam Rivals v0.0.39-dev" `
                 --prerelease `
-                --notes "v0.0.38-dev: pacote amplo de diagnóstico opt-in, F9 para módulos/código/contexto sem criar veículo, coletor local de ZIP com relatório/INIs/log e pesquisa técnica documentada. Mantém as assinaturas e bloqueios. Aparição de rival continua não confirmada."
+                --notes "v0.0.39-dev: confirmação do carro em duas atualizações concluídas antes da preparação, falhas nativas identificadas por etapa. GTI visível relatado na v0.0.38; direção e retirada ainda precisam de teste no jogo. Mantenha o Bartender desativado neste protótipo."
             }
             if ($LASTEXITCODE -eq 0) { $published = $true; break }
             if ($attempt -lt 3) { Start-Sleep -Seconds 5 }
