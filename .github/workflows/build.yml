@@ -31,6 +31,9 @@ jobs:
       - name: Exe function dump tool tests
         run: python -m unittest discover -s tests -p test_dump_exe_functions.py
 
+      - name: Diagnostic bundle collector tests
+        run: python -m unittest discover -s tests -p test_diagnostic_bundle.py
+
       - name: Collect ASI
         shell: pwsh
         run: |
@@ -62,6 +65,10 @@ jobs:
           New-Item -ItemType Directory -Force "$pkg/tools" | Out-Null
           Copy-Item "tools/analyze_motion_capture.py" "$pkg/tools/"
           Copy-Item "tools/dump_exe_functions.py" "$pkg/tools/"
+          Copy-Item "tools/collect_diagnostic_bundle.py" "$pkg/tools/"
+          Copy-Item "tools/collect_diagnostics.cmd" "$pkg/tools/"
+          Copy-Item "docs/DIAGNOSTIC_BUNDLE.md" "$pkg/DIAGNOSTIC_BUNDLE.md"
+          Copy-Item "docs/DIAGNOSTIC_RESEARCH_2026-10-09.md" "$pkg/DIAGNOSTIC_RESEARCH_2026-10-09.md"
           Copy-Item "docs/TARGET_CAPTURE_V30_POST_RACE.md" "$pkg/TARGET_CAPTURE_V30_POST_RACE.md"
           Copy-Item "docs/MOTION_CAPTURE.md" "$pkg/MOTION_CAPTURE.md"
           Copy-Item "docs/RENDER_HOOK_RECOVERY.md" "$pkg/RENDER_HOOK_RECOVERY.md"
@@ -78,7 +85,7 @@ jobs:
           Copy-Item "docs/NATIVE_ROAMING_STREAMING_RESEARCH.md" "$pkg/NATIVE_ROAMING_STREAMING_RESEARCH.md"
 
           @"
-          NFSMW Free Roam Rivals v0.0.37-dev
+          NFSMW Free Roam Rivals v0.0.38-dev
 
           INSTALL:
           1. Extract into the game folder, replacing scripts\FreeRoamRivals.asi.
@@ -89,7 +96,9 @@ jobs:
           3. Use a Golf GTI in ordinary Free Roam. Keep RenderProbeEnabled=1.
           4. Drive steadily to obtain world metric calibration, then press F8.
           5. F8 again requests removal, deferred until hidden/300m away and no pursuit.
-          6. Send scripts\FreeRoamRivals\FreeRoamRivals.log.
+          6. For comprehensive diagnostics add DiagnosticBundleEnabled=1 under [Diagnostics].
+             Press F9 for module/code/world audit; it does not create a vehicle.
+          7. Send scripts\FreeRoamRivals\FreeRoamRivals.log.
           See NATIVE_RIVAL_PROTOTYPE.md for candidate gates and exact limits.
 
           This is the first connected creation/activation prototype, not an
@@ -103,15 +112,15 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.37-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.38-dev.zip" -Force
 
-      - name: Publish v0.0.37-dev GitHub Release
+      - name: Publish v0.0.38-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.37-dev"
+          $tag = "v0.0.38-dev"
 
           $published = $false
           for ($attempt = 1; $attempt -le 3; $attempt++) {
@@ -121,17 +130,17 @@ jobs:
               if ($info.targetCommitish -ne "${{ github.sha }}") {
                 throw "Existing release target does not match this source commit."
               }
-              if ($info.assets.name -contains "FreeRoamRivals-v0.0.37-dev.zip") {
+              if ($info.assets.name -contains "FreeRoamRivals-v0.0.38-dev.zip") {
                 $published = $true
                 break
               }
-              gh release upload $tag "release/FreeRoamRivals-v0.0.37-dev.zip"
+              gh release upload $tag "release/FreeRoamRivals-v0.0.38-dev.zip"
             } else {
-              gh release create $tag "release/FreeRoamRivals-v0.0.37-dev.zip" `
+              gh release create $tag "release/FreeRoamRivals-v0.0.38-dev.zip" `
                 --target "${{ github.sha }}" `
-                --title "Free Roam Rivals v0.0.37-dev" `
+                --title "Free Roam Rivals v0.0.38-dev" `
                 --prerelease `
-                --notes "v0.0.37-dev: diagnóstico de compatibilidade compara todas as 11 funções em memória e no speed.exe, mostra os primeiros bytes e a primeira diferença. Divergência continua bloqueando a criação; nenhum hash foi relaxado. Mantém o modo próximo opt-in da v36. Criação no jogo ainda não confirmada."
+                --notes "v0.0.38-dev: pacote amplo de diagnóstico opt-in, F9 para módulos/código/contexto sem criar veículo, coletor local de ZIP com relatório/INIs/log e pesquisa técnica documentada. Mantém as assinaturas e bloqueios. Aparição de rival continua não confirmada."
             }
             if ($LASTEXITCODE -eq 0) { $published = $true; break }
             if ($attempt -lt 3) { Start-Sleep -Seconds 5 }

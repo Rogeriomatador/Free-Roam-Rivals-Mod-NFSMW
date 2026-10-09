@@ -430,6 +430,15 @@ Config Config::load() {
             1
         ) != 0;
 
+    cfg.diagnosticBundleEnabled = iniInt(ini, "Diagnostics", "DiagnosticBundleEnabled", 0) != 0;
+    if (cfg.diagnosticBundleEnabled) {
+        cfg.renderProbeEnabled=true; cfg.inputProbeEnabled=true; cfg.roadNavDiagnosticsEnabled=true;
+        cfg.frameTickProbeEnabled=true; cfg.worldCollisionDiagnosticsEnabled=true;
+        cfg.cameraFrustumDiagnosticsEnabled=true; cfg.motionCaptureEnabled=true;
+        cfg.postRaceRacerDiagnosticsEnabled=true;
+        // Keep existing sample cadence; do not enable construction/AI/economy flags.
+        Log::instance().info("Diagnostic bundle preset enabled: verified observation probes; F9 manual audit; native prototype flags unchanged.");
+    }
     return cfg;
 }
 

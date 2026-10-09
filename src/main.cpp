@@ -11,7 +11,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.37-dev";
+constexpr const char* kVersion = "0.0.38-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -62,6 +62,7 @@ int bootstrap() {
     {
         std::ostringstream line;
         line << "Loaded diagnostics: render=" << config.renderProbeEnabled
+             << " diagnosticBundle=" << config.diagnosticBundleEnabled
              << " input=" << config.inputProbeEnabled << " frameTick=" << config.frameTickProbeEnabled
              << " motionCapture=" << config.motionCaptureEnabled
              << " camera=" << config.cameraFrustumDiagnosticsEnabled
@@ -73,6 +74,7 @@ int bootstrap() {
     }
 
     game::RuntimeProbeConfig probeConfig{};
+    probeConfig.diagnosticBundleEnabled=config.diagnosticBundleEnabled;
     probeConfig.renderProbeEnabled =
         config.renderProbeEnabled;
     probeConfig.inputProbeEnabled =
@@ -120,7 +122,7 @@ int bootstrap() {
     }
 
     log.info(
-        "v0.0.37-dev adds an explicit opt-in F8 native one-GTI prototype. Construction, road reset, activation and safe retirement are connected; actual-game validation remains pending. Default mode remains observation-only."
+        "v0.0.38-dev adds an explicit opt-in F8 native one-GTI prototype. Construction, road reset, activation and safe retirement are connected; actual-game validation remains pending. Default mode remains observation-only."
     );
 
     return NFSMW_OK;
@@ -130,7 +132,7 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.37-dev",
+    "0.0.38-dev",
     "Rogeriomatador"
 )
 

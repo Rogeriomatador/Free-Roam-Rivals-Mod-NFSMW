@@ -10,6 +10,7 @@
 #include "VehicleSpatialProbe.h"
 #include "PostRaceRacerProbe.h"
 #include "NativeRivalPrototype.h"
+#include "DiagnosticBundle.h"
 #include "WorldCollisionProbe.h"
 #include "../core/Log.h"
 #include "../domain/MotionScaleObserver.h"
@@ -1429,6 +1430,7 @@ void onGameplayLoopAfter(float updateDelta) {
             Log::instance().info("Fallback challenge key edge observed on gameplay loop (read-only; encounter dispatch not enabled).");
     }
     processWorldCollisionRequest();
+    if (g_config.diagnosticBundleEnabled) tickDiagnosticBundle(metricCalibrationSnapshot(),updateDelta);
     if (g_config.nativeRivalPrototypeEnabled) tickNativeRivalPrototype(metricCalibrationSnapshot(),updateDelta);
     if (g_config.postRaceRacerDiagnosticsEnabled)
         samplePostRaceRacers();
@@ -1671,7 +1673,7 @@ RuntimeProbeInstallResult RuntimeProbe::install(
     if (config.postRaceRacerDiagnosticsEnabled)
         Log::instance().info("Post-race racer diagnostics armed: gameplay-thread snapshots only; identity correlation does not prove lifetime or authorize mutation.");
 
-    if (config.inputProbeEnabled || config.frameTickProbeEnabled || config.postRaceRacerDiagnosticsEnabled || config.nativeRivalPrototypeEnabled) {
+    if (config.inputProbeEnabled || config.frameTickProbeEnabled || config.postRaceRacerDiagnosticsEnabled || config.nativeRivalPrototypeEnabled || config.diagnosticBundleEnabled) {
         result.gameplayLoopInstalled = GameplayLoopHook::install(&onGameplayLoopBefore, &onGameplayLoopAfter);
         result.frameTickProbeInstalled = config.frameTickProbeEnabled && result.gameplayLoopInstalled;
         g_frameTickProbeInstalled.store(result.frameTickProbeInstalled);

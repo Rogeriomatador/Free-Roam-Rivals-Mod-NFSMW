@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.37
+    VERSION 0.0.38
     LANGUAGES C CXX
 )
 
@@ -100,6 +100,7 @@ nfsmw_add_plugin(FreeRoamRivals
         src/core/Log.cpp
         src/core/ProfileKey.cpp
         src/core/VersionGuard.cpp
+        src/game/DiagnosticBundle.cpp
         src/game/CameraFrustumProbe.cpp
         src/game/ChallengeInputProbe.cpp
         src/game/GameplayLoopHook.cpp
