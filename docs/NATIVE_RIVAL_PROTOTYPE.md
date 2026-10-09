@@ -1,4 +1,4 @@
-# v0.0.39-dev — primeiro protótipo nativo de um rival
+# v0.0.41-dev — primeiro protótipo nativo de um rival
 
 Esta versão conecta código real de criação, navegação, ativação e pedido de
 remoção ao callback do jogo. **Ainda não foi executada no NFSMW nesta sessão.**
@@ -11,7 +11,7 @@ corridas ou a aparência/identidade persistente de Rico: é um Golf GTI de fábr
 
 ## Teste no PC
 
-1. Instale o ZIP **v0.0.39-dev** na pasta do jogo, substituindo
+1. Instale o ZIP **v0.0.41-dev** na pasta do jogo, substituindo
    `scripts/FreeRoamRivals.asi`. Preserve seus INIs editados.
 2. No arquivo `scripts/FreeRoamRivals/FreeRoamRivals.ini`, acrescente:
 
@@ -254,3 +254,14 @@ coleta, limites, relatório e próximos passos. O primeiro rival real continua p
 ## v0.0.39 — confirmação após o construtor
 
 GTI visível relatado pelo usuário na v0.0.38, mas ativação não alcançada. A v0.0.39 confirma identidade em duas atualizações concluídas, com limite de dois segundos, antes de preparar o corredor. Não repete o construtor. Falhas agora registram etapa/identidade/exceção. Veja `TARGET_CAPTURE_V38_VISIBLE_GTI.md`. Mantenha Bartender desativado neste teste. Direção e retirada ainda exigem validação no jogo.
+
+
+## v0.0.41 — confirmação limitada às identidades necessárias
+
+A captura real v0.0.40 de 16:32 passa nas 11 assinaturas e retorna um GTI (handle 34), mas para em `preexisting_registry_identity_lost` antes de Deactivate, preparação Racer, navegação e Activate. A comparação anterior exigia que toda a frota anterior permanecesse registrada durante outras atualizações do jogo. O log não identifica qual veículo saiu nem demonstra sua causa; não prova falha da IA Racer.
+
+A v0.0.41 verifica a preservação de toda a frota imediatamente após o construtor, na mesma execução síncrona, mantendo o bloqueio de expulsão por capacidade. Uma perda nesse momento registra os primeiros endereços ausentes e bloqueia a adoção. Entre frames, a comparação da frota anterior é apenas telemetria: não congela veículos alheios. A confirmação exige jogador e GTI em ambos os registros atuais, contexto/perfil/road/race iguais, e verifica vtable, simable, handle, modelo e exclusão de veículo do jogador em cada um dos dois frames. Ambas as perseguições precisam estar verificadamente livres, inclusive cooldown do jogador. Nenhum ponteiro ausente é desreferenciado. As etapas posteriores conservam seus próprios bloqueios.
+
+A confirmação acontece a cada callback de gameplay concluído, sem a espera de 250 ms usada na busca. Dois frames distintos continuam obrigatórios; o limite de dois segundos e a proibição de repetir o construtor permanecem. F8 durante confirmação continua apenas enfileirando retirada para depois da identidade confirmada.
+
+Veja `TARGET_CAPTURE_V40_CONSTRUCTION_CONFIRMATION.md` para evidências, pesquisa e teste. A correção remove um bloqueio demonstrado no log; **não comprova direção autônoma**. Instale somente o novo ASI preservando seu INI configurado. Fora de perseguição, calibre dirigindo seu Golf GTI, pressione F9 e F8 uma vez. Observe a preparação/ativação e envie o log mesmo se ainda ficar parado. O ZIP mantém o protótipo desligado por padrão.

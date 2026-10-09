@@ -9,6 +9,7 @@
 #include <algorithm>
 #include "../domain/NativeFactorySafety.h"
 #include "../domain/NativeConstructionConfirmation.h"
+#include "../domain/NativeRegistrySafety.h"
 #include "../domain/NativeCodeCompatibility.h"
 #include "../domain/NativeSearchWindow.h"
 #include <windows.h>
@@ -30,6 +31,7 @@ struct Registry {
 struct Context {
     std::uintptr_t player = 0, road = 0, race = 0;
     std::uint64_t profile = 0;
+    std::uintptr_t playerP = 0;
 };
 struct Owned {
     Context context{};
@@ -44,6 +46,7 @@ Owned owned, pending;
 Registry pendingBaseline{};
 std::uint64_t pendingSince=0, pendingLastFrame=0;
 unsigned pendingConfirmations=0;
+bool pendingFleetChangeLogged=false;
 DWORD lastNativeException=0;
 std::uintptr_t lastExceptionInstruction=0,lastExceptionMemory=0;
 std::uintptr_t identityVtable=0,identitySim=0;
@@ -243,18 +246,35 @@ bool registry(Registry& out) {
 #endif
 }
 bool contains(const std::uintptr_t* list, unsigned count, std::uintptr_t ptr) {
-    for (unsigned i = 0; i < count; ++i) if (list[i] == ptr) return true;
-    return false;
+    return domain::nativeRegistryContains(list,count,ptr);
+}
+domain::NativeRegistryView view(const Registry& list) {
+    return {list.live,list.liveCount,list.physical,list.physicalCount};
 }
 bool preserved(const Registry& before, const Registry& after) {
-    for (unsigned i = 0; i < before.liveCount; ++i)
-        if (!contains(after.live, after.liveCount, before.live[i])) return false;
-    for (unsigned i = 0; i < before.physicalCount; ++i)
-        if (!contains(after.physical, after.physicalCount, before.physical[i])) return false;
-    return true;
+    return domain::nativeRegistryPreserved(view(before),view(after));
+}
+void logRegistryLoss(const Registry& before,const Registry& after,const char* scope) {
+    unsigned missingLive=0,missingPhysical=0;
+    std::uintptr_t firstLive=0,firstPhysical=0;
+    for (unsigned i=0;i<before.liveCount;++i) if (!contains(after.live,after.liveCount,before.live[i])) {
+        if (!missingLive++) firstLive=before.live[i];
+    }
+    for (unsigned i=0;i<before.physicalCount;++i) if (!contains(after.physical,after.physicalCount,before.physical[i])) {
+        if (!missingPhysical++) firstPhysical=before.physical[i];
+    }
+    std::ostringstream line;
+    line<<"NativeFactory registry change scope="<<scope<<" baselineLive="<<before.liveCount
+        <<" currentLive="<<after.liveCount<<" baselinePhysical="<<before.physicalCount
+        <<" currentPhysical="<<after.physicalCount<<" missingLive="<<missingLive
+        <<" missingPhysical="<<missingPhysical<<" firstMissingIV=0x"<<std::hex<<firstLive
+        <<" firstMissingP=0x"<<firstPhysical<<" playerIV=0x"<<pending.context.player
+        <<" playerP=0x"<<pending.context.playerP<<" pendingIV=0x"<<pending.iv<<" pendingP=0x"<<pending.p;
+    Log::instance().info(line.str());
 }
 bool same(const Context& a, const Context& b) {
-    return a.player == b.player && a.road == b.road && a.race == b.race && a.profile == b.profile;
+    return a.player == b.player && a.playerP == b.playerP &&
+        a.road == b.road && a.race == b.race && a.profile == b.profile;
 }
 bool freshWorld(Context& out) {
     if (!gameplayThread()) return false;
@@ -264,14 +284,16 @@ bool freshWorld(Context& out) {
         !current.career.profileKeyAvailable || !current.roadNetwork || !current.raceStatus) return false;
     if (reinterpret_cast<std::uintptr_t>(static_cast<IVehicle*>(reinterpret_cast<PVehicle*>(current.vehicles.playerPVehicle))) !=
         current.vehicles.playerIVehicle) return false;
-    out = {current.vehicles.playerIVehicle, current.roadNetwork, current.raceStatus, current.career.profileKey};
+    out = {current.vehicles.playerIVehicle, current.roadNetwork, current.raceStatus,
+        current.career.profileKey,current.vehicles.playerPVehicle};
     return true;
 }
 domain::PursuitSafetyState readPursuit(const Context& context, const Registry& list) {
 #if defined(_MSC_VER)
     __try {
 #endif
-        if (!contains(list.live, list.liveCount, context.player)) return domain::PursuitSafetyState::Unknown;
+        if (!contains(list.live, list.liveCount, context.player) ||
+            !contains(list.physical,list.physicalCount,context.playerP)) return domain::PursuitSafetyState::Unknown;
         auto* player = reinterpret_cast<IVehicle*>(context.player);
         std::uintptr_t vt = 0;
         if (!copy(context.player, &vt, sizeof(vt)) || vt != 0x8AA828) return domain::PursuitSafetyState::Unknown;
@@ -722,12 +744,21 @@ NativeFactoryResult NativeVehicleFactory::constructInactive(const NativeFactoryR
         return fault("constructor_returned_scalar_identity_invalid");
     pending=created;
     pendingBaseline=before;
+    pendingFleetChangeLogged=false;
+    // Detect constructor-side eviction now, before the original gameplay loop
+    // resumes. Full-fleet preservation is not a lifetime invariant across frames.
+    Registry after{};
+    if (!registry(after)) return fault("constructor_registry_unreadable");
+    if (!preserved(before,after)) {
+        logRegistryLoss(before,after,"synchronous_constructor");
+        return fault("constructor_removed_preexisting_identity");
+    }
     pendingSince=GetTickCount64(); pendingLastFrame=0; pendingConfirmations=0;
     std::ostringstream result;
     result<<"NativeFactory constructor returned p=0x"<<std::hex<<created.p
         <<" iv=0x"<<created.iv<<" sim=0x"<<created.sim<<std::dec
         <<" handle="<<created.handle<<" baselineLive="<<before.liveCount<<" baselinePhysical="<<before.physicalCount
-        <<" awaitingTwoCompletedFrames=1";
+        <<" synchronousBaselinePreserved=1 awaitingTwoCompletedFrames=1";
     Log::instance().info(result.str());
     return NativeFactoryResult::ConstructionPending;
 }
@@ -739,10 +770,16 @@ NativeFactoryResult NativeVehicleFactory::confirmConstructionInactive() {
     if (!freshWorld(context) || !same(context,pending.context)) { pendingConfirmations=0; return NativeFactoryResult::ConstructionPending; }
     const bool readable=registry(list);
     if (!readable) { pendingConfirmations=0; return NativeFactoryResult::ConstructionPending; }
-    if (!preserved(pendingBaseline,list)) return fault("preexisting_registry_identity_lost");
-    const bool membership=contains(list.physical,list.physicalCount,pending.p) &&
-        contains(list.live,list.liveCount,pending.iv);
-    const bool clear=pursuitClear(context,list);
+    if (!pendingFleetChangeLogged && !preserved(pendingBaseline,list)) {
+        logRegistryLoss(pendingBaseline,list,"completed_frame_observation");
+        pendingFleetChangeLogged=true;
+    }
+    const bool membership=domain::nativeConstructionMembership(view(list),pending.iv,pending.p,
+        context.player,context.playerP);
+    // Verify the allocation's generation in EACH member frame, before any AI
+    // pointer read. Address reuse must not earn a confirmation streak.
+    if (membership && !identity(list,pending,true)) return fault("construction_identity_rejected");
+    const bool clear=membership && pursuitClear(context,list) && vehiclePursuitClear(pending.iv);
     const auto frame=GameplayLoopHook::snapshot().completed;
     // completed is a count in the verified hook snapshot, not a render tick.
     const auto decision=domain::advanceNativeConstructionConfirmation(
@@ -752,12 +789,6 @@ NativeFactoryResult NativeVehicleFactory::confirmConstructionInactive() {
         wait<<"NativeFactory construction pending live="<<list.liveCount<<" physical="<<list.physicalCount
             <<" bothMembership="<<membership<<" pursuitClear="<<clear<<" confirmations="<<pendingConfirmations;
         Log::instance().info(wait.str());
-        return NativeFactoryResult::ConstructionPending;
-    }
-    if (!identity(list,pending,true)) return fault("construction_identity_rejected");
-    if (!vehiclePursuitClear(pending.iv)) {
-        pendingConfirmations=0;
-        Log::instance().warn("NativeFactory construction pending: owned pursuit active or unknown; no deactivate/AI writes");
         return NativeFactoryResult::ConstructionPending;
     }
     owned=pending; pending={}; pendingBaseline={};

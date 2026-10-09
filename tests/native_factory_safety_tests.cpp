@@ -1,6 +1,7 @@
 #include "domain/NativeFactorySafety.h"
 #include "domain/NativeCodeCompatibility.h"
 #include "domain/NativeConstructionConfirmation.h"
+#include "domain/NativeRegistrySafety.h"
 #include <array>
 #include <cstdio>
 #include <initializer_list>
@@ -60,6 +61,39 @@ int main() {
     if (step(7,true,true,true)!=NativeConstructionDecision::Wait) return 20;
     if (step(8,true,true,true)!=NativeConstructionDecision::Confirm || confirmations!=2) return 21;
     if (step(7,true,true,true)!=NativeConstructionDecision::Wait || confirmations!=2) return 22;
-    std::puts("Native factory capacity guard: capacity boundaries, signature/difference/entry-shape and exact PE text offset tests passed; no engine calls");
+    // Regression: an unrelated traffic car departs between completed frames.
+    // The synchronous constructor still must preserve the existing fleet;
+    // later ownership confirmation requires the player and new allocation.
+    const std::uintptr_t beforeIV[]{0x100,0x200},beforeP[]{0x1000,0x2000};
+    const std::uintptr_t createdIV[]{0x300,0x200,0x100},createdP[]{0x3000,0x1000,0x2000};
+    const std::uintptr_t streamedIV[]{0x400,0x300,0x100},streamedP[]{0x4000,0x1000,0x3000};
+    const NativeRegistryView baseline{beforeIV,2,beforeP,2};
+    const NativeRegistryView constructed{createdIV,3,createdP,3};
+    const NativeRegistryView streamed{streamedIV,3,streamedP,3};
+    if (!nativeRegistryPreserved(baseline,constructed)) return 23;
+    if (nativeRegistryPreserved(baseline,streamed)) return 24; // Still reject synchronous eviction.
+    frame=0;confirmations=0;
+    if (step(100,true,nativeConstructionMembership(constructed,0x300,0x3000,0x100,0x1000),true)
+        !=NativeConstructionDecision::Wait || confirmations!=1) return 25;
+    if (step(101,true,nativeConstructionMembership(streamed,0x300,0x3000,0x100,0x1000),true)
+        !=NativeConstructionDecision::Confirm || confirmations!=2) return 26;
+    // Every critical interface must be freshly registered. Lose each one,
+    // reset the streak and require two subsequent safe completed frames.
+    for (unsigned missing=0;missing<4;++missing) {
+        std::uintptr_t live[]{0x100,0x300},physical[]{0x1000,0x3000};
+        if (missing<2) live[missing]=0x777; else physical[missing-2]=0x888;
+        const NativeRegistryView lost{live,2,physical,2};
+        if (nativeConstructionMembership(lost,0x300,0x3000,0x100,0x1000)) return 27;
+        frame=0;confirmations=0;
+        step(200,true,true,true);
+        if (step(201,true,nativeConstructionMembership(lost,0x300,0x3000,0x100,0x1000),true)
+            !=NativeConstructionDecision::Wait || confirmations) return 28;
+        if (step(202,true,true,true)!=NativeConstructionDecision::Wait || confirmations!=1) return 29;
+        if (step(203,true,true,true)!=NativeConstructionDecision::Confirm || confirmations!=2) return 30;
+    }
+    if (nativeConstructionMembership(constructed,0x100,0x1000,0x100,0x1000) ||
+        nativeConstructionMembership(constructed,0,0x3000,0x100,0x1000) ||
+        nativeRegistryContains(nullptr,0,0x100) || nativeRegistryContains(createdIV,3,0)) return 31;
+    std::puts("Native factory safety: capacity, code signatures, PE offsets, frame confirmation, unrelated fleet turnover and critical membership passed; no engine calls");
     return 0;
 }

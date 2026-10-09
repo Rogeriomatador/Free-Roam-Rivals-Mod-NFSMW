@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.0.41-dev — scoped construction confirmation
+
+- Real v40 capture: all 11 native signatures pass; constructor returns GTI handle 34, then full-fleet cross-frame preservation faults before any AI preparation or activation. No selected first-chance exception was recorded. Unknown which previous entry disappeared.
+- Check whole-fleet preservation synchronously after construction, before returning to the game; log and reject constructor-side disappearance. Keep the capacity eviction guard and never retry construction.
+- Across completed frames, require both fresh registries to contain the player and pending GTI; verify the GTI vtable/simable/handle/model/non-player identity and both pursuits in each confirmation frame. Unrelated fleet changes are logged rather than treated as loss of GTI ownership.
+- Confirm on each completed gameplay callback instead of the 250ms search throttle. Retain two distinct safe frames, timeout and all later activation/retirement guards.
+- Portable regression covers unrelated fleet turnover, each missing critical interface, streak reset/recovery, player alias and null identities. Win32 CI runs the ABI, native safety and exception observer tests. Autonomous driving and safe game retirement remain unverified.
+
 ## v0.0.40-dev
 
 - Investigate the user-reported pre-world startup exit: two v0.0.39 sessions end before any F8 construction; neither the last logged function nor a loaded mod is a proven culprit.

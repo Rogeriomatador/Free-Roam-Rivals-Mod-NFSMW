@@ -81,13 +81,14 @@ jobs:
           Copy-Item "docs/TARGET_CAPTURE_V29_ALL_DIAGNOSTICS_2026-10-07.md" "$pkg/TARGET_CAPTURE_V29_ALL_DIAGNOSTICS_2026-10-07.md"
           Copy-Item "docs/EXE_DUMP_V2_FINDINGS.md" "$pkg/EXE_DUMP_V2_FINDINGS.md"
           Copy-Item "docs/TARGET_CAPTURE_V39_STARTUP_EXIT.md" "$pkg/TARGET_CAPTURE_V39_STARTUP_EXIT.md"
+          Copy-Item "docs/TARGET_CAPTURE_V40_CONSTRUCTION_CONFIRMATION.md" "$pkg/TARGET_CAPTURE_V40_CONSTRUCTION_CONFIRMATION.md"
           Copy-Item "docs/TARGET_CAPTURE_V38_VISIBLE_GTI.md" "$pkg/TARGET_CAPTURE_V38_VISIBLE_GTI.md"
           Copy-Item "docs/NATIVE_RIVAL_PROTOTYPE.md" "$pkg/NATIVE_RIVAL_PROTOTYPE.md"
           Copy-Item "docs/POST_RACE_RACER_RESEARCH.md" "$pkg/POST_RACE_RACER_RESEARCH.md"
           Copy-Item "docs/NATIVE_ROAMING_STREAMING_RESEARCH.md" "$pkg/NATIVE_ROAMING_STREAMING_RESEARCH.md"
 
           @"
-          NFSMW Free Roam Rivals v0.0.40-dev
+          NFSMW Free Roam Rivals v0.0.41-dev
 
           INSTALL:
           1. Replace only scripts\FreeRoamRivals.asi with the new ASI. Preserve your configured INIs.
@@ -119,15 +120,15 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.40-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.41-dev.zip" -Force
 
-      - name: Publish v0.0.40-dev GitHub Release
+      - name: Publish v0.0.41-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.40-dev"
+          $tag = "v0.0.41-dev"
 
           $published = $false
           for ($attempt = 1; $attempt -le 3; $attempt++) {
@@ -137,17 +138,17 @@ jobs:
               if ($info.targetCommitish -ne "${{ github.sha }}") {
                 throw "Existing release target does not match this source commit."
               }
-              if ($info.assets.name -contains "FreeRoamRivals-v0.0.40-dev.zip") {
+              if ($info.assets.name -contains "FreeRoamRivals-v0.0.41-dev.zip") {
                 $published = $true
                 break
               }
-              gh release upload $tag "release/FreeRoamRivals-v0.0.40-dev.zip"
+              gh release upload $tag "release/FreeRoamRivals-v0.0.41-dev.zip"
             } else {
-              gh release create $tag "release/FreeRoamRivals-v0.0.40-dev.zip" `
+              gh release create $tag "release/FreeRoamRivals-v0.0.41-dev.zip" `
                 --target "${{ github.sha }}" `
-                --title "Free Roam Rivals v0.0.40-dev" `
+                --title "Free Roam Rivals v0.0.41-dev" `
                 --prerelease `
-                --notes "v0.0.40-dev: registro de exceções nativas para investigar fechamento antes do mundo/F8. Envie FreeRoamRivals.log e NativeExceptions.log. O observador não suprime falhas; causa do fechamento e direção do rival continuam pendentes de validação no jogo. Preserve o INI e teste sem Bartender/X360Stuff."
+                --notes "v0.0.41-dev: corrige o bloqueio preexisting_registry_identity_lost observado após criar o GTI na v40. Preservação da frota conferida no construtor; confirmação do jogador/GTI em dois frames com identidade e perseguições verificadas. Preserve o INI configurado, substitua o ASI, calibre dirigindo seu GTI e pressione F8 fora de perseguição. Direção e retirada ainda precisam de validação no jogo. Envie FreeRoamRivals.log e NativeExceptions.log."
             }
             if ($LASTEXITCODE -eq 0) { $published = $true; break }
             if ($attempt -lt 3) { Start-Sleep -Seconds 5 }
