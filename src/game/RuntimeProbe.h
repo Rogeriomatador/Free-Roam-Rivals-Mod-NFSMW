@@ -3,6 +3,7 @@
 namespace frr::game {
 
 struct RuntimeProbeConfig {
+    bool diagnosticBundleEnabled = false;
     bool renderProbeEnabled = true;
     bool inputProbeEnabled = true;
     bool roadNavDiagnosticsEnabled = true;

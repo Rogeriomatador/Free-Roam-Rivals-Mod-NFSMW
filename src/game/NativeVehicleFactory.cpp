@@ -118,9 +118,7 @@ bool __cdecl capacityDetour(const void* position, bool extended) {
     }
     return originalCapacity && originalCapacity(position, extended);
 }
-bool prepareCalls() {
-    if (prepared) return true;
-    if (compatibilityRejected) return false;
+bool auditCallsReadOnly() {
     if (!VersionGuard::checkCurrentExecutable().supported) return false;
     struct Expected { std::uintptr_t address; std::uint64_t hash; };
     constexpr Expected functions[] = {
@@ -168,7 +166,12 @@ bool prepareCalls() {
     std::ostringstream summary;
     summary<<"NativeFactory compatibility audit complete checked=11 mismatches="<<mismatches<<" signaturesMatch="<<(mismatches==0);
     Log::instance().info(summary.str());
-    if (mismatches) { compatibilityRejected=true; return false; }
+    return mismatches==0;
+}
+bool prepareCalls() {
+    if (prepared) return true;
+    if (compatibilityRejected) return false;
+    if (!auditCallsReadOnly()) { compatibilityRejected=true; return false; }
     const auto init = MH_Initialize();
     if (init != MH_OK && init != MH_ERROR_ALREADY_INITIALIZED) return false;
     void* original = nullptr;
@@ -529,6 +532,15 @@ NativeFactoryResult fault() { disabled = true; return NativeFactoryResult::Fault
 }
 
 
+bool NativeVehicleFactory::auditCompatibilityReadOnly() {
+    if (!gameplayThread()) return false;
+    if (prepared || owned.p) {
+        Log::instance().warn("NativeFactory read-only audit unavailable: factory already prepared; own capacity hook would invalidate the original entry fingerprint.");
+        return false;
+    }
+    Log::instance().info("NativeFactory read-only audit requested: no capacity hook, constructor, goal, reset, activate or retirement calls");
+    return auditCallsReadOnly();
+}
 domain::PursuitSafetyState NativeVehicleFactory::pursuitState() {
     Context context{}; Registry list{};
     if (!freshWorld(context) || !registry(list)) return domain::PursuitSafetyState::Unknown;

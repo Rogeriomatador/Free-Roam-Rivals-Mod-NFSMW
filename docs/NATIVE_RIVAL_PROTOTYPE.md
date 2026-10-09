@@ -1,4 +1,4 @@
-# v0.0.37-dev — primeiro protótipo nativo de um rival
+# v0.0.38-dev — primeiro protótipo nativo de um rival
 
 Esta versão conecta código real de criação, navegação, ativação e pedido de
 remoção ao callback do jogo. **Ainda não foi executada no NFSMW nesta sessão.**
@@ -11,7 +11,7 @@ corridas ou a aparência/identidade persistente de Rico: é um Golf GTI de fábr
 
 ## Teste no PC
 
-1. Instale o ZIP **v0.0.37-dev** na pasta do jogo, substituindo
+1. Instale o ZIP **v0.0.38-dev** na pasta do jogo, substituindo
    `scripts/FreeRoamRivals.asi`. Preserve seus INIs editados.
 2. No arquivo `scripts/FreeRoamRivals/FreeRoamRivals.ini`, acrescente:
 
@@ -243,3 +243,10 @@ no Free Roam com GTI, calibre dirigindo e aperte F8 uma vez. Envie o log
 completo. Não é necessário remover plugins para essa primeira auditoria.
 Um teste separado com menos plugins só deverá ocorrer após salvar sua
 configuração e identificar as diferenças; não sabemos ainda qual é o responsável.
+
+## Diagnóstico amplo independente do spawn na v38
+
+`DiagnosticBundleEnabled=1` em Diagnostics ativa o preset de observação e F9.
+F9 permite obter código/módulos/contexto sem aguardar um candidato de F8.
+Não autoriza criação nem relaxa assinaturas. Veja DIAGNOSTIC_BUNDLE.md para
+coleta, limites, relatório e próximos passos. O primeiro rival real continua pendente.

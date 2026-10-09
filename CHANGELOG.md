@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.0.38-dev
+
+- Add opt-in `DiagnosticBundleEnabled=1` preset for existing verified render/input/road/gameplay/collision/camera/motion/post-race observation. Does not enable native construction, AI control, economy or garage writes.
+- F9 now independently requests a bounded module/live-disk-code/world audit, without requiring a safe spawn target. No capacity hook or constructor/goal/reset/activate/retirement calls occur in the read-only audit. F8 independently revalidates before construction.
+- Log up to 256 loaded modules at the first valid callback and on F9; record enumeration failures/truncation. Guard extra spatial/four-road-batch samples behind clear Free Roam and pursuit; throttle F9 to one request per 10 seconds. This is not an exhaustive world scan.
+- Add optional local ZIP collector: bounded log tail, known FRR INIs, binary hashes/inventory and evidence-derived next checks. Never includes game binaries/plugins/saves, uploads, edits configuration or overwrites an existing output.
+- Add seven collector regression tests, package collector/launcher and document researched primary sources plus a concrete evidence-gated plan for compatibility, creation, driving, streaming and pursuits. Windows/module/game execution remains unconfirmed here.
+
+
 ## 0.0.37-dev
 
 - v36 PC log confirms 125 construction requests rejected by the live 0x422480 signature. No native constructor invocation occurred. All 11 expected FNV-1a hashes match a fresh offline read of the exact supported executable; the source of the live difference remains unknown.

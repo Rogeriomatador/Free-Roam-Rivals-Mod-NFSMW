@@ -3,6 +3,7 @@
 namespace frr {
 
 struct Config {
+    bool diagnosticBundleEnabled = false;
     bool renderProbeEnabled = true;
     bool inputProbeEnabled = true;
     bool roadNavDiagnosticsEnabled = true;

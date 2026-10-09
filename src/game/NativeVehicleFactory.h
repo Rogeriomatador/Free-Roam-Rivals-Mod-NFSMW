@@ -45,6 +45,7 @@ enum class NativeFactoryResult {
 // outer post-update callback, fresh identity and compatible world context.
 class NativeVehicleFactory {
 public:
+    static bool auditCompatibilityReadOnly();
     static domain::PursuitSafetyState pursuitState();
     static std::vector<NativeRoadTarget> captureRoadTargets(std::size_t& batchIndex,
         NativeRoadCaptureReport& report);
