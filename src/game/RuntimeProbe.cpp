@@ -11,6 +11,7 @@
 #include "PostRaceRacerProbe.h"
 #include "NativeRivalPrototype.h"
 #include "DiagnosticBundle.h"
+#include "../core/ExceptionTrace.h"
 #include "WorldCollisionProbe.h"
 #include "../core/Log.h"
 #include "../domain/MotionScaleObserver.h"
@@ -1402,6 +1403,7 @@ void rememberThread(
 }
 
 void onGameplayLoopBefore(float) {
+    ExceptionTracePhase phase("before_gameplay_update");
     if (g_config.frameTickProbeEnabled) {
         rememberThread(g_frameTickThreadId);
         ++g_frameTicks;
@@ -1409,6 +1411,7 @@ void onGameplayLoopBefore(float) {
 }
 
 void onRenderFrame(void*) {
+    ExceptionTracePhase phase("render_observation");
     rememberThread(g_renderThreadId);
     const std::uint64_t frame = ++g_renderFrames;
     if (frame == 1) Log::instance().info("First render observation reached RuntimeProbe; runtime sampling is active.");
@@ -1421,6 +1424,7 @@ void onRenderFrame(void*) {
 }
 
 void onGameplayLoopAfter(float updateDelta) {
+    ExceptionTracePhase phase("after_gameplay_update");
     if (++g_gameplayCallbacks == 1)
         Log::instance().info("First verified gameplay-loop callback delivered after original update; native inputPolls remains separate.");
     if (g_config.inputProbeEnabled) {

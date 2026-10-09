@@ -11,6 +11,7 @@ import zipfile
 
 MAX_LOG = 8 * 1024 * 1024
 MAX_CONFIG = 256 * 1024
+MAX_EXCEPTION_TRACE = 128 * 1024
 MAX_HASH_BYTES = 64 * 1024 * 1024
 MAX_PLUGINS = 256
 CONFIGS = ('FreeRoamRivals.ini', 'Rivals.ini', 'VehiclePools.ini', 'UndergroundBlacklist.ini')
@@ -106,6 +107,18 @@ def collect(game_dir, output):
                                collected_sha256=hashlib.sha256(data).hexdigest())
     else:
         manifest['warnings'].append('FreeRoamRivals.log não encontrado; captura F9 ainda necessária.')
+    exception_trace = folder / 'NativeExceptions.log'
+    if exception_trace.is_file() and inside(exception_trace, root):
+        size = exception_trace.stat().st_size
+        if size <= MAX_EXCEPTION_TRACE:
+            with exception_trace.open('rb') as stream:
+                data = stream.read(MAX_EXCEPTION_TRACE)
+            entries['NativeExceptions.log'] = data
+            manifest['exception_trace'] = dict(observed_size=size, collected_bytes=len(data),
+                collected_sha256=hashlib.sha256(data).hexdigest(),
+                scope='First-chance observations; not proof of a fatal crash. Latest launch replaces this trace.')
+        else:
+            manifest['warnings'].append('NativeExceptions.log excede 128 KiB; não incluído.')
     for name in CONFIGS:
         path = folder / name
         if path.is_file() and inside(path, root):
@@ -136,7 +149,7 @@ def main():
         parser.error(str(error))
     print('Criado:', output)
     print('Executável suportado:', report['supported_executable'])
-    print('Inclui relatório, INIs do FRR e até 8 MiB finais do log. Não inclui exe, plugins ou saves.')
+    print('Inclui relatório, INIs do FRR, até 8 MiB finais do log e NativeExceptions.log quando disponível (até 128 KiB). Não inclui exe, plugins ou saves.')
     for note in report['summary']['next_checks']:
         print('-', note)
 

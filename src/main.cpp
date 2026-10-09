@@ -1,17 +1,20 @@
 #include <nfsmw_sdk/nfsmw_sdk.h>
 
 #include "core/Config.h"
+#include "core/ExceptionTrace.h"
 #include "core/Log.h"
 #include "core/VersionGuard.h"
 #include "game/RuntimeProbe.h"
 
 #include <sstream>
 #include <string>
+#include <windows.h>
+#include <filesystem>
 
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.39-dev";
+constexpr const char* kVersion = "0.0.40-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -59,6 +62,20 @@ int bootstrap() {
     );
 
     const Config config = Config::load();
+    if(config.exceptionDiagnosticsEnabled) {
+        wchar_t executable[32768]{};
+        const auto count=GetModuleFileNameW(nullptr,executable,32768);
+        bool traceInstalled=false;
+        if(count>0 && count<32768) {
+            const auto folder=std::filesystem::path(executable).parent_path()/L"scripts"/L"FreeRoamRivals";
+            std::error_code error;
+            std::filesystem::create_directories(folder,error);
+            if(!error) traceInstalled=installExceptionTrace((folder/L"NativeExceptions.log").c_str(),kVersion);
+        }
+        if(traceInstalled) log.info("Native exception observer installed: scripts/FreeRoamRivals/NativeExceptions.log; first-chance only, context unchanged, continue-search; process-lifetime ASI.");
+        else log.warn("Native exception observer unavailable; no startup fault address can be captured by this observer.");
+    }
+    ExceptionTracePhase bootstrapPhase("bootstrap_runtime_hooks");
     {
         std::ostringstream line;
         line << "Loaded diagnostics: render=" << config.renderProbeEnabled
@@ -122,7 +139,7 @@ int bootstrap() {
     }
 
     log.info(
-        "v0.0.39-dev confirms constructor identity over two completed gameplay frames before inactive preparation, with explicit failure reasons. User observed a visible GTI in v0.0.38; native driving and retirement remain unverified. Default mode remains observation-only."
+        "v0.0.40-dev adds a process-wide native exception observer for the reported pre-world startup exit. Root cause remains unproven; native driving and retirement remain unverified. v0.0.39 constructor confirmation and safety guards are retained."
     );
 
     return NFSMW_OK;
@@ -132,7 +149,7 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.39-dev",
+    "0.0.40-dev",
     "Rogeriomatador"
 )
 

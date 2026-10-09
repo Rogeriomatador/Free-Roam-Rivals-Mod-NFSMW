@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.39
+    VERSION 0.0.40
     LANGUAGES C CXX
 )
 
@@ -97,6 +97,7 @@ nfsmw_add_plugin(FreeRoamRivals
     SOURCES
         src/main.cpp
         src/core/Config.cpp
+        src/core/ExceptionTrace.cpp
         src/core/Log.cpp
         src/core/ProfileKey.cpp
         src/core/VersionGuard.cpp
@@ -145,6 +146,12 @@ else()
 endif()
 
 enable_testing()
+
+add_executable(FreeRoamRivalsExceptionTraceTests tests/exception_trace_tests.cpp src/core/ExceptionTrace.cpp)
+target_include_directories(FreeRoamRivalsExceptionTraceTests PRIVATE src)
+target_compile_definitions(FreeRoamRivalsExceptionTraceTests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+add_test(NAME FreeRoamRivalsExceptionTraceTests COMMAND FreeRoamRivalsExceptionTraceTests)
+set_tests_properties(FreeRoamRivalsExceptionTraceTests PROPERTIES TIMEOUT 30)
 
 add_executable(FreeRoamRivalsDomainTests
     tests/domain_tests.cpp

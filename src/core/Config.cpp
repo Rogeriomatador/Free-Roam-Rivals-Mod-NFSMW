@@ -430,6 +430,7 @@ Config Config::load() {
             1
         ) != 0;
 
+    cfg.exceptionDiagnosticsEnabled = iniInt(ini, "Diagnostics", "ExceptionDiagnosticsEnabled", 1) != 0;
     cfg.diagnosticBundleEnabled = iniInt(ini, "Diagnostics", "DiagnosticBundleEnabled", 0) != 0;
     if (cfg.diagnosticBundleEnabled) {
         cfg.renderProbeEnabled=true; cfg.inputProbeEnabled=true; cfg.roadNavDiagnosticsEnabled=true;
