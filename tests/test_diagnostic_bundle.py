@@ -19,11 +19,14 @@ class BundleTests(unittest.TestCase):
             (root/'save.bin').write_bytes(b'private')
             (folder/'FreeRoamRivals.ini').write_text('[Diagnostics]\nDiagnosticBundleEnabled=1')
             (folder/'FreeRoamRivals.log').write_text('NativePrototype native construction request\n')
+            (folder/'NativeExceptions.log').write_bytes(b'FIRST_CHANCE code=0xc0000005\n')
             report=m.collect(root,root/'result.zip')
             self.assertFalse(report['supported_executable'])
             self.assertEqual(report['summary']['constructor_invocations'],0)
             with zipfile.ZipFile(root/'result.zip') as z:
-                self.assertEqual(set(z.namelist()),{'diagnostic_report.json','config/FreeRoamRivals.ini','FreeRoamRivals.log.tail'})
+                self.assertEqual(set(z.namelist()),{'diagnostic_report.json','config/FreeRoamRivals.ini','FreeRoamRivals.log.tail','NativeExceptions.log'})
+                self.assertEqual(z.read('NativeExceptions.log'),b'FIRST_CHANCE code=0xc0000005\n')
+            self.assertIn('not proof of a fatal crash',report['exception_trace']['scope'])
             self.assertEqual(len(report['files']),2)
     def test_existing_zip_never_overwritten(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -61,5 +64,14 @@ class BundleTests(unittest.TestCase):
     def test_bad_directory(self):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):m.collect(tmp,Path(tmp)/'result.zip')
+    def test_exception_trace_size_limit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);folder=self.game(root)
+            (folder/'NativeExceptions.log').write_bytes(b'x'*(m.MAX_EXCEPTION_TRACE+1))
+            report=m.collect(root,root/'result.zip')
+            self.assertNotIn('exception_trace',report)
+            self.assertTrue(any('128 KiB' in warning for warning in report['warnings']))
+            with zipfile.ZipFile(root/'result.zip') as z:
+                self.assertNotIn('NativeExceptions.log',z.namelist())
 
 if __name__=='__main__':unittest.main()
