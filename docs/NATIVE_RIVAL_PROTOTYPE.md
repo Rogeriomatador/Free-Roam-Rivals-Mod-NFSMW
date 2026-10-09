@@ -1,4 +1,4 @@
-# v0.0.38-dev — primeiro protótipo nativo de um rival
+# v0.0.39-dev — primeiro protótipo nativo de um rival
 
 Esta versão conecta código real de criação, navegação, ativação e pedido de
 remoção ao callback do jogo. **Ainda não foi executada no NFSMW nesta sessão.**
@@ -11,7 +11,7 @@ corridas ou a aparência/identidade persistente de Rico: é um Golf GTI de fábr
 
 ## Teste no PC
 
-1. Instale o ZIP **v0.0.38-dev** na pasta do jogo, substituindo
+1. Instale o ZIP **v0.0.39-dev** na pasta do jogo, substituindo
    `scripts/FreeRoamRivals.asi`. Preserve seus INIs editados.
 2. No arquivo `scripts/FreeRoamRivals/FreeRoamRivals.ini`, acrescente:
 
@@ -250,3 +250,7 @@ configuração e identificar as diferenças; não sabemos ainda qual é o respon
 F9 permite obter código/módulos/contexto sem aguardar um candidato de F8.
 Não autoriza criação nem relaxa assinaturas. Veja DIAGNOSTIC_BUNDLE.md para
 coleta, limites, relatório e próximos passos. O primeiro rival real continua pendente.
+
+## v0.0.39 — confirmação após o construtor
+
+GTI visível relatado pelo usuário na v0.0.38, mas ativação não alcançada. A v0.0.39 confirma identidade em duas atualizações concluídas, com limite de dois segundos, antes de preparar o corredor. Não repete o construtor. Falhas agora registram etapa/identidade/exceção. Veja `TARGET_CAPTURE_V38_VISIBLE_GTI.md`. Mantenha Bartender desativado neste teste. Direção e retirada ainda exigem validação no jogo.

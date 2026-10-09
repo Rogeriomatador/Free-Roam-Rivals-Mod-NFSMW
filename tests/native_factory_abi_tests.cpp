@@ -50,6 +50,11 @@ static_assert(offsetof(WRoadNav, fLaneOffset) != 0x2C4);
 static_assert(offsetof(ISimable, _mHandle) == 0x08);
 
 int main() {
+    // Numeric base conversions only: do not dereference/construct SDK objects.
+    auto* fake=reinterpret_cast<PVehicle*>(std::uintptr_t(0x1000));
+    if (reinterpret_cast<std::uintptr_t>(static_cast<ISimable*>(fake))!=0x102C ||
+        reinterpret_cast<std::uintptr_t>(static_cast<IVehicle*>(fake))!=0x10AC) return 1;
+
     std::printf("Road ABI mismatch: SDK WRoadNav=%zu SDK future=%zu native future=1064 SDK lane=%zu native lane=705 SDK laneOffset=%zu native laneOffset=708; no navigation getter calls\n", sizeof(WRoadNav), offsetof(AIVehicle, mFutureRoad), offsetof(WRoadNav, fLaneInd), offsetof(WRoadNav, fLaneOffset));
     std::printf("Native pursuit ABI: goal=%zu pursuit=%zu handle=%zu cooldown=%zu; no engine calls\n",
         offsetof(AIVehicle, mCurrentGoal), offsetof(AIVehicle, mPursuit),

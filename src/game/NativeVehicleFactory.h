@@ -37,7 +37,7 @@ struct NativeFactoryRequest {
     NativeRoadTarget roadTarget{};
 };
 enum class NativeFactoryResult {
-    Blocked, CompatibilityBlocked, ConstructedInactive, RacerPreparedInactive,
+    Blocked, CompatibilityBlocked, ConstructionPending, ConstructedInactive, RacerPreparedInactive,
     RoadPreparedInactive, Activated,
     RemovalRequested, RemovalPending, Removed, RemovedByEngine, Faulted
 };
@@ -51,6 +51,7 @@ public:
         NativeRoadCaptureReport& report);
     static NativeOwnedSnapshot snapshot();
     static NativeFactoryResult constructInactive(const NativeFactoryRequest& request);
+    static NativeFactoryResult confirmConstructionInactive();
     static NativeFactoryResult prepareRacerInactive();
     static NativeFactoryResult resetRoadInactive();
     static NativeFactoryResult activatePrepared(const domain::SpawnEnvironmentInput& environment,

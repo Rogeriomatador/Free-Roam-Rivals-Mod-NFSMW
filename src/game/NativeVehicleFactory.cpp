@@ -8,6 +8,7 @@
 #include <array>
 #include <algorithm>
 #include "../domain/NativeFactorySafety.h"
+#include "../domain/NativeConstructionConfirmation.h"
 #include "../domain/NativeCodeCompatibility.h"
 #include "../domain/NativeSearchWindow.h"
 #include <windows.h>
@@ -39,7 +40,16 @@ struct Owned {
     unsigned absentSamples = 0;
     std::uint64_t lastAbsenceFrame = 0;
 };
-Owned owned;
+Owned owned, pending;
+Registry pendingBaseline{};
+std::uint64_t pendingSince=0, pendingLastFrame=0;
+unsigned pendingConfirmations=0;
+DWORD lastNativeException=0;
+std::uintptr_t lastExceptionInstruction=0,lastExceptionMemory=0;
+std::uintptr_t identityVtable=0,identitySim=0;
+std::uint32_t identityKey=0;
+const char* nativePhase="none";
+const char* identityReason="not_checked";
 std::size_t sourceBatchCursor = 0;
 bool disabled = false, prepared = false, compatibilityRejected = false;
 // Only the verified gameplay thread may access adapter state. During the
@@ -49,6 +59,20 @@ volatile LONG constructionThread = 0;
 using CapacityFn = bool(__cdecl*)(const void*, bool);
 CapacityFn originalCapacity = nullptr;
 
+int captureNativeException(EXCEPTION_POINTERS* exception) {
+    if (exception && exception->ExceptionRecord) {
+        const auto* record=exception->ExceptionRecord;
+        lastNativeException=record->ExceptionCode;
+        lastExceptionInstruction=reinterpret_cast<std::uintptr_t>(record->ExceptionAddress);
+        lastExceptionMemory=(record->ExceptionCode==EXCEPTION_ACCESS_VIOLATION && record->NumberParameters>=2)
+            ? record->ExceptionInformation[1] : 0;
+    }
+    return EXCEPTION_EXECUTE_HANDLER;
+}
+void beginNativeOperation(const char* phase) {
+    nativePhase=phase; lastNativeException=0;
+    lastExceptionInstruction=0; lastExceptionMemory=0;
+}
 bool copy(std::uintptr_t address, void* out, std::size_t size) {
     SIZE_T got = 0;
     return address && ReadProcessMemory(GetCurrentProcess(), reinterpret_cast<void*>(address),
@@ -215,7 +239,7 @@ bool registry(Registry& out) {
             if (out.physical[i] != reinterpret_cast<std::uintptr_t>(PVehicle::g_mInstances[i].mInstance)) return false;
         return !PVehicle::g_mInstances[out.physicalCount].mInstance;
 #if defined(_MSC_VER)
-    } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+    } __except (captureNativeException(GetExceptionInformation())) { return false; }
 #endif
 }
 bool contains(const std::uintptr_t* list, unsigned count, std::uintptr_t ptr) {
@@ -276,21 +300,34 @@ bool pursuitClear(const Context& context, const Registry& list) {
     return readPursuit(context, list) == domain::PursuitSafetyState::Clear;
 }
 bool identity(const Registry& list, const Owned& token, bool checkHandle) {
+    identityReason="registry_membership"; identityVtable=0; identitySim=0; identityKey=0;
 #if defined(_MSC_VER)
     __try {
 #endif
-        // Membership BEFORE any read through a remembered pointer.
+        // No object reads before membership in BOTH fresh registries.
         if (!contains(list.physical, list.physicalCount, token.p) ||
             !contains(list.live, list.liveCount, token.iv)) return false;
         auto* vehicle = reinterpret_cast<IVehicle*>(token.iv);
-        std::uintptr_t vt = 0;
-        if (!copy(token.iv, &vt, sizeof(vt)) || vt != 0x8AA828) return false;
-        auto* sim = vehicle->GetSimable();
-        return reinterpret_cast<std::uintptr_t>(sim) == token.sim && sim &&
-            (!checkHandle || sim->_mHandle == token.handle) &&
-            !sim->IsPlayer() && !sim->IsOwnedByPlayer() && vehicle->GetVehicleKey() == token.key;
+        std::uintptr_t vt=0;
+        identityReason="IVehicle_vtable";
+        if (!copy(token.iv,&vt,sizeof(vt))) return false;
+        identityVtable=vt;
+        if (vt!=0x8AA828) return false;
+        identityReason="simable_pointer";
+        auto* sim=vehicle->GetSimable();
+        identitySim=reinterpret_cast<std::uintptr_t>(sim);
+        if (!sim || reinterpret_cast<std::uintptr_t>(sim)!=token.sim) return false;
+        identityReason="simable_handle";
+        if (checkHandle && sim->_mHandle!=token.handle) return false;
+        identityReason="player_or_player_owned";
+        if (sim->IsPlayer() || sim->IsOwnedByPlayer()) return false;
+        identityReason="vehicle_key";
+        identityKey=vehicle->GetVehicleKey();
+        if (identityKey!=token.key) return false;
+        identityReason="verified";
+        return true;
 #if defined(_MSC_VER)
-    } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+    } __except (captureNativeException(GetExceptionInformation())) { identityReason="identity_exception"; return false; }
 #endif
 }
 bool constructCall(const NativeFactoryRequest& request, Owned& out) {
@@ -307,15 +344,17 @@ bool constructCall(const NativeFactoryRequest& request, Owned& out) {
         VehicleParams params(DriverClass::Traffic, request.vehicleKey, forward, position,
             nullptr, eVehicleParamFlags::SnapToGround | eVehicleParamFlags::CalcPerformance,
             nullptr, nullptr);
+        nativePhase="constructor";
         auto* p = PVehicle::Construct(params);
-        if (!p) return false;
+        nativePhase="constructor_returned";
+        if (!p) { nativePhase="constructor_null"; return false; }
         out.p = reinterpret_cast<std::uintptr_t>(p);
         out.iv = reinterpret_cast<std::uintptr_t>(static_cast<IVehicle*>(p));
         out.sim = reinterpret_cast<std::uintptr_t>(static_cast<ISimable*>(p));
         out.key = request.vehicleKey;
         return true;
 #if defined(_MSC_VER)
-    } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+    } __except (captureNativeException(GetExceptionInformation())) { return false; }
 #endif
 }
 bool deactivateAndStamp(Owned& token) {
@@ -327,7 +366,7 @@ bool deactivateAndStamp(Owned& token) {
         token.handle = reinterpret_cast<ISimable*>(token.sim)->_mHandle;
         return !v->IsActive();
 #if defined(_MSC_VER)
-    } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+    } __except (captureNativeException(GetExceptionInformation())) { return false; }
 #endif
 }
 bool racerCall() {
@@ -349,7 +388,7 @@ bool racerCall() {
         auto* goal = primary->GetGoal();
         return goal && *reinterpret_cast<std::uintptr_t*>(goal) == 0x892D30 && !v->IsActive();
 #if defined(_MSC_VER)
-    } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+    } __except (captureNativeException(GetExceptionInformation())) { return false; }
 #endif
 }
 bool removalCall() {
@@ -363,7 +402,7 @@ bool removalCall() {
         reinterpret_cast<void(__thiscall*)(ISimable*)>(0x6851D0)(reinterpret_cast<ISimable*>(owned.sim));
         return true;
 #if defined(_MSC_VER)
-    } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+    } __except (captureNativeException(GetExceptionInformation())) { return false; }
 #endif
 }
 
@@ -466,7 +505,7 @@ bool ownedRead(NativeOwnedSnapshot& out) {
         out.available = out.box.valid && std::isfinite(out.speed);
         return out.available;
 #if defined(_MSC_VER)
-    } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+    } __except (captureNativeException(GetExceptionInformation())) { return false; }
 #endif
 }
 bool ownedPursuitClear() {
@@ -479,7 +518,7 @@ bool ownedPursuitClear() {
         std::uintptr_t pursuit = 0;
         return table && table[40] == 0x431D70 && copy(reinterpret_cast<std::uintptr_t>(ai) + 0x70, &pursuit, sizeof(pursuit)) && !pursuit;
 #if defined(_MSC_VER)
-    } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+    } __except (captureNativeException(GetExceptionInformation())) { return false; }
 #endif
 }
 bool roadResetCall() {
@@ -501,7 +540,7 @@ bool roadResetCall() {
         const float dz = current.box.center.z - owned.roadTarget.position.z;
         return dx*dx + dz*dz <= 1.0f;
 #if defined(_MSC_VER)
-    } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+    } __except (captureNativeException(GetExceptionInformation())) { return false; }
 #endif
 }
 bool activationCall() {
@@ -525,10 +564,22 @@ bool activationCall() {
         v->Activate();
         return v->IsActive();
 #if defined(_MSC_VER)
-    } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+    } __except (captureNativeException(GetExceptionInformation())) { return false; }
 #endif
 }
-NativeFactoryResult fault() { disabled = true; return NativeFactoryResult::Faulted; }
+NativeFactoryResult fault(const char* reason="native_operation") {
+    disabled=true;
+    std::ostringstream line;
+    line<<"NativeFactory fault reason="<<reason<<" identity="<<identityReason
+        <<" phase="<<nativePhase<<" exception=0x"<<std::hex<<lastNativeException
+        <<" exceptionInstruction=0x"<<lastExceptionInstruction<<" exceptionMemory=0x"<<lastExceptionMemory
+        <<" identityVtable=0x"<<identityVtable<<" identitySim=0x"<<identitySim<<" identityKey=0x"<<identityKey
+        <<" expectedKey=0x"<<(owned.p ? owned.key : pending.key)
+        <<" ownedP=0x"<<owned.p<<" pendingP=0x"<<pending.p
+        <<" retryConstructionAllowed=0";
+    Log::instance().warn(line.str());
+    return NativeFactoryResult::Faulted;
+}
 }
 
 
@@ -601,28 +652,37 @@ NativeOwnedSnapshot NativeVehicleFactory::snapshot() {
     return out;
 }
 NativeFactoryResult NativeVehicleFactory::resetRoadInactive() {
+    beginNativeOperation("road_preparation");
     if (!gameplayThread() || disabled || !owned.p || !owned.racerPrepared || owned.roadPrepared || owned.removing)
         return NativeFactoryResult::Blocked;
     Context context{}; Registry list{};
     if (!freshWorld(context) || !same(context, owned.context) || !registry(list) || !pursuitClear(context, list) ||
         !targetContext(owned.roadTarget, context)) return NativeFactoryResult::Blocked;
-    if (!identity(list, owned, true) || !ownedPursuitClear() || !roadResetCall()) return fault();
+    if (!identity(list,owned,true)) return fault("road_identity_rejected");
+    if (!ownedPursuitClear()) return NativeFactoryResult::Blocked;
+    nativePhase="road_reset";
+    if (!roadResetCall()) return fault("road_reset_rejected");
     owned.roadPrepared = true;
     return NativeFactoryResult::RoadPreparedInactive;
 }
 NativeFactoryResult NativeVehicleFactory::activatePrepared(const domain::SpawnEnvironmentInput& environment,
     const domain::SpawnCandidateInput& candidate) {
+    beginNativeOperation("activation");
     if (!gameplayThread() || disabled || !owned.p || !owned.roadPrepared || owned.removing ||
         !domain::evaluateSpawnCandidate(environment, candidate).allowed) return NativeFactoryResult::Blocked;
     Context context{}; Registry list{};
     if (!freshWorld(context) || !same(context, owned.context) || !registry(list) || !pursuitClear(context, list) ||
         !targetContext(owned.roadTarget, context)) return NativeFactoryResult::Blocked;
-    if (!identity(list, owned, true) || !ownedPursuitClear() || !activationCall()) return fault();
+    if (!identity(list,owned,true)) return fault("activation_identity_rejected");
+    if (!ownedPursuitClear()) return NativeFactoryResult::Blocked;
+    nativePhase="SetSpawned_goal_Activate";
+    if (!activationCall()) return fault("activation_rejected");
     return NativeFactoryResult::Activated;
 }
 NativeFactoryResult NativeVehicleFactory::constructInactive(const NativeFactoryRequest& request) {
+    beginNativeOperation("construction_preflight");
     if (!gameplayThread()) return NativeFactoryResult::Blocked;
-    if (disabled || owned.p || !domain::evaluateSpawnCandidate(request.environment, request.candidate).allowed ||
+    if (disabled || owned.p || pending.p || !domain::evaluateSpawnCandidate(request.environment, request.candidate).allowed ||
         !request.vehicleKey) return NativeFactoryResult::Blocked;
     const auto& p = request.position;
     const auto& f = request.forward;
@@ -645,34 +705,74 @@ NativeFactoryResult NativeVehicleFactory::constructInactive(const NativeFactoryR
     created.roadTarget = request.roadTarget;
     Log::instance().info("NativeFactory constructor invoke: compatibility passed; stock GTI inactive staging");
     InterlockedExchange(&constructionThread, static_cast<LONG>(GetCurrentThreadId()));
+    lastNativeException=0; nativePhase="vehicle_params";
     const bool constructed = constructCall(request, created);
     InterlockedExchange(&constructionThread, 0);
-    // A failed/partial native allocation cannot be safely guessed or retried.
-    if (!constructed) return fault();
-    Registry after{};
-    if (contains(before.physical, before.physicalCount, created.p) ||
-        contains(before.live, before.liveCount, created.iv) || !registry(after) || !preserved(before, after) ||
-        !identity(after, created, false)) return fault();
-    owned = created;
-    if (!deactivateAndStamp(owned)) return fault();
+    // Never retry a constructor: even an exception can leave a partial allocation.
+    if (!constructed) return fault("constructor_failed_or_partial");
+    if (contains(before.physical,before.physicalCount,created.p) ||
+        contains(before.live,before.liveCount,created.iv)) return fault("constructor_returned_existing_identity");
+    pending=created;
+    pendingBaseline=before;
+    pendingSince=GetTickCount64(); pendingLastFrame=0; pendingConfirmations=0;
+    std::ostringstream result;
+    result<<"NativeFactory constructor returned p=0x"<<std::hex<<created.p
+        <<" iv=0x"<<created.iv<<" sim=0x"<<created.sim<<std::dec
+        <<" baselineLive="<<before.liveCount<<" baselinePhysical="<<before.physicalCount
+        <<" awaitingTwoCompletedFrames=1";
+    Log::instance().info(result.str());
+    return NativeFactoryResult::ConstructionPending;
+}
+NativeFactoryResult NativeVehicleFactory::confirmConstructionInactive() {
+    beginNativeOperation("construction_confirmation");
+    if (!gameplayThread() || disabled || !pending.p) return NativeFactoryResult::Blocked;
+    if (GetTickCount64()-pendingSince>2000) return fault("construction_confirmation_timeout");
+    Context context{}; Registry list{};
+    if (!freshWorld(context) || !same(context,pending.context)) { pendingConfirmations=0; return NativeFactoryResult::ConstructionPending; }
+    const bool readable=registry(list);
+    if (!readable) { pendingConfirmations=0; return NativeFactoryResult::ConstructionPending; }
+    if (!preserved(pendingBaseline,list)) return fault("preexisting_registry_identity_lost");
+    const bool membership=contains(list.physical,list.physicalCount,pending.p) &&
+        contains(list.live,list.liveCount,pending.iv);
+    const bool clear=pursuitClear(context,list);
+    const auto frame=GameplayLoopHook::snapshot().completed;
+    // completed is a count in the verified hook snapshot, not a render tick.
+    const auto decision=domain::advanceNativeConstructionConfirmation(
+        frame,readable,membership,clear,pendingLastFrame,pendingConfirmations);
+    if (decision!=domain::NativeConstructionDecision::Confirm) {
+        std::ostringstream wait;
+        wait<<"NativeFactory construction pending live="<<list.liveCount<<" physical="<<list.physicalCount
+            <<" bothMembership="<<membership<<" pursuitClear="<<clear<<" confirmations="<<pendingConfirmations;
+        Log::instance().info(wait.str());
+        return NativeFactoryResult::ConstructionPending;
+    }
+    if (!identity(list,pending,false)) return fault("construction_identity_rejected");
+    owned=pending; pending={}; pendingBaseline={};
+    nativePhase="deactivate_and_handle_stamp";
+    if (!deactivateAndStamp(owned)) return fault("deactivate_and_handle_stamp_failed");
+    Log::instance().info("NativeFactory construction confirmed: identity verified in two completed frames; inactive handle stamped");
     return NativeFactoryResult::ConstructedInactive;
 }
+
 NativeFactoryResult NativeVehicleFactory::prepareRacerInactive() {
+    beginNativeOperation("Racer_preparation");
     if (!gameplayThread()) return NativeFactoryResult::Blocked;
     if (disabled || !owned.p || owned.removing || owned.racerPrepared) return NativeFactoryResult::Blocked;
     Context context{}; Registry list{};
     if (!freshWorld(context) || !same(context, owned.context) || !registry(list) || !pursuitClear(context, list))
         return NativeFactoryResult::Blocked;
-    if (!identity(list, owned, true)) return fault();
+    if (!identity(list, owned, true)) return fault("owned_identity_rejected");
     if (!ownedPursuitClear()) return NativeFactoryResult::Blocked;
     NativeOwnedSnapshot observation{};
-    if (!ownedRead(observation)) return fault();
+    if (!ownedRead(observation)) return fault("owned_body_read_failed");
     if (observation.loading) return NativeFactoryResult::Blocked;
-    if (!racerCall()) return fault();
+    nativePhase="Racer_driver_and_goal";
+    if (!racerCall()) return fault("Racer_driver_or_goal_rejected");
     owned.racerPrepared = true;
     return NativeFactoryResult::RacerPreparedInactive;
 }
 NativeFactoryResult NativeVehicleFactory::requestRemoval() {
+    beginNativeOperation("retirement");
     if (!gameplayThread()) return NativeFactoryResult::Blocked;
     // Cleanup may still be attempted after an AI preparation fault, but only
     // with the same fresh native identity and a clear pursuit/world context.
@@ -680,7 +780,7 @@ NativeFactoryResult NativeVehicleFactory::requestRemoval() {
     Context context{}; Registry list{};
     if (!freshWorld(context) || !same(context, owned.context) || !registry(list) || !pursuitClear(context, list))
         return NativeFactoryResult::Blocked;
-    if (!identity(list, owned, true)) return fault();
+    if (!identity(list, owned, true)) return fault("owned_identity_rejected");
     if (!ownedPursuitClear()) return NativeFactoryResult::Blocked;
     if (!removalCall()) return fault();
     owned.removing = true;

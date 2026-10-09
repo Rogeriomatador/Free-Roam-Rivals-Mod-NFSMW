@@ -1,5 +1,6 @@
 #include "domain/NativeFactorySafety.h"
 #include "domain/NativeCodeCompatibility.h"
+#include "domain/NativeConstructionConfirmation.h"
 #include <array>
 #include <cstdio>
 #include <initializer_list>
@@ -45,6 +46,20 @@ int main() {
         supportedNativeCodeFileOffset(0x890000,1,offset) ||
         supportedNativeCodeFileOffset(0xFFFFFFFF,256,offset) ||
         supportedNativeCodeFileOffset(0x422480,std::numeric_limits<std::size_t>::max(),offset)) return 12;
+    std::uint64_t frame=0; unsigned confirmations=0;
+    auto step=[&](std::uint64_t f,bool registry,bool member,bool pursuit) {
+        return advanceNativeConstructionConfirmation(f,registry,member,pursuit,frame,confirmations);
+    };
+    if (step(1,true,true,true)!=NativeConstructionDecision::Wait || confirmations!=1) return 13;
+    if (step(1,true,true,true)!=NativeConstructionDecision::Wait || confirmations!=1) return 14;
+    if (step(2,true,false,true)!=NativeConstructionDecision::Wait || confirmations) return 15;
+    if (step(3,true,true,true)!=NativeConstructionDecision::Wait || confirmations!=1) return 16;
+    if (step(4,false,true,true)!=NativeConstructionDecision::Wait || confirmations) return 17;
+    if (step(5,true,true,true)!=NativeConstructionDecision::Wait) return 18;
+    if (step(6,true,true,false)!=NativeConstructionDecision::Wait || confirmations) return 19;
+    if (step(7,true,true,true)!=NativeConstructionDecision::Wait) return 20;
+    if (step(8,true,true,true)!=NativeConstructionDecision::Confirm || confirmations!=2) return 21;
+    if (step(7,true,true,true)!=NativeConstructionDecision::Wait || confirmations!=2) return 22;
     std::puts("Native factory capacity guard: capacity boundaries, signature/difference/entry-shape and exact PE text offset tests passed; no engine calls");
     return 0;
 }

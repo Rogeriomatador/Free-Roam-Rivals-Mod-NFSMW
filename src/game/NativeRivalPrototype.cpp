@@ -20,9 +20,10 @@
 namespace frr::game {
 namespace {
 using namespace domain;
-enum class Stage { Idle, Seeking, Loading, PreparingRacer, PreparingRoad, Activating, Active, Retiring, Finished, Disabled };
+enum class Stage { Idle, Seeking, Confirming, Loading, PreparingRacer, PreparingRoad, Activating, Active, Retiring, Finished, Disabled };
 Stage stage = Stage::Idle;
 bool nearPlayerDebug = false;
+bool cleanupAfterConfirmation = false;
 bool enabled = false, keyWasDown = false, attemptSpent = false;
 std::uint64_t lastTick = 0, stageStarted = 0, lastObservation = 0, lastBlockLog = 0;
 unsigned stable = 0;
@@ -37,6 +38,7 @@ NativeRoadTarget selectedTarget{};
 const char* stageName(Stage s) {
     switch (s) {
         case Stage::Idle: return "idle"; case Stage::Seeking: return "seeking";
+        case Stage::Confirming: return "confirming_construction";
         case Stage::Loading: return "loading"; case Stage::PreparingRacer: return "preparing_racer";
         case Stage::PreparingRoad: return "preparing_road"; case Stage::Activating: return "activating";
         case Stage::Active: return "active"; case Stage::Retiring: return "retiring";
@@ -207,6 +209,7 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
         if (stage==Stage::Idle && !attemptSpent) transition(Stage::Seeking);
         else if (stage==Stage::Active || stage==Stage::Loading || stage==Stage::PreparingRacer ||
             stage==Stage::PreparingRoad || stage==Stage::Activating) beginCleanup("F8");
+        else if (stage==Stage::Confirming) cleanupAfterConfirmation=true;
         else if (stage==Stage::Seeking) blocked("search_already_in_progress_wait_10_seconds");
     }
     const auto now=GetTickCount64();
@@ -226,6 +229,16 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
     lastRace=current.raceStatus; lastProfile=profile;
     if (stage==Stage::Seeking && now-stageStarted>10000) {
         blocked("no_safe_candidate_within_request_window_press_F8_to_retry"); transition(Stage::Idle); return;
+    }
+    if (stage==Stage::Confirming) {
+        const auto result=NativeVehicleFactory::confirmConstructionInactive();
+        if (result==NativeFactoryResult::ConstructedInactive) {
+            if (cleanupAfterConfirmation) beginCleanup("F8_after_identity_confirmation");
+            else transition(Stage::Loading);
+        }
+        else if (result==NativeFactoryResult::Faulted) mutationResult(result,NativeFactoryResult::ConstructedInactive,Stage::Loading);
+        else blocked("waiting_for_two_completed_registry_confirmations");
+        return;
     }
     const auto owned=NativeVehicleFactory::snapshot();
     if (owned.owned && !owned.contextMatches) {
@@ -320,7 +333,7 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
             Log::instance().info(creation.str());
             const auto result=NativeVehicleFactory::constructInactive(request);
             attemptSpent=result!=NativeFactoryResult::Blocked;
-            mutationResult(result,NativeFactoryResult::ConstructedInactive,Stage::Loading);
+            mutationResult(result,NativeFactoryResult::ConstructionPending,Stage::Confirming);
             return;
         }
         if (eligible.empty()) blocked("no_distance_eligible_target_in_current_batch");

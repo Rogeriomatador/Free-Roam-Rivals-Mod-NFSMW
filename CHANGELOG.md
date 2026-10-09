@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.0.39-dev
+
+- Record the real v38 capture: user saw a stationary Golf GTI; all eleven signatures passed in the final session, constructor was invoked, but preparation/activation was not reached. Earlier sessions still contained the Bartender hook. Driving and retirement remain unverified.
+- Retain a successful native return as a pending scalar token and confirm membership in both native registries over two distinct completed gameplay samples before strict identity/deactivation/handle stamping. Bound confirmation to two seconds; reset on incomplete registry, lost membership, changed context or non-clear pursuit. Preserve preconstruction identities and never retry a constructor or adopt an unreturned partial allocation. This addresses a possible readiness window, not a game-proven explanation of the v38 failure.
+- Add named fault/identity/operation phases and native SEH code/instruction/access-address diagnostics instead of a silent disabled transition. Keep exact executable/function signatures and road/occupancy/pursuit gates intact.
+- Extend portable safety tests for confirmation interruption/repeated frames and Win32 ABI tests for numeric PVehicle/ISimable/IVehicle base conversion. No engine objects are instantiated by tests.
+
 ## 0.0.38-dev
 
 - Add opt-in `DiagnosticBundleEnabled=1` preset for existing verified render/input/road/gameplay/collision/camera/motion/post-race observation. Does not enable native construction, AI control, economy or garage writes.
