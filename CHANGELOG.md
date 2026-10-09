@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.0.40-dev
+
+- Investigate the user-reported pre-world startup exit: two v0.0.39 sessions end before any F8 construction; neither the last logged function nor a loaded mod is a proven culprit.
+- Add a process-lifetime native exception observer and bounded, file-backed `NativeExceptions.log`, enabled by default and independent of the normal logger. First-chance native records never suppress or modify an exception. Preserve older INI settings.
+- Record exception address, code, registers, thread and FRR callback phase, with an installation module inventory and a latest-128 ring. Keep v0.0.39 construction/confirmation and pursuit guards unchanged.
+- Add Windows integration tests including a real fatal PAGE_NOACCESS write in a child process; this validates the observer, not the game or rival driving.
+- Document the capture, limitations and isolated Bartender/X360Stuff test. No claim that the startup exit is fixed.
+
 ## 0.0.39-dev
 
 - Record the real v38 capture: user saw a stationary Golf GTI; all eleven signatures passed in the final session, constructor was invoked, but preparation/activation was not reached. Earlier sessions still contained the Bartender hook. Driving and retirement remain unverified.

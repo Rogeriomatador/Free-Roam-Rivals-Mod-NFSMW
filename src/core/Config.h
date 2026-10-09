@@ -3,6 +3,7 @@
 namespace frr {
 
 struct Config {
+    bool exceptionDiagnosticsEnabled = true;
     bool diagnosticBundleEnabled = false;
     bool renderProbeEnabled = true;
     bool inputProbeEnabled = true;

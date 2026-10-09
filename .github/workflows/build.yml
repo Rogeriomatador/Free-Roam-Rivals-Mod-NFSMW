@@ -80,13 +80,14 @@ jobs:
           Copy-Item "docs/COORDINATE_CONVENTIONS.md" "$pkg/COORDINATE_CONVENTIONS.md"
           Copy-Item "docs/TARGET_CAPTURE_V29_ALL_DIAGNOSTICS_2026-10-07.md" "$pkg/TARGET_CAPTURE_V29_ALL_DIAGNOSTICS_2026-10-07.md"
           Copy-Item "docs/EXE_DUMP_V2_FINDINGS.md" "$pkg/EXE_DUMP_V2_FINDINGS.md"
+          Copy-Item "docs/TARGET_CAPTURE_V39_STARTUP_EXIT.md" "$pkg/TARGET_CAPTURE_V39_STARTUP_EXIT.md"
           Copy-Item "docs/TARGET_CAPTURE_V38_VISIBLE_GTI.md" "$pkg/TARGET_CAPTURE_V38_VISIBLE_GTI.md"
           Copy-Item "docs/NATIVE_RIVAL_PROTOTYPE.md" "$pkg/NATIVE_RIVAL_PROTOTYPE.md"
           Copy-Item "docs/POST_RACE_RACER_RESEARCH.md" "$pkg/POST_RACE_RACER_RESEARCH.md"
           Copy-Item "docs/NATIVE_ROAMING_STREAMING_RESEARCH.md" "$pkg/NATIVE_ROAMING_STREAMING_RESEARCH.md"
 
           @"
-          NFSMW Free Roam Rivals v0.0.39-dev
+          NFSMW Free Roam Rivals v0.0.40-dev
 
           INSTALL:
           1. Replace only scripts\FreeRoamRivals.asi with the new ASI. Preserve your configured INIs.
@@ -99,10 +100,14 @@ jobs:
           5. F8 again requests removal, deferred until hidden/300m away and no pursuit.
           6. For comprehensive diagnostics add DiagnosticBundleEnabled=1 under [Diagnostics].
              Press F9 for module/code/world audit; it does not create a vehicle.
-          7. Send scripts\FreeRoamRivals\FreeRoamRivals.log.
+          7. If the game exits during startup, send both FreeRoamRivals.log and
+             NativeExceptions.log from scripts\FreeRoamRivals.
+             ExceptionDiagnosticsEnabled defaults to 1 even in an older INI.
+             Save NativeExceptions.log before retrying; each launch replaces it.
           See NATIVE_RIVAL_PROTOTYPE.md for candidate gates and exact limits.
 
-          Keep NFSMWBartender.asi outside the game folder during this test.
+          Keep NFSMWBartender.asi and X360Stuff.asi outside the game folder during this isolated test.
+          Their presence in the startup-exit capture does not prove the cause.
           This is a connected creation/activation prototype, not an
           in-game-validated stable release. It is disabled by default. One
           constructed vehicle per session; native driving/cleanup test pending.
@@ -114,15 +119,15 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.39-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.40-dev.zip" -Force
 
-      - name: Publish v0.0.39-dev GitHub Release
+      - name: Publish v0.0.40-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.39-dev"
+          $tag = "v0.0.40-dev"
 
           $published = $false
           for ($attempt = 1; $attempt -le 3; $attempt++) {
@@ -132,17 +137,17 @@ jobs:
               if ($info.targetCommitish -ne "${{ github.sha }}") {
                 throw "Existing release target does not match this source commit."
               }
-              if ($info.assets.name -contains "FreeRoamRivals-v0.0.39-dev.zip") {
+              if ($info.assets.name -contains "FreeRoamRivals-v0.0.40-dev.zip") {
                 $published = $true
                 break
               }
-              gh release upload $tag "release/FreeRoamRivals-v0.0.39-dev.zip"
+              gh release upload $tag "release/FreeRoamRivals-v0.0.40-dev.zip"
             } else {
-              gh release create $tag "release/FreeRoamRivals-v0.0.39-dev.zip" `
+              gh release create $tag "release/FreeRoamRivals-v0.0.40-dev.zip" `
                 --target "${{ github.sha }}" `
-                --title "Free Roam Rivals v0.0.39-dev" `
+                --title "Free Roam Rivals v0.0.40-dev" `
                 --prerelease `
-                --notes "v0.0.39-dev: confirmação do carro em duas atualizações concluídas antes da preparação, falhas nativas identificadas por etapa. GTI visível relatado na v0.0.38; direção e retirada ainda precisam de teste no jogo. Mantenha o Bartender desativado neste protótipo."
+                --notes "v0.0.40-dev: registro de exceções nativas para investigar fechamento antes do mundo/F8. Envie FreeRoamRivals.log e NativeExceptions.log. O observador não suprime falhas; causa do fechamento e direção do rival continuam pendentes de validação no jogo. Preserve o INI e teste sem Bartender/X360Stuff."
             }
             if ($LASTEXITCODE -eq 0) { $published = $true; break }
             if ($attempt -lt 3) { Start-Sleep -Seconds 5 }
