@@ -20,7 +20,7 @@ jobs:
         run: cmake -S . -B build -A Win32
 
       - name: Build Release
-        run: cmake --build build --config Release
+        run: cmake --build build --config Release --parallel 2
 
       - name: Run domain/system tests
         run: ctest --test-dir build -C Release --output-on-failure --verbose
@@ -60,6 +60,7 @@ jobs:
           Copy-Item "artifact/FreeRoamRivals.asi" "$pkg/scripts/FreeRoamRivals.asi"
           Copy-Item "config/FreeRoamRivals.ini" "$pkg/scripts/FreeRoamRivals/FreeRoamRivals.ini"
           Copy-Item "config/FreeRoamRivals-play.ini" "$pkg/FreeRoamRivals-play.ini"
+          Copy-Item "docs/TARGET_CAPTURE_V42_CHALLENGE_TIME.md" "$pkg/TARGET_CAPTURE_V42_CHALLENGE_TIME.md"
           Copy-Item "docs/LIVE_RIVAL_V42.md" "$pkg/LIVE_RIVAL_V42.md"
           Copy-Item "config/Rivals.ini" "$pkg/scripts/FreeRoamRivals/Rivals.ini"
           Copy-Item "config/VehiclePools.ini" "$pkg/scripts/FreeRoamRivals/VehiclePools.ini"
@@ -90,7 +91,7 @@ jobs:
           Copy-Item "docs/NATIVE_ROAMING_STREAMING_RESEARCH.md" "$pkg/NATIVE_ROAMING_STREAMING_RESEARCH.md"
 
           @"
-          NFSMW Free Roam Rivals v0.0.42-dev
+          NFSMW Free Roam Rivals v0.0.43-dev
 
           INSTALL:
           1. Replace scripts\FreeRoamRivals.asi. Preserve your other INIs.
@@ -101,11 +102,12 @@ jobs:
           4. F8 creates one nearby GTI; F8 never removes an existing rival.
           5. Follow behind, within 60m, in the same direction. Press G when offered.
              Outrun scoring: hold 300m lead for 3 seconds; timeout 5 minutes.
-          6. Hold F7 for 1.5 seconds to request hidden/pursuit-safe retirement.
+          6. Manual retirement defaults OFF; F7 is never polled by default.
              A race result does not retire the car. One construction per session.
           7. F9 requests a bounded read-only audit. Send FreeRoamRivals.log and
              NativeExceptions.log after your gameplay test.
-          See LIVE_RIVAL_V42.md for exact behavior, history, evidence and limits.
+          See TARGET_CAPTURE_V42_CHALLENGE_TIME.md for current controls/time fix.
+          LIVE_RIVAL_V42.md describes the original integration; F7 is superseded.
 
           Native driving was observed in the owner's v41 capture. New challenge,
           HUD and retirement behavior still need target-game validation.
@@ -119,15 +121,15 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.42-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.43-dev.zip" -Force
 
-      - name: Publish v0.0.42-dev GitHub Release
+      - name: Publish v0.0.43-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.42-dev"
+          $tag = "v0.0.43-dev"
 
           $published = $false
           for ($attempt = 1; $attempt -le 3; $attempt++) {
@@ -137,17 +139,17 @@ jobs:
               if ($info.targetCommitish -ne "${{ github.sha }}") {
                 throw "Existing release target does not match this source commit."
               }
-              if ($info.assets.name -contains "FreeRoamRivals-v0.0.42-dev.zip") {
+              if ($info.assets.name -contains "FreeRoamRivals-v0.0.43-dev.zip") {
                 $published = $true
                 break
               }
-              gh release upload $tag "release/FreeRoamRivals-v0.0.42-dev.zip"
+              gh release upload $tag "release/FreeRoamRivals-v0.0.43-dev.zip"
             } else {
-              gh release create $tag "release/FreeRoamRivals-v0.0.42-dev.zip" `
+              gh release create $tag "release/FreeRoamRivals-v0.0.43-dev.zip" `
                 --target "${{ github.sha }}" `
-                --title "Free Roam Rivals v0.0.42-dev" `
+                --title "Free Roam Rivals v0.0.43-dev" `
                 --prerelease `
-                --notes "v0.0.42-dev: integra desafio G ao GTI vivo, pontuação outrun pela trajetória observada, HUD e histórico por perfil. F8 só cria; segurar F7 solicita retirada segura. Resultados não retiram o rival. Inclui INI play habilitado. Direção nativa confirmada na captura v41; desafio/HUD/retirada novos ainda precisam de teste no jogo. IA nativa de passeio não segue rota escolhida pelo jogador. Sem escritas de dinheiro/garagem/save de carreira; versão dev, não final. Leia LIVE_RIVAL_V42.md."
+                --notes "v0.0.43-dev: corrige interpretação do tempo nativo (int32 fixo em milissegundos convertido para segundos só nos callbacks FRR; argumento original preservado). Desativa retirada manual por padrão: F7 deixa de ser consultado. G mostra/loga motivos de recusa; interrupções registram razão e amostra. Congela pontuação com física sem avanço e velocidade antiga. Captura v42 confirma desafio iniciado e interrompido; sumiço em transições não tem causa comprovada. INI play incluído. Validação no jogo pendente."
             }
             if ($LASTEXITCODE -eq 0) { $published = $true; break }
             if ($attempt -lt 3) { Start-Sleep -Seconds 5 }

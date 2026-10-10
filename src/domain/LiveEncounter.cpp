@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <string_view>
 
 namespace frr::domain {
 namespace {
@@ -14,14 +15,20 @@ bool valid(const EncounterCar& c) {
     return c.valid&&finite(c.position)&&finite(c.forward)&&std::isfinite(c.speed)&&
         c.speed>=0&&c.speed<=150&&length>=0.8f&&length<=1.2f;
 }
-bool following(const EncounterCar& p,const EncounterCar& r,float maximum) {
+const char* followingReason(const EncounterCar& p,const EncounterCar& r,float maximum) {
     const auto offset=subtract(p.position,r.position);
     const float along=dot(offset,r.forward);
     const float lateral=std::abs(offset.x*r.forward.z-offset.z*r.forward.x);
-    return valid(p)&&valid(r)&&p.speed>=3&&r.speed>=3&&dot(p.forward,r.forward)>=0.75f&&
-        std::abs(offset.y)<=3&&along<=-1&&along>=-maximum&&lateral<=7&&
-        distance(p.position,r.position)<=maximum&&std::abs(p.speed-r.speed)<=8.333334f;
+    if(p.speed<3||r.speed<3) return "too_slow";
+    if(distance(p.position,r.position)>maximum) return "too_far";
+    if(std::abs(offset.y)>3) return "different_elevation";
+    if(along>-1) return "not_behind_rival";
+    if(along< -maximum) return "too_far";
+    if(lateral>7||dot(p.forward,r.forward)<0.75f) return "not_aligned";
+    if(std::abs(p.speed-r.speed)>8.333334f) return "speed_difference";
+    return "none";
 }
+
 bool continuous(const EncounterCar& old,const EncounterCar& next,float dt) {
     return distance(old.position,next.position)<=std::max(old.speed,next.speed)*dt+10&&
         std::abs(old.position.y-next.position.y)<=30*dt+4;
@@ -43,19 +50,27 @@ LiveEncounterView LiveEncounter::finish(OutrunOutcome outcome) {
     cooldown_=15;view_.remainingCooldown=cooldown_;view_.available=false;
     return view_;
 }
-LiveEncounterView LiveEncounter::interrupt() {
-    view_.justStarted=view_.justFinished=false;view_.available=false;
+LiveEncounterView LiveEncounter::interrupt(const char* reason) {
+    view_.justStarted=view_.justFinished=false;view_.available=false;view_.reason=reason;
     if(race_.running()) {race_.abort();return finish(OutrunOutcome::Aborted);}
     return view_;
 }
 LiveEncounterView LiveEncounter::tick(const LiveEncounterInput& in) {
     view_.justStarted=view_.justFinished=false;
-    if(!std::isfinite(in.deltaSeconds)||in.deltaSeconds<0||in.deltaSeconds>1||
-        !in.worldSafe||!valid(in.player)||!valid(in.rival)) return interrupt();
+    if(!std::isfinite(in.deltaSeconds)||in.deltaSeconds<0||in.deltaSeconds>1) return interrupt("invalid_delta");
+    if(!in.worldSafe) return interrupt("world_unsafe");
+    if(!valid(in.player)) return interrupt("invalid_player_telemetry");
+    if(!valid(in.rival)) return interrupt("invalid_rival_telemetry");
+    if(in.cancelPressed&&race_.running()) return interrupt("cancelled");
     const float dt=in.deltaSeconds;
-    if(dt==0) return view_;
+    if(dt==0) {view_.available=false;view_.reason="physics_not_advancing";return view_;}
+    if(race_.running()&&distance(previousPlayer_.position,in.player.position)<0.01f&&
+        distance(previousRival_.position,in.rival.position)<0.01f&&std::max(in.player.speed,in.rival.speed)>3) {
+        view_.reason="physics_not_advancing";return view_;
+    }
     cooldown_=std::max(0.0f,cooldown_-dt);view_.remainingCooldown=cooldown_;
-    view_.available=!race_.running()&&cooldown_==0&&in.challengeSafe&&following(in.player,in.rival,challengeDistance_);
+    view_.reason=cooldown_>0?"cooldown":!in.challengeSafe?"pursuit_or_input_unverified":followingReason(in.player,in.rival,challengeDistance_);
+    view_.available=!race_.running()&&view_.reason==std::string_view("none");
     if(!race_.running()) {
         if(!view_.available||!in.acceptPressed) return view_;
         race_.begin();leader_=OutrunLeader::Rival;startTrail(in.player,in.rival);
@@ -65,9 +80,10 @@ LiveEncounterView LiveEncounter::tick(const LiveEncounterInput& in) {
         view_.elapsedSeconds=0;
         return view_;
     }
-    if(in.cancelPressed||!continuous(previousPlayer_,in.player,dt)||!continuous(previousRival_,in.rival,dt)) {
-        race_.abort();return finish(OutrunOutcome::Aborted);
-    }
+    if(in.cancelPressed) return interrupt("cancelled");
+    if(!continuous(previousPlayer_,in.player,dt)) return interrupt("player_discontinuity");
+    if(!continuous(previousRival_,in.rival,dt)) return interrupt("rival_discontinuity");
+    view_.reason="none";
     const EncounterCar* leading=leader_==OutrunLeader::Player?&in.player:&in.rival;
     const EncounterCar* followingCar=leader_==OutrunLeader::Player?&in.rival:&in.player;
     const auto offset=subtract(followingCar->position,leading->position);
@@ -101,7 +117,7 @@ LiveEncounterView LiveEncounter::tick(const LiveEncounterInput& in) {
     if(view_.routeMatched) {followerProgress_=bestProgress;unmatchedSeconds_=0;}
     else unmatchedSeconds_+=dt;
     previousPlayer_=in.player;previousRival_=in.rival;
-    if(unmatchedSeconds_>=3) {race_.abort();return finish(OutrunOutcome::Aborted);}
+    if(unmatchedSeconds_>=3) return interrupt("route_unmatched");
     view_.leader=leader_;
     view_.signedLeadMeters=(leader_==OutrunLeader::Player?1.0f:-1.0f)*std::max(0.0f,leaderProgress_-followerProgress_);
     // An unmatched route resets the hold timer, rather than awarding a win for
@@ -111,7 +127,7 @@ LiveEncounterView LiveEncounter::tick(const LiveEncounterInput& in) {
     if(result!=OutrunOutcome::InProgress) {
         // A timeout while the cars cannot be matched to one observed route
         // must not manufacture a draw or award a result from uncertain data.
-        if(!view_.routeMatched) {race_.abort();return finish(OutrunOutcome::Aborted);}
+        if(!view_.routeMatched) {view_.reason="timeout_route_unverified";race_.abort();return finish(OutrunOutcome::Aborted);}
         return finish(result);
     }
     return view_;

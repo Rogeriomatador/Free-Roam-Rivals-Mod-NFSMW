@@ -1,3 +1,7 @@
+## Atualização v43
+
+Corrigida interpretação de tempo nativo com prova no executável e teste de regressão. G foi reconhecido na captura v42; um desafio terminou abortado em 0,259s. A razão específica não era registrada. v43 acrescenta razões de recusa/interrupção, preserva verificações e remove F7 por padrão. Retenção em transições continua sem causa/solução comprovadas. Veja [TARGET_CAPTURE_V42_CHALLENGE_TIME.md](TARGET_CAPTURE_V42_CHALLENGE_TIME.md).
+
 ## Atualização v42
 
 Direção nativa confirmada na captura v41. v42 conecta G ao outrun por trajetória observada, HUD e histórico por perfil; evita retirada acidental por F8 e por observação ativa temporariamente ausente. Validação no jogo ainda necessária. IA segue goal nativo de passeio, não rota de corrida do jogador. Retenção/streaming, múltiplos modelos, personalidades, customização, corridas oficiais, apostas/pink slips e cinematics permanecem pendentes de integração verificada. Veja [LIVE_RIVAL_V42.md](LIVE_RIVAL_V42.md).

@@ -18,6 +18,7 @@
 #include <cmath>
 #include <sstream>
 #include <string>
+#include <cstdio>
 
 namespace frr::game {
 namespace {
@@ -34,6 +35,8 @@ std::uint64_t lastProfile = 0;
 std::array<std::size_t, 32> candidateCursors{};
 std::uint64_t lastSearchReport = 0;
 std::string lastBlock;
+unsigned retirementKey=0;bool retirementModifiers=true;float retirementSeconds=1.5f;
+char retirementHint[64]="RIVAL PERMANECE APOS A CORRIDA";
 float cleanupHold=0, encounterDelta=0;
 bool cleanupLatched=false, challengePending=false;
 SpatialVector3 startPosition{};
@@ -186,7 +189,12 @@ void mutationResult(NativeFactoryResult result, NativeFactoryResult expected, St
 }
 }
 
-void configureNativeRivalPrototype(bool requested, bool nearPlayer) {
+const char* nativeRivalRetirementHint() {return retirementHint;}
+void configureNativeRivalPrototype(bool requested, bool nearPlayer, unsigned retireKey, bool requireModifiers, float holdSeconds) {
+    retirementKey=retireKey<=255&&retireKey!=VK_F8?retireKey:0;
+    retirementModifiers=requireModifiers;
+    retirementSeconds=std::isfinite(holdSeconds)?std::clamp(holdSeconds,1.0f,5.0f):1.5f;
+    if(retirementKey) std::snprintf(retirementHint,sizeof(retirementHint),"RETIRAR: %sVK %02X SEGURADO %.1f S",requireModifiers?"CTRL SHIFT ":"",retirementKey,retirementSeconds);
     nearPlayerDebug=requested && nearPlayer;
     enabled=requested && VersionGuard::checkCurrentExecutable().supported;
     if (enabled) {
@@ -197,7 +205,7 @@ void configureNativeRivalPrototype(bool requested, bool nearPlayer) {
     }
     if (enabled && nearPlayerDebug) Log::instance().warn("NativePrototype near-player debug enabled: visible creation allowed at 20-120m; road, ground, clearance and pursuit checks retained; cleanup still hidden/300m.");
     if (requested) Log::instance().info(enabled ?
-        "NativePrototype armed: F8 requests one stock Golf GTI; hold F7 for 1.5 seconds to request safe cleanup. Native roaming driving observed in v41; challenge integration requires in-game validation." :
+        "NativePrototype armed: F8 requests one stock Golf GTI; manual retirement disabled by default; optional configured key/modifiers/hold request safe cleanup. Native roaming driving observed in v41; challenge integration requires in-game validation." :
         "NativePrototype blocked: exact supported executable and unchanged world-collision entry required.");
 }
 void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float updateDelta) {
@@ -214,27 +222,29 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
     while (ChallengeInputProbe::consumePress()) challengeEdge=true;
     if (!std::isfinite(updateDelta) || updateDelta<=0) { challengePending=false; cleanupHold=0; cleanupLatched=false; return; }
     const bool focused=foregroundProcess==GetCurrentProcessId();
+    if(challengeEdge&&stage!=Stage::Active) Log::instance().info(std::string("LiveEncounter challenge rejected reason=rival_not_active stage=")+stageName(stage));
     if (stage==Stage::Active) {
         encounterDelta+=updateDelta;
         challengePending=challengePending || (challengeEdge && focused);
     }
-    const bool cleanupDown=focused && (GetAsyncKeyState(VK_F7)&0x8000)!=0;
+    const bool modifiers=!retirementModifiers || ((GetAsyncKeyState(VK_CONTROL)&0x8000)!=0 && (GetAsyncKeyState(VK_SHIFT)&0x8000)!=0);
+    const bool cleanupDown=focused && retirementKey && modifiers && (GetAsyncKeyState(static_cast<int>(retirementKey))&0x8000)!=0;
     if (!cleanupDown) { cleanupHold=0; cleanupLatched=false; }
     else if (!cleanupLatched) {
         // Large/invalid deltas cannot turn a single press into a removal.
         cleanupHold+=std::min(updateDelta,0.1f);
-        if (cleanupHold>=1.5f) {
+        if (cleanupHold>=retirementSeconds) {
             cleanupLatched=true;
             if (stage==Stage::Confirming) cleanupAfterConfirmation=true;
             else if (stage==Stage::Seeking) transition(Stage::Idle);
             else if (stage==Stage::Active || stage==Stage::Loading || stage==Stage::PreparingRacer ||
-                stage==Stage::PreparingRoad || stage==Stage::Activating) beginCleanup("F7_held_1_5_seconds");
+                stage==Stage::PreparingRoad || stage==Stage::Activating) beginCleanup("configured_retirement_hold");
         }
     }
     if (pressed) {
         if (stage==Stage::Idle && !attemptSpent) transition(Stage::Seeking);
         else if (stage==Stage::Seeking) blocked("search_already_in_progress_wait_10_seconds");
-        else Log::instance().info("NativePrototype F8 ignored: existing rival retained; hold F7 for explicit safe retirement.");
+        else Log::instance().info("NativePrototype F8 ignored: existing rival retained; manual retirement requires an explicitly configured key.");
     }
     const auto now=GetTickCount64();
     // Confirmation follows completed gameplay frames, not the 250ms search
@@ -243,7 +253,7 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
         const auto result=NativeVehicleFactory::confirmConstructionInactive();
         if (result==NativeFactoryResult::ConstructedInactive) {
             lastTick=now;
-            if (cleanupAfterConfirmation) beginCleanup("F7_after_identity_confirmation");
+            if (cleanupAfterConfirmation) beginCleanup("configured_hold_after_identity_confirmation");
             else transition(Stage::Loading);
         }
         else if (result==NativeFactoryResult::Faulted) mutationResult(result,NativeFactoryResult::ConstructedInactive,Stage::Loading);
@@ -271,7 +281,8 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
     }
     const auto owned=NativeVehicleFactory::snapshot();
     if (owned.owned && !owned.contextMatches) {
-        interruptNativeEncounter(); encounterDelta=0; challengePending=false;
+        if(challengePending) Log::instance().info("LiveEncounter challenge rejected reason=world_identity_changed");
+        interruptNativeEncounter("world_identity_changed"); encounterDelta=0; challengePending=false;
         blocked("world_transition_no_old_pointer_reads"); return;
     }
     if (stage==Stage::Active) {
@@ -282,7 +293,7 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
                 transition(Stage::Disabled);
             } else if (external==NativeFactoryResult::RemovalPending) blocked("confirming_external_native_retirement");
             else blocked("owned_vehicle_unavailable_wait_without_cleanup");
-            interruptNativeEncounter(); encounterDelta=0; challengePending=false;
+            interruptNativeEncounter("world_identity_changed"); encounterDelta=0; challengePending=false;
             return;
         }
         tickNativeEncounter(current,owned,metric,encounterDelta,challengePending);

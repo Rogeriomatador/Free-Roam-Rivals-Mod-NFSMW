@@ -17,6 +17,9 @@ struct RuntimeProbeConfig {
 
     bool outrunEnabled=false, rivalHudEnabled=true, rivalHistoryEnabled=true;
     float rivalChallengeDistanceMeters=60, outrunWinLeadMeters=300, outrunLeadHoldSeconds=3, outrunMaxDurationSeconds=300;
+    unsigned retireRivalVirtualKey=0;
+    bool retireRequireControlShift=true;
+    float retireHoldSeconds=1.5f;
     bool nativeRivalPrototypeEnabled = false;
     bool nativeRivalPrototypeNearPlayer = false;
     bool experimentalSpawnEnabled = false;

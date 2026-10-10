@@ -14,6 +14,7 @@ struct GameplayLoopSnapshot {
 };
 class GameplayLoopHook {
 public:
+    // Seconds converted from the native signed fixed-millisecond stack word.
     using Callback = void (*)(float);
     static bool install(Callback before, Callback after);
     static GameplayLoopSnapshot snapshot();

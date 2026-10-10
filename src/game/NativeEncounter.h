@@ -12,7 +12,7 @@ struct NativeEncounterConfig {
 void configureNativeEncounter(const NativeEncounterConfig& config);
 void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot& rival,
     const domain::WorldMetricCalibration& metric,float deltaSeconds,bool challengePressed);
-void interruptNativeEncounter();
+void interruptNativeEncounter(const char* reason="world_unsafe");
 bool nativeEncounterRunning();
 void showNativeRivalStatus(const char* message,const char* detail="");
 }

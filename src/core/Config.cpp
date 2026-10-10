@@ -101,6 +101,9 @@ Config Config::load() {
 
     const std::string ini = path.string();
     Log::instance().info("Configuration file: " + ini);
+    cfg.retireRivalVirtualKey=std::min(iniUnsigned(ini,"Input","RetireRivalKey",0),255u);
+    cfg.retireRequireControlShift=iniInt(ini,"Input","RetireRequireControlShift",1)!=0;
+    cfg.retireHoldSeconds=std::clamp(iniFloat(ini,"Input","RetireHoldSeconds",1.5f),1.0f,5.0f);
     cfg.enabled=iniInt(ini,"General","Enabled",1)!=0;
     cfg.rivalHudEnabled=iniInt(ini,"LiveRival","HUDEnabled",1)!=0;
     cfg.rivalHistoryEnabled=iniInt(ini,"LiveRival","PersistHistory",1)!=0;
