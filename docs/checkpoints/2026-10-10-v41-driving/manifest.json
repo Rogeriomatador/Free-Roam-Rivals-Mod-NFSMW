@@ -1,0 +1,57 @@
+{
+  "checkpoint": "2026-10-10-v41-driving",
+  "user_request": "Save everything only. Pause development.",
+  "code_commit": "044178ce4f6ec2cf3010a2b7921d4f04395d0f93",
+  "code_tree": "d4ced3c0173a200a2b06df91a5a8e68d187ffcb3",
+  "release": "v0.0.41-dev",
+  "local_code_verification": {
+    "remote_files_checked": 199,
+    "local_differences": [],
+    "remote_only_files": [
+      "docs/EXACT_TARGET_ACTIVATION_2026-10-08.md",
+      "docs/FIRST_RIVAL_ACTIVATION.md"
+    ]
+  },
+  "files": [
+    {
+      "path": "docs/checkpoints/2026-10-10-v41-driving/FreeRoamRivals(20261010-063114).log",
+      "bytes": 575653,
+      "sha256": "02cc81f3a316ac0679f56238d92226f8337cf3b491ed5b5ea2afd2d977cc676c",
+      "blob_sha": "91ffbd20d266cc9346ea8891df93a7b7e9b196dd"
+    },
+    {
+      "path": "docs/checkpoints/2026-10-10-v41-driving/NativeExceptions(2).log",
+      "bytes": 98304,
+      "sha256": "01d3d3dee1819789976011f66131d7a9e111ad14f504491109accf399add866b",
+      "blob_sha": "8b7e21618a3e543b506c853c781ec15aa3e12eba"
+    },
+    {
+      "path": "docs/checkpoints/2026-10-10-v41-driving/config-last-supplied/FreeRoamRivals.ini",
+      "bytes": 3872,
+      "sha256": "6d81ca727263a17049d9a8218d6944ac2ff7ad7731442487be14cd9b99c5fb90",
+      "blob_sha": "3a4db30779cc43ce46fa603bc0a967b9ae67b8d1",
+      "scope": "Last user-supplied configuration; not a new configuration from the latest capture."
+    },
+    {
+      "path": "docs/checkpoints/2026-10-10-v41-driving/config-last-supplied/Rivals.ini",
+      "bytes": 1482,
+      "sha256": "9889ea7be1c447c58ba2bb62a2c157f12807304ccdecfe6568f902bad861e52b",
+      "blob_sha": "3f19179b05bb1dcb1c0bf7b9fc0a423a975eee19",
+      "scope": "Last user-supplied configuration; not a new configuration from the latest capture."
+    },
+    {
+      "path": "docs/checkpoints/2026-10-10-v41-driving/config-last-supplied/VehiclePools.ini",
+      "bytes": 1258,
+      "sha256": "ccc224bc4963ae238887c0782c74460c2624095514a2ac4ec3e97b2d0c0d4cf1",
+      "blob_sha": "bad604a38ef75a0fe4009c64b96cf01ae5ffe598",
+      "scope": "Last user-supplied configuration; not a new configuration from the latest capture."
+    },
+    {
+      "path": "docs/checkpoints/2026-10-10-v41-driving/config-last-supplied/UndergroundBlacklist.ini",
+      "bytes": 2684,
+      "sha256": "93d1688917fc05e829b9020b6a5b60f55431f45b5275adce2ec14b1f55d91322",
+      "blob_sha": "4e71bf1a65bd0e527169c36bd015d5bbe2706e76",
+      "scope": "Last user-supplied configuration; not a new configuration from the latest capture."
+    }
+  ]
+}
