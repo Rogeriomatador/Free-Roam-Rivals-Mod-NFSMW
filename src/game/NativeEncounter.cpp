@@ -103,7 +103,7 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
     input.rival={{r.center.x/unit,r.center.y/unit,r.center.z/unit},{0,0,0},rival.speed,false};
     if(std::isfinite(direction)&&direction>0.01f) {input.rival.forward={r.forward.x/direction,0,r.forward.z/direction};input.rival.valid=true;}
     input.worldSafe=valid;
-    input.challengeSafe=rival.pursuit==domain::PursuitSafetyState::Clear&&rival.ownedPursuitClear;
+    input.challengeSafe=rival.pursuit==domain::PursuitSafetyState::Clear&&rival.ownedPursuitClear&&ChallengeInputProbe::fallbackVirtualKey()!=0;
     input.deltaSeconds=dt;input.acceptPressed=pressed&&config.enabled&&ChallengeInputProbe::fallbackVirtualKey()!=0;
     domain::LiveEncounterView result{};
     if(config.enabled) result=encounter.tick(input);

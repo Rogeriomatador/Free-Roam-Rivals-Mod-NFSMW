@@ -43,6 +43,16 @@ int main() {
         in.player.position={0,0,n*2.5f};v=corner.tick(in);
     }
     require(v.running&&v.routeMatched,"observed trail matches follower before same corner");
+    LiveEncounter longDrive;auto cruise=input();cruise.acceptPressed=true;longDrive.tick(cruise);cruise.acceptPressed=false;
+    for(int n=1;n<=800;++n) {cruise.player.position.z=n*2.5f;cruise.rival.position.z=20+n*2.5f;v=longDrive.tick(cruise);}
+    require(v.running&&v.routeMatched,"bounded rolling trail survives more than its point capacity");
+    cruise.cancelPressed=true;require(longDrive.tick(cruise).outcome==OutrunOutcome::Aborted,"explicit cancellation records interruption");
+    LiveEncounter invalidAcceptance;auto bad=input();bad.player.forward={0,0,-1};bad.acceptPressed=true;
+    require(!invalidAcceptance.tick(bad).running,"oncoming player cannot accept");
+    bad=input();bad.player.position.y=10;bad.acceptPressed=true;require(!invalidAcceptance.tick(bad).running,"another elevation cannot accept");
+    LiveEncounter timeout({300,3,1,5});auto timed=input();timed.acceptPressed=true;timeout.tick(timed);timed.acceptPressed=false;
+    for(int n=1;n<=4;++n) {timed.player.position.z=n*2.5f;timed.rival.position.z=20+n*2.5f;v=timeout.tick(timed);}
+    require(v.justFinished&&v.outcome==OutrunOutcome::RivalWon,"timeout uses matched trajectory lead");
     in.player.position.x=std::numeric_limits<float>::quiet_NaN();
     require(corner.tick(in).outcome==OutrunOutcome::Aborted,"nonfinite geometry rejected");
     require(finiteConfigFloat("nan",7)==7&&finiteConfigFloat("inf",7)==7&&finiteConfigFloat("2junk",7)==7,"invalid float settings fall back");
