@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.0.42-dev — integrated live outrun
+
+- Preserve v41 native driving path; real capture proves GTI activation and autonomous movement, but reported disappearance remains unexplained (F8 retirement requested, never confirmed).
+- F8 creates only; hold F7 for 1.5 seconds to request guarded retirement. No result-triggered removal or cleanup caused only by temporarily unavailable active observations.
+- Connect G acceptance to live owned rival, native update time, 300m/3s outrun scoring, bounded observed leader trail and close verified overtakes. Block new battles during uncertain/active pursuits; accepted scoring continues without pursuit/AI writes. Abort on world changes, teleports, incompatible routes or invalid telemetry.
+- Add mod-owned D3D9 bitmap HUD from existing EndScene hook, full state capture/restore, no reset-sensitive resources. Present never draws it.
+- Persist wins/losses/draws/aborts by hashed profile in separate atomic mod files. Corrupt, mismatched, stale and conflicting history is preserved; vanilla saves, cash and garage remain untouched.
+- Reject nonfinite/malformed numeric settings and honour General.Enabled=0. Include an enabled play preset without silently changing existing INIs.
+- Add meaningful portable route/lifecycle/config/store regression suites and EndScene-only callback checks. New in-game challenge/rendering/retirement behavior remains unvalidated until target capture. Native roaming AI does not follow a player-selected race route.
+
 ## v0.0.41-dev — scoped construction confirmation
 
 - Real v40 capture: all 11 native signatures pass; constructor returns GTI handle 34, then full-fleet cross-frame preservation faults before any AI preparation or activation. No selected first-chance exception was recorded. Unknown which previous entry disappeared.

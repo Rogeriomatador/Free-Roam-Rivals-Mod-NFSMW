@@ -7,7 +7,7 @@
 
 namespace {
 struct FakeDevice { void** vtable; LONG endCalls = 0; LONG presentCalls = 0; };
-LONG delivered = 0;
+LONG delivered = 0, hudDelivered=0;
 const RECT* seenSource = nullptr;
 const RECT* seenDest = nullptr;
 HWND seenWindow = nullptr;
@@ -15,6 +15,7 @@ const RGNDATA* seenDirty = nullptr;
 void require(bool ok, const char* message) {
     if (!ok) { std::cerr << "FAILED: " << message << '\n'; std::exit(1); }
 }
+void hud(void*) {InterlockedIncrement(&hudDelivered);}
 void observe(void*) { InterlockedIncrement(&delivered); }
 __declspec(noinline) HRESULT WINAPI endA(IDirect3DDevice9* self) {
     auto* device = reinterpret_cast<FakeDevice*>(self);
@@ -50,10 +51,12 @@ int main() {
     End volatile cachedA = reinterpret_cast<End>(tableA[42]);
     End volatile cachedB = reinterpret_cast<End>(tableB[42]);
     Present volatile cachedPresent = reinterpret_cast<Present>(tableA[17]);
+    RenderObservationHook::setHudCallback(&hud);
     require(RenderObservationHook::attachForTest(&a, observe), "native hooks install on guarded COM-like device");
     require(tableA[42] == reinterpret_cast<void*>(&endA), "engine vtable is unchanged");
     require(cachedA(selfA) == 101 && a.endCalls == 1 && delivered == 1,
             "cached EndScene pointer reaches observation and original HRESULT");
+    require(hudDelivered==1,"HUD draws inside EndScene delivery");
     RECT source{1,2,3,4}, dest{5,6,7,8};
     RGNDATA dirty{};
     const auto window = reinterpret_cast<HWND>(static_cast<std::uintptr_t>(123));
@@ -61,6 +64,7 @@ int main() {
             "Present HRESULT is preserved");
     require(seenSource == &source && seenDest == &dest && seenWindow == window && seenDirty == &dirty,
             "Present forwards every argument unchanged");
+    require(hudDelivered==1,"Present never draws the HUD outside a scene");
     require(delivered == 1 && a.presentCalls == 1, "same-frame Present chains but does not double sample");
     require(RenderObservationHook::attachForTest(&b, observe), "replacement device supports new implementation");
     cachedPresent(selfB, nullptr, nullptr, nullptr, nullptr);
@@ -74,6 +78,7 @@ int main() {
             "health distinguishes installed targets and raw callback delivery");
     require(!RenderObservationHook::attachForTest(reinterpret_cast<void*>(1), observe),
             "unreadable device fails closed");
+    RenderObservationHook::setHudCallback(nullptr);
     RenderObservationHook::detachForTest();
     require(cachedA(selfA) == 101 && a.endCalls == 3 && delivered == 3,
             "removal restores cached original entry without callbacks");

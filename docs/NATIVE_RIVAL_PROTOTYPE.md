@@ -1,17 +1,10 @@
-# v0.0.41-dev — primeiro protótipo nativo de um rival
+# v0.0.42-dev — rival nativo e desafio outrun
 
-Esta versão conecta código real de criação, navegação, ativação e pedido de
-remoção ao callback do jogo. **Ainda não foi executada no NFSMW nesta sessão.**
-Compilar e passar testes automáticos não confirma que o GTI aparecerá, dirigirá
-ou terá remoção correta no seu PC. O teste abaixo busca exatamente essa evidência.
-
-O protótipo fica desativado por padrão. Ele não escreve dinheiro, garagem,
-progressão, blacklist ou resultados de corrida. Ainda não oferece desafios,
-corridas ou a aparência/identidade persistente de Rico: é um Golf GTI de fábrica.
+A captura real da v41 confirmou o GTI dirigindo. A v42 integra desafio G, painel e histórico próprio; esses componentes ainda exigem teste no jogo. Veja [LIVE_RIVAL_V42.md](LIVE_RIVAL_V42.md) para instalação, evidências e limites. O rival segue sua IA nativa de passeio; não há corrida oficial criada ou IA seguindo a rota do jogador.
 
 ## Teste no PC
 
-1. Instale o ZIP **v0.0.41-dev** na pasta do jogo, substituindo
+1. Instale o ZIP **v0.0.42-dev** na pasta do jogo, substituindo
    `scripts/FreeRoamRivals.asi`. Preserve seus INIs editados.
 2. No arquivo `scripts/FreeRoamRivals/FreeRoamRivals.ini`, acrescente:
 
@@ -44,7 +37,7 @@ corridas ou a aparência/identidade persistente de Rico: é um Golf GTI de fábr
    movimento ou renderização. As observações seguintes incluem modelo, posição,
    velocidade, deslocamento e estado de perseguição do jogador. Procure o GTI e
    acompanhe seu comportamento; não há marcador/mapa customizado nesta versão.
-6. Para testar retirada, pressione **F8** de novo. A remoção espera que o rival
+6. Para testar retirada, segure **F7 por 1,5 segundo**. A remoção espera que o rival
    esteja oculto, a pelo menos 300 metros do jogador, e que perseguição/cooldown
    estejam ausentes por uma janela estável. Afaste-se sem iniciar perseguição.
    `stage=finished` significa que ambas as listas de veículos omitiram suas
@@ -265,3 +258,7 @@ A v0.0.41 verifica a preservação de toda a frota imediatamente após o constru
 A confirmação acontece a cada callback de gameplay concluído, sem a espera de 250 ms usada na busca. Dois frames distintos continuam obrigatórios; o limite de dois segundos e a proibição de repetir o construtor permanecem. F8 durante confirmação continua apenas enfileirando retirada para depois da identidade confirmada.
 
 Veja `TARGET_CAPTURE_V40_CONSTRUCTION_CONFIRMATION.md` para evidências, pesquisa e teste. A correção remove um bloqueio demonstrado no log; **não comprova direção autônoma**. Instale somente o novo ASI preservando seu INI configurado. Fora de perseguição, calibre dirigindo seu Golf GTI, pressione F9 e F8 uma vez. Observe a preparação/ativação e envie o log mesmo se ainda ficar parado. O ZIP mantém o protótipo desligado por padrão.
+
+## Atualização v42
+
+F8 não retira um rival existente. F7 segurado solicita retirada com os bloqueios originais de ocultação/distância/perseguição. Um resultado outrun nunca solicita retirada. Observação temporariamente indisponível pausa a integração e interrompe pontuação; só ausência confirmada nos dois registros é tratada como retirada externa. Isso não prova que o motor nunca descarregará o carro.

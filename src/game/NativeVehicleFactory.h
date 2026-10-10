@@ -27,6 +27,7 @@ struct NativeOwnedSnapshot {
     domain::PursuitSafetyState pursuit = domain::PursuitSafetyState::Unknown;
     domain::VehicleOrientedBox box{};
     float speed = 0.0f;
+    bool ownedPursuitClear = false;
 };
 struct NativeFactoryRequest {
     domain::SpawnEnvironmentInput environment{};

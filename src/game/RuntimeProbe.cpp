@@ -1,4 +1,6 @@
 #include "RuntimeProbe.h"
+#include "NativeEncounter.h"
+#include "NativeRivalHud.h"
 
 #include "ChallengeInputProbe.h"
 #include "GameplayLoopHook.h"
@@ -1427,11 +1429,11 @@ void onGameplayLoopAfter(float updateDelta) {
     ExceptionTracePhase phase("after_gameplay_update");
     if (++g_gameplayCallbacks == 1)
         Log::instance().info("First verified gameplay-loop callback delivered after original update; native inputPolls remains separate.");
-    if (g_config.inputProbeEnabled) {
+    if (g_config.inputProbeEnabled || g_config.nativeRivalPrototypeEnabled) {
         const auto before = ChallengeInputProbe::totalPresses();
         ChallengeInputProbe::onPoll();
         if (ChallengeInputProbe::totalPresses() != before)
-            Log::instance().info("Fallback challenge key edge observed on gameplay loop (read-only; encounter dispatch not enabled).");
+            Log::instance().info("Fallback challenge key edge observed on verified gameplay loop.");
     }
     processWorldCollisionRequest();
     if (g_config.diagnosticBundleEnabled) tickDiagnosticBundle(metricCalibrationSnapshot(),updateDelta);
@@ -1629,6 +1631,16 @@ RuntimeProbeInstallResult RuntimeProbe::install(
     const RuntimeProbeConfig& config
 ) {
     g_config = config;
+    NativeEncounterConfig encounterConfig{};
+    encounterConfig.enabled=config.outrunEnabled;
+    encounterConfig.hudEnabled=config.rivalHudEnabled && config.nativeRivalPrototypeEnabled;
+    encounterConfig.persistHistory=config.rivalHistoryEnabled;
+    encounterConfig.challengeDistanceMeters=config.rivalChallengeDistanceMeters;
+    encounterConfig.tuning.winLeadMeters=config.outrunWinLeadMeters;
+    encounterConfig.tuning.leadHoldSeconds=config.outrunLeadHoldSeconds;
+    encounterConfig.tuning.maxDurationSeconds=config.outrunMaxDurationSeconds;
+    configureNativeEncounter(encounterConfig);
+    RenderObservationHook::setHudCallback(&renderNativeRivalHud);
     configureNativeRivalPrototype(config.nativeRivalPrototypeEnabled, config.nativeRivalPrototypeNearPlayer);
     g_motionCaptureId = GetTickCount64();
 
@@ -1636,7 +1648,7 @@ RuntimeProbeInstallResult RuntimeProbe::install(
 
     ChallengeInputProbeConfig challengeInputConfig{};
     challengeInputConfig.fallbackVirtualKey =
-        config.fallbackChallengeVirtualKey;
+        (config.fallbackChallengeVirtualKey==VK_F7 || config.fallbackChallengeVirtualKey==VK_F8) ? 0 : config.fallbackChallengeVirtualKey;
 
     ChallengeInputProbe::configure(
         challengeInputConfig

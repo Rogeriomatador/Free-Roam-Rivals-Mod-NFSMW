@@ -18,6 +18,7 @@ public:
     using Callback = void (*)(void*);
     static bool install(Callback callback);
     static RenderHookSnapshot snapshot();
+    static void setHudCallback(Callback callback);
 #ifdef FRR_RENDER_HOOK_TESTING
     static bool attachForTest(void* device, Callback callback);
     static void detachForTest();

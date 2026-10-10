@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.41
+    VERSION 0.0.42
     LANGUAGES C CXX
 )
 
@@ -71,6 +71,7 @@ set(FRR_DOMAIN_SOURCES
     src/domain/MutationReadiness.cpp
     src/domain/RenderObservation.cpp
     src/domain/OutrunRace.cpp
+    src/domain/LiveEncounter.cpp
     src/domain/PostRaceObservation.cpp
     src/domain/Progression.cpp
     src/domain/RoadCandidatePlanner.cpp
@@ -108,6 +109,8 @@ nfsmw_add_plugin(FreeRoamRivals
         src/game/GameBridge.cpp
         src/game/NativeVehicleFactory.cpp
         src/game/NativeRivalPrototype.cpp
+        src/game/NativeEncounter.cpp
+        src/game/NativeRivalHud.cpp
         src/game/PlayerMotionProbe.cpp
         src/game/PostRaceRacerProbe.cpp
         src/game/RoadCandidateProbe.cpp
@@ -118,6 +121,7 @@ nfsmw_add_plugin(FreeRoamRivals
         src/game/VehicleSpatialProbe.cpp
         src/game/WorldCollisionProbe.cpp
         src/persistence/UndergroundBlacklistStore.cpp
+        src/persistence/LiveRivalStore.cpp
         ${FRR_DOMAIN_SOURCES}
 )
 
@@ -137,7 +141,7 @@ target_compile_definitions(FreeRoamRivals PRIVATE
     NOMINMAX
 )
 
-target_link_libraries(FreeRoamRivals PRIVATE advapi32)
+target_link_libraries(FreeRoamRivals PRIVATE advapi32 d3d9)
 
 if(MSVC)
     target_compile_options(FreeRoamRivals PRIVATE /W4)
@@ -306,3 +310,11 @@ add_test(NAME FreeRoamRivalsNativeSearchWindowTests COMMAND FreeRoamRivalsNative
 add_executable(FreeRoamRivalsPrototypeGroundTests tests/prototype_ground_probe_tests.cpp src/domain/WorldCollisionEvidence.cpp)
 target_include_directories(FreeRoamRivalsPrototypeGroundTests PRIVATE src)
 add_test(NAME FreeRoamRivalsPrototypeGroundTests COMMAND FreeRoamRivalsPrototypeGroundTests)
+
+add_executable(FreeRoamRivalsLiveEncounterTests tests/live_encounter_tests.cpp src/domain/LiveEncounter.cpp src/domain/OutrunRace.cpp)
+target_include_directories(FreeRoamRivalsLiveEncounterTests PRIVATE src)
+add_test(NAME FreeRoamRivalsLiveEncounterTests COMMAND FreeRoamRivalsLiveEncounterTests)
+add_executable(FreeRoamRivalsLiveRivalStoreTests tests/live_rival_store_tests.cpp src/persistence/LiveRivalStore.cpp)
+target_include_directories(FreeRoamRivalsLiveRivalStoreTests PRIVATE src)
+target_compile_definitions(FreeRoamRivalsLiveRivalStoreTests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+add_test(NAME FreeRoamRivalsLiveRivalStoreTests COMMAND FreeRoamRivalsLiveRivalStoreTests)

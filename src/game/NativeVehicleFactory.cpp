@@ -671,6 +671,7 @@ NativeOwnedSnapshot NativeVehicleFactory::snapshot() {
     out.contextMatches = true;
     if (!identity(list, owned, true)) return out;
     out.pursuit = readPursuit(context, list);
+    out.ownedPursuitClear = vehiclePursuitClear(owned.iv);
     ownedRead(out);
     return out;
 }

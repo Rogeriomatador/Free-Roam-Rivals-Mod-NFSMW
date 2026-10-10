@@ -1,11 +1,17 @@
 #include "OutrunRace.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace frr::domain {
 
 OutrunRace::OutrunRace(OutrunTuning tuning)
-    : tuning_(tuning) {}
+    : tuning_(tuning) {
+    if(!std::isfinite(tuning_.winLeadMeters)||tuning_.winLeadMeters<=0) tuning_.winLeadMeters=300;
+    if(!std::isfinite(tuning_.leadHoldSeconds)||tuning_.leadHoldSeconds<0) tuning_.leadHoldSeconds=3;
+    if(!std::isfinite(tuning_.maxDurationSeconds)||tuning_.maxDurationSeconds<0) tuning_.maxDurationSeconds=300;
+    if(!std::isfinite(tuning_.timeoutTieMeters)||tuning_.timeoutTieMeters<0) tuning_.timeoutTieMeters=5;
+}
 
 void OutrunRace::begin() {
     running_ = true;
@@ -22,6 +28,7 @@ OutrunOutcome OutrunRace::tick(const OutrunInput& input) {
     }
 
     if (!input.playerValid ||
+        !std::isfinite(input.deltaSeconds) || !std::isfinite(input.signedLeadMeters) ||
         !input.rivalValid ||
         input.unsafeTransition ||
         input.cancelRequested) {
