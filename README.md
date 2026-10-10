@@ -58,6 +58,8 @@ With the play preset, follow the GTI and press G when the HUD offers a challenge
 
 Use [the configured play preset](config/FreeRoamRivals-play.ini) as `scripts/FreeRoamRivals/FreeRoamRivals.ini`; packaged defaults preserve opt-in construction and challenges. See [v42 gameplay procedure, evidence and limits](docs/LIVE_RIVAL_V42.md). One stock GTI construction per session remains the supported scope. Destination events, horn, tuned rival vehicles, personalities, cinematics, wagers, pink slips and the complete world director are not integrated into the game. This is **not a final release**, and the new challenge/HUD integration still requires target-game testing.
 
+## Earlier read-only foundations (v0.0.30 and below)
+
 v0.0.30 adds an optional `Diagnostics.PostRaceRacerDiagnosticsEnabled=1` observation of native racers across stock-race/free-roam transitions. It correlates live vehicle identities, AI interface identities and movement without changing race goals or constructing cars. Loading, incomplete reads and context changes discard correlations; no matches are inconclusive. Target-game validation is pending. See [post-race research and test procedure](docs/POST_RACE_RACER_RESEARCH.md) for pinned public sources, evidence limits and the separate existing Native Free Roam Racers implementation.
 
 The [streaming/roaming/cache investigation](docs/NATIVE_ROAMING_STREAMING_RESEARCH.md) records why global loading completion, Racer class and inactive traffic counts cannot establish a safe creation path. Post-race samples also reject observed live-list storage or membership changes during traversal.

@@ -74,6 +74,7 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
     if(!world.career.profileKeyAvailable||!world.career.profileKey) {interruptNativeEncounter();showNativeRivalStatus("AGUARDANDO PERFIL");return;}
     if(loadedProfile!=world.career.profileKey) {
         interruptNativeEncounter();loadedProfile=world.career.profileKey;
+        lastResultAt=0;lastPlayerForward={0,0,1};
         history={loadedProfile};historyWritable=false;
         if(store) {
             const auto loaded=store->load(loadedProfile);

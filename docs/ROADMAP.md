@@ -40,7 +40,7 @@ Exit criterion: loading the ASI does not alter gameplay and creates a diagnostic
 - [x] Add per-model/context motion capture and independent offline audit tooling
 - [x] Revoke stale statistical stability and bound motion consistency windows
 - [ ] Capture target-machine motion logs across cars/districts
-- [ ] Prove physical GetSpeed unit semantics and calibrate world-units-to-metre scale
+- [x] Prove target speed unit semantics and calibrated world-units-to-metre scale for the GTI integration (broader cars/districts remain unvalidated)
 - [x] Build typed Current/Future/SeekAhead/FarFuture road-candidate observations
 - [x] Require exact WRoadNav association before candidate promotion
 - [x] Encode streaming/ground/visibility/overlap evidence required by spawn promotion
@@ -60,23 +60,23 @@ Exit criterion: loading the ASI does not alter gameplay and creates a diagnostic
 - [ ] Verify complete camera visibility: mirrors, visual bounds and target-machine validation
 - [ ] Resolve world streaming/spooling evidence
 - [ ] Extract and promote one verified road-safe/off-screen spawn candidate in-game
-- [ ] Validate dedicated gameplay-thread mutation callback in-game
+- [x] Validate dedicated gameplay-thread mutation callback in-game (v41 construction/activation capture)
   - [x] Add opt-in read-only GameFrameTick entry probe
   - [x] Encode callback/thread/FreeRoam/lookahead/exact-road/vehicle-spatial/vehicle-footprint/ground/calibration/candidate readiness blockers
-  - [ ] Confirm callback/thread health on target installation before mutation
+  - [x] Confirm callback/thread health on target installation before mutation (v41 verified post-update path)
 - [x] Encode construct/registry/AI/motion/cleanup experiment as a fail-closed state machine
-- [ ] Wire the state machine to verified engine construction/cleanup calls
+- [x] Wire the state machine to verified engine construction/cleanup calls (cleanup completion remains unproven)
 - [ ] Run and pass one controlled construct/verify/clean-up cycle in-game
-- [ ] Attach/verify native roaming AI
+- [x] Attach/verify native roaming AI (v41 observed direction changes and acceleration)
 - [x] Progression-aware vanilla vehicle catalog and deterministic selector
 - [x] Persistent-vs-procedural vehicle ownership policy
 - [x] Interest/challenge distance state machine (runtime adapter pending)
 - [x] Parse configurable fallback challenge key
 - [x] Implement focused edge-triggered fallback challenge input on the verified gameplay loop (target delivery pending)
 - [ ] Identify a genuine native horn/honk source (current verified action table has none)
-- [ ] Wire queued challenge presses into runtime EncounterDirector
-- [ ] Wire accepted challenge into runtime encounter director
-- [x] No save writes
+- [x] Wire queued challenge presses into owned-rival live encounter (v42; target-game test pending)
+- [x] Wire accepted challenge into live observed-trail outrun scoring (v42; target-game test pending)
+- [x] No vanilla save writes; atomic mod-owned profile history added in v42
 
 Exit criterion: one rival can exist in free roam and naturally enter a challenge-ready state.
 

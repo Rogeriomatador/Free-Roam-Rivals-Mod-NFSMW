@@ -212,7 +212,7 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
     keyWasDown=down;
     bool challengeEdge=false;
     while (ChallengeInputProbe::consumePress()) challengeEdge=true;
-    if (!std::isfinite(updateDelta) || updateDelta<=0) { challengePending=false; return; }
+    if (!std::isfinite(updateDelta) || updateDelta<=0) { challengePending=false; cleanupHold=0; cleanupLatched=false; return; }
     const bool focused=foregroundProcess==GetCurrentProcessId();
     if (stage==Stage::Active) {
         encounterDelta+=updateDelta;

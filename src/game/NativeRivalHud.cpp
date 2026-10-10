@@ -63,7 +63,9 @@ void renderNativeRivalHud(void* raw) try {
     if(FAILED(device->GetViewport(&viewport))||viewport.Width<360||viewport.Height<200) return;
     const float scale=std::clamp(viewport.Width/1280.0f,1.0f,2.0f);
     const float x=static_cast<float>(viewport.X)+12,y=static_cast<float>(viewport.Y)+12;
-    std::vector<Vertex> vertices;vertices.reserve(50000);
+    // CPU-only storage is reused on the rendering thread; no GPU resource
+    // survives this callback or needs reset handling.
+    thread_local std::vector<Vertex> vertices;vertices.clear();vertices.reserve(50000);
     quad(vertices,x,y,330*scale,85*scale,D3DCOLOR_ARGB(205,12,16,20));
     for(unsigned line=0;line<6;++line) for(unsigned i=0;i<52&&view.lines[line][i];++i) {
         const auto rows=glyph(view.lines[line][i]);
