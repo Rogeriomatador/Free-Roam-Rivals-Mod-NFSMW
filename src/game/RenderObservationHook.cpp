@@ -23,6 +23,7 @@ struct HookRecord {
 };
 std::array<HookRecord, kTargetLimit> g_endSceneHooks{}, g_presentHooks{};
 std::atomic<RenderObservationHook::Callback> g_callback{nullptr};
+std::atomic<RenderObservationHook::Callback> g_hudCallback{nullptr};
 std::atomic<bool> g_started{false}, g_endSceneInstalled{false}, g_presentInstalled{false};
 std::atomic<std::uintptr_t> g_deviceGlobal{0}, g_device{0}, g_vtable{0};
 std::atomic<std::uint64_t> g_endSceneCalls{0}, g_presentCalls{0};
@@ -47,6 +48,9 @@ void deliver(domain::RenderSignal signal, IDirect3DDevice9* self) {
     else ++g_presentCalls;
     const auto identity = reinterpret_cast<std::uintptr_t>(self);
     if (identity != g_device.load() || g_delivering.test_and_set(std::memory_order_acquire)) return;
+    if (signal==domain::RenderSignal::EndScene) {
+        if(const auto hud=g_hudCallback.load()) hud(self);
+    }
     if (g_router.accept(signal, identity, GetTickCount64())) {
         if (const auto callback = g_callback.load()) callback(self);
     }
@@ -205,6 +209,7 @@ DWORD WINAPI worker(LPVOID) {
     }
 }
 } // namespace
+void RenderObservationHook::setHudCallback(Callback callback) {g_hudCallback.store(callback);}
 
 bool RenderObservationHook::install(Callback callback) {
     if (!callback) return false;

@@ -3,6 +3,8 @@
 namespace frr {
 
 struct Config {
+    bool enabled=true,rivalHudEnabled=true,rivalHistoryEnabled=true;
+    float rivalChallengeDistanceMeters=60;
     bool exceptionDiagnosticsEnabled = true;
     bool diagnosticBundleEnabled = false;
     bool renderProbeEnabled = true;

@@ -15,6 +15,8 @@ struct RuntimeProbeConfig {
     unsigned sampleEveryFrames = 30;
     unsigned heartbeatFrames = 600;
 
+    bool outrunEnabled=false, rivalHudEnabled=true, rivalHistoryEnabled=true;
+    float rivalChallengeDistanceMeters=60, outrunWinLeadMeters=300, outrunLeadHoldSeconds=3, outrunMaxDurationSeconds=300;
     bool nativeRivalPrototypeEnabled = false;
     bool nativeRivalPrototypeNearPlayer = false;
     bool experimentalSpawnEnabled = false;

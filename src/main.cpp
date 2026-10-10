@@ -14,7 +14,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.41-dev";
+constexpr const char* kVersion = "0.0.42-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -62,6 +62,7 @@ int bootstrap() {
     );
 
     const Config config = Config::load();
+    if (!config.enabled) { log.info("General.Enabled=0: runtime hooks disabled."); return NFSMW_OK; }
     if(config.exceptionDiagnosticsEnabled) {
         wchar_t executable[32768]{};
         const auto count=GetModuleFileNameW(nullptr,executable,32768);
@@ -91,6 +92,13 @@ int bootstrap() {
     }
 
     game::RuntimeProbeConfig probeConfig{};
+    probeConfig.outrunEnabled=config.outrunEnabled;
+    probeConfig.rivalHudEnabled=config.rivalHudEnabled;
+    probeConfig.rivalHistoryEnabled=config.rivalHistoryEnabled;
+    probeConfig.rivalChallengeDistanceMeters=config.rivalChallengeDistanceMeters;
+    probeConfig.outrunWinLeadMeters=config.outrunWinLeadMeters;
+    probeConfig.outrunLeadHoldSeconds=config.outrunLeadHoldSeconds;
+    probeConfig.outrunMaxDurationSeconds=config.outrunMaxDurationSeconds;
     probeConfig.diagnosticBundleEnabled=config.diagnosticBundleEnabled;
     probeConfig.renderProbeEnabled =
         config.renderProbeEnabled;
@@ -139,7 +147,7 @@ int bootstrap() {
     }
 
     log.info(
-        "v0.0.41-dev checks full-fleet preservation synchronously at construction, then confirms player and GTI identity/pursuits on two completed frames without freezing unrelated traffic. Native driving and retirement still require game validation. Exception tracing remains enabled."
+        "v0.0.42-dev adds observed-trail outrun challenges, restored-state HUD and per-profile rival history. F8 only creates; hold F7 for safe retirement. Native driving was observed in v41; new challenge integration still needs gameplay validation."
     );
 
     return NFSMW_OK;
@@ -149,7 +157,7 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.41-dev",
+    "0.0.42-dev",
     "Rogeriomatador"
 )
 

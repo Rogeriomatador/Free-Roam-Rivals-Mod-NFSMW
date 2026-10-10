@@ -1,5 +1,6 @@
 #include "Config.h"
 #include "Log.h"
+#include "../domain/ConfigNumbers.h"
 
 #include <windows.h>
 
@@ -62,23 +63,7 @@ unsigned iniUnsigned(
         file.c_str()
     );
 
-    char* end = nullptr;
-    const unsigned long value =
-        std::strtoul(buffer, &end, 0);
-
-    if (end == buffer) {
-        return fallback;
-    }
-
-    while (*end == ' ' || *end == '\t') {
-        ++end;
-    }
-
-    if (*end != '\0') {
-        return fallback;
-    }
-
-    return static_cast<unsigned>(value);
+    return domain::finiteConfigUnsigned(buffer,fallback);
 }
 
 float iniFloat(
@@ -100,13 +85,7 @@ float iniFloat(
         file.c_str()
     );
 
-    char* end = nullptr;
-    const float value = std::strtof(buffer, &end);
-    if (end == buffer) {
-        return fallback;
-    }
-
-    return value;
+    return domain::finiteConfigFloat(buffer,fallback);
 }
 
 } // namespace
@@ -122,6 +101,10 @@ Config Config::load() {
 
     const std::string ini = path.string();
     Log::instance().info("Configuration file: " + ini);
+    cfg.enabled=iniInt(ini,"General","Enabled",1)!=0;
+    cfg.rivalHudEnabled=iniInt(ini,"LiveRival","HUDEnabled",1)!=0;
+    cfg.rivalHistoryEnabled=iniInt(ini,"LiveRival","PersistHistory",1)!=0;
+    cfg.rivalChallengeDistanceMeters=std::clamp(iniFloat(ini,"LiveRival","ChallengeDistanceMeters",60),10.0f,60.0f);
 
     cfg.renderProbeEnabled =
         iniInt(

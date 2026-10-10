@@ -59,6 +59,8 @@ jobs:
 
           Copy-Item "artifact/FreeRoamRivals.asi" "$pkg/scripts/FreeRoamRivals.asi"
           Copy-Item "config/FreeRoamRivals.ini" "$pkg/scripts/FreeRoamRivals/FreeRoamRivals.ini"
+          Copy-Item "config/FreeRoamRivals-play.ini" "$pkg/FreeRoamRivals-play.ini"
+          Copy-Item "docs/LIVE_RIVAL_V42.md" "$pkg/LIVE_RIVAL_V42.md"
           Copy-Item "config/Rivals.ini" "$pkg/scripts/FreeRoamRivals/Rivals.ini"
           Copy-Item "config/VehiclePools.ini" "$pkg/scripts/FreeRoamRivals/VehiclePools.ini"
           Copy-Item "config/UndergroundBlacklist.ini" "$pkg/scripts/FreeRoamRivals/UndergroundBlacklist.ini"
@@ -88,31 +90,28 @@ jobs:
           Copy-Item "docs/NATIVE_ROAMING_STREAMING_RESEARCH.md" "$pkg/NATIVE_ROAMING_STREAMING_RESEARCH.md"
 
           @"
-          NFSMW Free Roam Rivals v0.0.41-dev
+          NFSMW Free Roam Rivals v0.0.42-dev
 
           INSTALL:
-          1. Replace only scripts\FreeRoamRivals.asi with the new ASI. Preserve your configured INIs.
-          2. Keep your INIs; add NativeRivalPrototypeEnabled=1 under [Experimental]
-             only when ready to test the new native integration.
-             For a visible nearby test, also add NativeRivalPrototypeNearPlayer=1.
-             This searches verified road targets at 20-120m, never an occupied spot.
-          3. Use a Golf GTI in ordinary Free Roam. Keep RenderProbeEnabled=1.
-          4. Drive steadily to obtain world metric calibration, then press F8.
-          5. F8 again requests removal, deferred until hidden/300m away and no pursuit.
-          6. For comprehensive diagnostics add DiagnosticBundleEnabled=1 under [Diagnostics].
-             Press F9 for module/code/world audit; it does not create a vehicle.
-          7. If the game exits during startup, send both FreeRoamRivals.log and
-             NativeExceptions.log from scripts\FreeRoamRivals.
-             ExceptionDiagnosticsEnabled defaults to 1 even in an older INI.
-             Save NativeExceptions.log before retrying; each launch replaces it.
-          See NATIVE_RIVAL_PROTOTYPE.md for candidate gates and exact limits.
+          1. Replace scripts\FreeRoamRivals.asi. Preserve your other INIs.
+          2. Copy the included FreeRoamRivals-play.ini to
+             scripts\FreeRoamRivals\FreeRoamRivals.ini to enable challenges.
+             Packaged default INI keeps construction/challenges opt-in.
+          3. Use a Golf GTI in ordinary Free Roam; drive to calibrate metres.
+          4. F8 creates one nearby GTI; F8 never removes an existing rival.
+          5. Follow behind, within 60m, in the same direction. Press G when offered.
+             Outrun scoring: hold 300m lead for 3 seconds; timeout 5 minutes.
+          6. Hold F7 for 1.5 seconds to request hidden/pursuit-safe retirement.
+             A race result does not retire the car. One construction per session.
+          7. F9 requests a bounded read-only audit. Send FreeRoamRivals.log and
+             NativeExceptions.log after your gameplay test.
+          See LIVE_RIVAL_V42.md for exact behavior, history, evidence and limits.
 
-          Keep NFSMWBartender.asi and X360Stuff.asi outside the game folder during this isolated test.
-          Their presence in the startup-exit capture does not prove the cause.
-          This is a connected creation/activation prototype, not an
-          in-game-validated stable release. It is disabled by default. One
-          constructed vehicle per session; native driving/cleanup test pending.
-          Legacy ExperimentalSpawnEnabled remains preflight-only.
+          Native driving was observed in the owner's v41 capture. New challenge,
+          HUD and retirement behavior still need target-game validation.
+          Native roaming AI does not follow a player-selected race route.
+          No cash, garage or vanilla save writes; no full tuned rival system yet.
+          This is a development release, not a final/stable version.
 
           Supported development target:
           speed.exe size: 6029312 bytes
@@ -120,15 +119,15 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.41-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.42-dev.zip" -Force
 
-      - name: Publish v0.0.41-dev GitHub Release
+      - name: Publish v0.0.42-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.41-dev"
+          $tag = "v0.0.42-dev"
 
           $published = $false
           for ($attempt = 1; $attempt -le 3; $attempt++) {
@@ -138,17 +137,17 @@ jobs:
               if ($info.targetCommitish -ne "${{ github.sha }}") {
                 throw "Existing release target does not match this source commit."
               }
-              if ($info.assets.name -contains "FreeRoamRivals-v0.0.41-dev.zip") {
+              if ($info.assets.name -contains "FreeRoamRivals-v0.0.42-dev.zip") {
                 $published = $true
                 break
               }
-              gh release upload $tag "release/FreeRoamRivals-v0.0.41-dev.zip"
+              gh release upload $tag "release/FreeRoamRivals-v0.0.42-dev.zip"
             } else {
-              gh release create $tag "release/FreeRoamRivals-v0.0.41-dev.zip" `
+              gh release create $tag "release/FreeRoamRivals-v0.0.42-dev.zip" `
                 --target "${{ github.sha }}" `
-                --title "Free Roam Rivals v0.0.41-dev" `
+                --title "Free Roam Rivals v0.0.42-dev" `
                 --prerelease `
-                --notes "v0.0.41-dev: corrige o bloqueio preexisting_registry_identity_lost observado após criar o GTI na v40. Preservação da frota conferida no construtor; confirmação do jogador/GTI em dois frames com identidade e perseguições verificadas. Preserve o INI configurado, substitua o ASI, calibre dirigindo seu GTI e pressione F8 fora de perseguição. Direção e retirada ainda precisam de validação no jogo. Envie FreeRoamRivals.log e NativeExceptions.log."
+                --notes "v0.0.42-dev: integra desafio G ao GTI vivo, pontuação outrun pela trajetória observada, HUD e histórico por perfil. F8 só cria; segurar F7 solicita retirada segura. Resultados não retiram o rival. Inclui INI play habilitado. Direção nativa confirmada na captura v41; desafio/HUD/retirada novos ainda precisam de teste no jogo. IA nativa de passeio não segue rota escolhida pelo jogador. Sem escritas de dinheiro/garagem/save de carreira; versão dev, não final. Leia LIVE_RIVAL_V42.md."
             }
             if ($LASTEXITCODE -eq 0) { $published = $true; break }
             if ($attempt -lt 3) { Start-Sleep -Seconds 5 }
