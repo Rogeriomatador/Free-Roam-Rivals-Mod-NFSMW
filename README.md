@@ -50,6 +50,9 @@ Support for additional 1.3 executables will be added only after their addresses/
 
 ## Current status
 
+**v0.0.44-dev (experimental):** displays active Rico distance and player-travel-relative bearing in the HUD. The play preset binds Ctrl+Shift+R (hold 1.5 seconds) to guarded native removal, and F8 is re-armed only after the mod confirms full retirement and no native fault. Better road-reset failure details are logged. Native faults, streaming, world transitions and normal traffic never trigger automatic reconstruction. See [v44 testing notes](docs/RIVAL_LOCATOR_AND_RETRY_V44.md).
+
+
 **v0.0.43-dev — correct native frame time, challenge feedback and F7 conflict removal.**
 
 The v42 owner capture confirms G input and a battle starting, then aborting after 0.259 seconds. Its history file correctly records one interruption. Static inspection found the callback interpreted a native integer fixed-millisecond argument as float seconds. v43 forwards the original stack word unchanged to the game and converts only the FRR callback time using the target's two constants. A regression reproduces the old false discontinuity on normal movement and accepts the same motion with native conversion.
