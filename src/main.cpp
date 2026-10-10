@@ -14,7 +14,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.42-dev";
+constexpr const char* kVersion = "0.0.43-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -92,6 +92,9 @@ int bootstrap() {
     }
 
     game::RuntimeProbeConfig probeConfig{};
+    probeConfig.retireRivalVirtualKey=config.retireRivalVirtualKey;
+    probeConfig.retireRequireControlShift=config.retireRequireControlShift;
+    probeConfig.retireHoldSeconds=config.retireHoldSeconds;
     probeConfig.outrunEnabled=config.outrunEnabled;
     probeConfig.rivalHudEnabled=config.rivalHudEnabled;
     probeConfig.rivalHistoryEnabled=config.rivalHistoryEnabled;
@@ -147,7 +150,7 @@ int bootstrap() {
     }
 
     log.info(
-        "v0.0.42-dev adds observed-trail outrun challenges, restored-state HUD and per-profile rival history. F8 only creates; hold F7 for safe retirement. Native driving was observed in v41; new challenge integration still needs gameplay validation."
+        "v0.0.43-dev converts native fixed-millisecond frame ticks to callback seconds; keeps original stack word unchanged. Manual retirement defaults off; G refusals and race interruption reasons are recorded."
     );
 
     return NFSMW_OK;
@@ -157,7 +160,7 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.42-dev",
+    "0.0.43-dev",
     "Rogeriomatador"
 )
 

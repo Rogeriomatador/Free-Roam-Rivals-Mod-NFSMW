@@ -1,5 +1,7 @@
 #include "domain/LiveEncounter.h"
 #include "domain/ConfigNumbers.h"
+#include "domain/FrameTickTime.h"
+#include <bit>
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -62,5 +64,17 @@ int main() {
     require(finiteConfigFloat(" 2.5 \t",7)==2.5f&&finiteConfigFloat("1e99",7)==7,"finite settings and overflow");
     require(finiteConfigUnsigned("0x47",1)==71&&finiteConfigUnsigned("0",1)==0,"hex input key and disabled value");
     require(finiteConfigUnsigned("-1",7)==7&&finiteConfigUnsigned("9999999999999999999",7)==7&&finiteConfigUnsigned("1x",7)==7,"invalid unsigned settings rejected");
+    require(std::abs(frameTickSeconds(16384000)-0.25f)<0.000001f,"native fixed milliseconds converted to seconds");
+    require(frameTickSeconds(0)==0&&frameTickSeconds(-65536)<0,"zero and negative native deltas preserved");
+    LiveEncounter correctClock,wrongClock;auto replay=input();replay.player.speed=replay.rival.speed=52;
+    replay.deltaSeconds=frameTickSeconds(16384000);replay.acceptPressed=true;correctClock.tick(replay);wrongClock.tick(replay);
+    replay.acceptPressed=false;replay.player.position.z+=13;replay.rival.position.z+=13;
+    auto incorrect=replay;incorrect.deltaSeconds=std::bit_cast<float>(std::int32_t{16384000});
+    require(wrongClock.tick(incorrect).outcome==OutrunOutcome::Aborted,"old float reinterpretation falsely rejects normal 13m movement");
+    require(correctClock.tick(replay).running,"verified native time conversion accepts normal movement");
+    const float elapsed=correctClock.tick(replay).elapsedSeconds;
+    for(int n=0;n<20;++n) v=correctClock.tick(replay);
+    require(v.running&&v.elapsedSeconds==elapsed,"unchanged physical poses with stale speed freeze scoring");
+    replay.player.position.z+=13;replay.rival.position.z+=13;require(correctClock.tick(replay).running,"resume checks continuity and continues");
     std::cout<<"Live encounter route, pursuit, overtake, lifecycle and config tests passed\n";
 }

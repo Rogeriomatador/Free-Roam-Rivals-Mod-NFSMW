@@ -1,4 +1,5 @@
 #include "GameplayLoopHook.h"
+#include "../domain/FrameTickTime.h"
 #include "../domain/GameplayLoopEvidence.h"
 #include "../core/Log.h"
 #include <windows.h>
@@ -11,7 +12,7 @@
 
 namespace frr::game {
 namespace {
-using LoopFn = void (__cdecl*)(float);
+using LoopFn = void (__cdecl*)(std::int32_t);
 std::atomic<LoopFn> g_original{nullptr};
 GameplayLoopHook::Callback g_before = nullptr, g_after = nullptr;
 std::atomic<bool> g_installed{false}, g_verified{false}, g_consistent{true};
@@ -25,20 +26,20 @@ struct AfterCallbackScope {
     ~AfterCallbackScope() { g_inAfterCallback = false; }
 };
 
-void __cdecl detour(float tickerDifference) {
+void __cdecl detour(std::int32_t tickerDifference) {
     const DWORD thread = GetCurrentThreadId();
     DWORD first = 0;
     g_thread.compare_exchange_strong(first, thread);
     if (g_thread.load() != thread) g_consistent.store(false);
     ++g_entered;
     const bool outer = ++g_depth == 1;
-    if (outer && g_consistent.load() && g_before) g_before(tickerDifference);
+    if (outer && g_consistent.load() && g_before) g_before(domain::frameTickSeconds(tickerDifference));
     // Callback state and trampoline are published before enabling this entry.
     if (const auto original = g_original.load()) original(tickerDifference);
     ++g_completed;
     if (outer && g_consistent.load() && g_after) {
         AfterCallbackScope scope;
-        g_after(tickerDifference);
+        g_after(domain::frameTickSeconds(tickerDifference));
     }
     --g_depth;
 }
@@ -156,7 +157,7 @@ bool GameplayLoopHook::install(Callback before, Callback after) {
     std::ostringstream line;
     line << "Gameplay-loop discovery: match=" << static_cast<int>(found.match)
          << " callSite=0x" << std::hex << found.callSite << " target=0x" << found.target
-         << " expectedRva=0x263d30 source=WFP_MW05_cdecl_float";
+         << " expectedRva=0x263d30 source=MW05_cdecl_int32_fixed_ms callbacks=seconds";
     Log::instance().info(line.str());
 
     const auto owner = moduleBaseName(found.target);

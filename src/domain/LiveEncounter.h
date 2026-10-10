@@ -17,6 +17,7 @@ struct LiveEncounterInput {
 };
 struct LiveEncounterView {
     bool available=false,running=false,routeMatched=false,justStarted=false,justFinished=false;
+    const char* reason="none"; // Static reason identifiers, never borrowed input strings.
     OutrunOutcome outcome=OutrunOutcome::InProgress;
     OutrunLeader leader=OutrunLeader::Rival;
     float signedLeadMeters=0,holdProgress=0,remainingCooldown=0,elapsedSeconds=0;
@@ -27,7 +28,7 @@ class LiveEncounter {
 public:
     explicit LiveEncounter(OutrunTuning tuning={},float challengeDistance=60);
     LiveEncounterView tick(const LiveEncounterInput& input);
-    LiveEncounterView interrupt();
+    LiveEncounterView interrupt(const char* reason="world_unsafe");
     bool running() const { return race_.running(); }
 private:
     struct TrailPoint { EncounterPoint position{};float progress=0; };

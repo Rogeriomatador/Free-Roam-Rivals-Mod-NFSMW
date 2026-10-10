@@ -50,13 +50,13 @@ Support for additional 1.3 executables will be added only after their addresses/
 
 ## Current status
 
-**v0.0.42-dev — native roaming GTI plus mod-owned outrun challenges.**
+**v0.0.43-dev — correct native frame time, challenge feedback and F7 conflict removal.**
 
-The owner's v0.0.41 capture proves the created GTI activated, accelerated and changed direction. The same capture records an F8 cleanup request, but no completed retirement; the cause of the reported disappearance is unresolved. v0.0.42 makes F8 creation-only, requires a 1.5-second F7 hold for retirement, and waits through temporary missing observations instead of automatically retiring an active rival.
+The v42 owner capture confirms G input and a battle starting, then aborting after 0.259 seconds. Its history file correctly records one interruption. Static inspection found the callback interpreted a native integer fixed-millisecond argument as float seconds. v43 forwards the original stack word unchanged to the game and converts only the FRR callback time using the target's two constants. A regression reproduces the old false discontinuity on normal movement and accepts the same motion with native conversion.
 
-With the play preset, follow the GTI and press G when the HUD offers a challenge. Scoring uses the leader's observed trajectory, nearby overtake confirmation and vertical separation checks; 300 metres held for three seconds wins. Already accepted battles continue during pursuits. New challenges require verified clear player and rival pursuits. Results update separate per-profile mod history; they do not change career cash, cars or saves. The native roaming driver is unchanged and has no knowledge of the mod's challenge or a player-selected route. Ambiguous route separation cancels scoring.
+G remains the alternative challenge key; horn integration is unverified. Refusals now show proximity/alignment/speed/cooldown feedback and log explicit reasons; terminal race samples identify safety interruption causes. F7 is no longer polled by default: manual retirement defaults off, including old INIs without the new key. An optional user-selected hold shortcut can be configured; no shortcut is claimed universally conflict-free. Scoring freezes on nonadvancing physical poses with stale nonzero speed.
 
-Use [the configured play preset](config/FreeRoamRivals-play.ini) as `scripts/FreeRoamRivals/FreeRoamRivals.ini`; packaged defaults preserve opt-in construction and challenges. See [v42 gameplay procedure, evidence and limits](docs/LIVE_RIVAL_V42.md). One stock GTI construction per session remains the supported scope. Destination events, horn, tuned rival vehicles, personalities, cinematics, wagers, pink slips and the complete world director are not integrated into the game. This is **not a final release**, and the new challenge/HUD integration still requires target-game testing.
+Use [the play preset](config/FreeRoamRivals-play.ini) as `scripts/FreeRoamRivals/FreeRoamRivals.ini`; F8 creates one stock GTI and G challenges it. [v42 capture and v43 correction](docs/TARGET_CAPTURE_V42_CHALLENGE_TIME.md). The [v42 gameplay procedure](docs/LIVE_RIVAL_V42.md) describes the original integration; its F7 control is superseded in v43. No cash/garage/vanilla save writes. Native roaming AI does not follow a player-selected race route. Tuned rivals, full population/personality/economy and streaming recovery remain pending. This is not a final release; the corrected challenge still requires in-game validation.
 
 ## Earlier read-only foundations (v0.0.30 and below)
 

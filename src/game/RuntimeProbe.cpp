@@ -1641,14 +1641,14 @@ RuntimeProbeInstallResult RuntimeProbe::install(
     encounterConfig.tuning.maxDurationSeconds=config.outrunMaxDurationSeconds;
     configureNativeEncounter(encounterConfig);
     RenderObservationHook::setHudCallback(&renderNativeRivalHud);
-    configureNativeRivalPrototype(config.nativeRivalPrototypeEnabled, config.nativeRivalPrototypeNearPlayer);
+    configureNativeRivalPrototype(config.nativeRivalPrototypeEnabled, config.nativeRivalPrototypeNearPlayer,config.retireRivalVirtualKey,config.retireRequireControlShift,config.retireHoldSeconds);
     g_motionCaptureId = GetTickCount64();
 
     RuntimeProbeInstallResult result{};
 
     ChallengeInputProbeConfig challengeInputConfig{};
     challengeInputConfig.fallbackVirtualKey =
-        (config.fallbackChallengeVirtualKey==VK_F7 || config.fallbackChallengeVirtualKey==VK_F8) ? 0 : config.fallbackChallengeVirtualKey;
+        (config.fallbackChallengeVirtualKey==config.retireRivalVirtualKey || config.fallbackChallengeVirtualKey==VK_F8) ? 0 : config.fallbackChallengeVirtualKey;
 
     ChallengeInputProbe::configure(
         challengeInputConfig

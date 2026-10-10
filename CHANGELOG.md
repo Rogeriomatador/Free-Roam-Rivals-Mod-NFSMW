@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.0.43-dev — native clock and challenge feedback
+
+- Real v42 capture: 19 G edges; one battle begins then aborts after 0.259s. History correctly stores one abort. No mod cleanup or confirmed engine retirement; some transitory world gaps recover. Disappearance cause remains unresolved.
+- Correct proven ABI/time mistake: native 0x663D30 uses FILD int32 and multiplies by 1/65536 and 0.001f, not float seconds. Forward raw integer stack word unchanged to original; convert only FRR callback time. Preserve all mutation/source/thread gates.
+- Reproduce old false teleport rejection on ordinary 13m/0.25s movement; validate converted time and native original-argument/recursive callback behavior. Freeze scoring on nonadvancing physical poses with stale speed.
+- Disable manual retirement by default and remove F7 polling; optional key/modifiers/hold configuration retained. No default replacement shortcut assumed conflict-free.
+- G refusals show actionable feedback and log reasons. Race interruptions log reason and terminal sample. Horn source, streaming recovery and target-game confirmation remain pending; no safety gate relaxed.
+
 ## v0.0.42-dev — integrated live outrun
 
 - Preserve v41 native driving path; real capture proves GTI activation and autonomous movement, but reported disappearance remains unexplained (F8 retirement requested, never confirmed).

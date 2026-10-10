@@ -5,6 +5,9 @@ namespace frr {
 struct Config {
     bool enabled=true,rivalHudEnabled=true,rivalHistoryEnabled=true;
     float rivalChallengeDistanceMeters=60;
+    unsigned retireRivalVirtualKey=0;
+    bool retireRequireControlShift=true;
+    float retireHoldSeconds=1.5f;
     bool exceptionDiagnosticsEnabled = true;
     bool diagnosticBundleEnabled = false;
     bool renderProbeEnabled = true;
