@@ -60,5 +60,7 @@ public:
     static NativeFactoryResult requestRemoval();
     static NativeFactoryResult observeRemoval();
     static NativeFactoryResult observeExternalRemoval();
+    // Only after confirmed removal, with no native fault or owned/pending car.
+    static bool safeToRetryAfterConfirmedRemoval();
 };
 }

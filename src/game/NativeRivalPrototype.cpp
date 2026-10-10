@@ -58,7 +58,14 @@ void transition(Stage next) {
     Log::instance().info(std::string("NativePrototype stage=") + stageName(next) + " maxOwned=1 gameplayCallback=1");
 }
 void blocked(const std::string& reason) {
-    showNativeRivalStatus("AGUARDANDO CONDICOES SEGURAS", stage==Stage::Seeking ? "DIRIJA O GOLF GTI E TENTE NOVAMENTE" : "RIVAL PRESERVADO DURANTE A TRANSICAO");
+    if(stage==Stage::Retiring) {
+        if(reason=="cleanup_deferred_until_hidden_and_300m_away")
+            showNativeRivalStatus("RETIRADA PENDENTE", "AFASTE-SE 300M; CARRO DEVE FICAR OCULTO");
+        else if(reason=="cleanup_requires_stable_clear_pursuit_window")
+            showNativeRivalStatus("RETIRADA PENDENTE", "AGUARDE FIM DA PERSEGUICAO / TRANSICAO");
+        else showNativeRivalStatus("RETIRADA NATIVA PENDENTE", "AGUARDANDO REGISTROS E CONTEXTO SEGUROS");
+    } else showNativeRivalStatus("AGUARDANDO CONDICOES SEGURAS",
+        stage==Stage::Seeking ? "DIRIJA O GOLF GTI E TENTE NOVAMENTE" : "RIVAL PRESERVADO DURANTE A TRANSICAO");
     const auto now = GetTickCount64();
     if (reason != lastBlock || now-lastBlockLog >= 5000) {
         Log::instance().warn(std::string("NativePrototype blocked=") + reason + " stage=" + stageName(stage));
@@ -194,7 +201,10 @@ void configureNativeRivalPrototype(bool requested, bool nearPlayer, unsigned ret
     retirementKey=retireKey<=255&&retireKey!=VK_F8?retireKey:0;
     retirementModifiers=requireModifiers;
     retirementSeconds=std::isfinite(holdSeconds)?std::clamp(holdSeconds,1.0f,5.0f):1.5f;
-    if(retirementKey) std::snprintf(retirementHint,sizeof(retirementHint),"RETIRAR: %sVK %02X SEGURADO %.1f S",requireModifiers?"CTRL SHIFT ":"",retirementKey,retirementSeconds);
+    if(retirementKey>=0x41 && retirementKey<=0x5A)
+        std::snprintf(retirementHint,sizeof(retirementHint),"RETIRAR: %s%c POR %.1f S",requireModifiers?"CTRL+SHIFT+":"",static_cast<char>(retirementKey),retirementSeconds);
+    else if(retirementKey)
+        std::snprintf(retirementHint,sizeof(retirementHint),"RETIRAR: %sVK %02X POR %.1f S",requireModifiers?"CTRL SHIFT ":"",retirementKey,retirementSeconds);
     nearPlayerDebug=requested && nearPlayer;
     enabled=requested && VersionGuard::checkCurrentExecutable().supported;
     if (enabled) {
@@ -305,7 +315,11 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
             std::ostringstream line;
             line<<"NativePrototype observation: active="<<owned.active<<" model=0x"<<std::hex<<owned.box.vehicleKey<<std::dec
                 <<" x="<<owned.box.center.x<<" y="<<owned.box.center.y<<" z="<<owned.box.center.z
-                <<" speedMps="<<owned.speed<<" displacementMeters="<<(traveled ? *traveled : -1)
+                <<" speedMps="<<owned.speed
+                <<" playerDistanceMeters="<<(current.playerMotion.position.finite ?
+                    worldUnitsToMeters(distance(owned.box.center,
+                        {current.playerMotion.position.x,current.playerMotion.position.y,current.playerMotion.position.z}),metric).value_or(-1.0f) : -1.0f)
+                <<" displacementMeters="<<(traveled ? *traveled : -1)
                 <<" movementObserved="<<(traveled && *traveled>=5)<<" playerPursuitState="<<static_cast<int>(pursuit)
                 <<" lifecycleProven=0";
             Log::instance().info(line.str());
@@ -386,7 +400,17 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
     if (stage==Stage::Retiring) {
         if (stable<6) { blocked("cleanup_requires_stable_clear_pursuit_window"); return; }
         const auto observed=NativeVehicleFactory::observeRemoval();
-        if (observed==NativeFactoryResult::Removed) { transition(Stage::Finished); return; }
+        if (observed==NativeFactoryResult::Removed) {
+            if (NativeVehicleFactory::safeToRetryAfterConfirmedRemoval()) {
+                attemptSpent=false; stable=0;
+                Log::instance().info("NativePrototype owned retirement confirmed; F8 may request a new safe search");
+                transition(Stage::Idle);
+            } else {
+                Log::instance().warn("NativePrototype owned removal confirmed but native fault blocks retry");
+                transition(Stage::Finished);
+            }
+            return;
+        }
         if (observed==NativeFactoryResult::RemovalPending) { blocked("waiting_for_both_native_registries"); return; }
         const auto external=NativeVehicleFactory::observeExternalRemoval();
         if (external==NativeFactoryResult::RemovedByEngine) {

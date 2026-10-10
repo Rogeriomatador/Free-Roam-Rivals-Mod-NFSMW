@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.0.44-dev — live rival locator, guarded retirement/retry, reset diagnostics
+
+- The 2026-10-10 owner logs show v42 GTI generated about 74m away and autonomously drove far from the player without a locator; a later v43 spawn about 23m away failed at native road reset, was not activated and entered deferred cleanup.
+- On the existing D3D HUD, show straight-line distance to the VALIDATED live owned GTI. Show direction relative to current player movement while driving; when stationary, explicitly show direction unavailable. This is not a road route, map marker or position across invalid world/streaming.
+- Add per-second playerDistanceMeters to prototype observation logs.
+- Log specific road reset failure guard (vehicle state, AI pointer/vtable, seed, native return, snapshot or position) while retaining all native addresses, guards and call order.
+- Only the play preset opts into hold Ctrl+Shift+R (virtual key 0x52 with Ctrl+Shift and 1.5s) to request safe native removal. Default INI continues to disable manual retirement. Removal may be deferred until pursuit-clear, hidden and >=300m away.
+- After a mod-requested retirement, F8 re-arms only when BOTH native registries have excluded the owned car in two different completed gameplay frames, with no factory fault and no surviving owned/pending native identity. Native faults, transitions, and engine-side disappearance do NOT re-arm the prototype.
+- Add domain locator tests. Full in-game verification of HUD, native cleanup, road reset and repeated create/remove remains pending.
+
+
 ## v0.0.43-dev — native clock and challenge feedback
 
 - Real v42 capture: 19 G edges; one battle begins then aborts after 0.259s. History correctly stores one abort. No mod cleanup or confirmed engine retirement; some transitory world gaps recover. Disappearance cause remains unresolved.
