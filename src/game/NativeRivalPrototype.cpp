@@ -58,7 +58,14 @@ void transition(Stage next) {
     Log::instance().info(std::string("NativePrototype stage=") + stageName(next) + " maxOwned=1 gameplayCallback=1");
 }
 void blocked(const std::string& reason) {
-    showNativeRivalStatus("AGUARDANDO CONDICOES SEGURAS", stage==Stage::Seeking ? "DIRIJA O GOLF GTI E TENTE NOVAMENTE" : "RIVAL PRESERVADO DURANTE A TRANSICAO");
+    if(stage==Stage::Retiring) {
+        if(reason=="cleanup_deferred_until_hidden_and_300m_away")
+            showNativeRivalStatus("RETIRADA PENDENTE", "AFASTE-SE 300M; CARRO DEVE FICAR OCULTO");
+        else if(reason=="cleanup_requires_stable_clear_pursuit_window")
+            showNativeRivalStatus("RETIRADA PENDENTE", "AGUARDE FIM DA PERSEGUICAO / TRANSICAO");
+        else showNativeRivalStatus("RETIRADA NATIVA PENDENTE", "AGUARDANDO REGISTROS E CONTEXTO SEGUROS");
+    } else showNativeRivalStatus("AGUARDANDO CONDICOES SEGURAS",
+        stage==Stage::Seeking ? "DIRIJA O GOLF GTI E TENTE NOVAMENTE" : "RIVAL PRESERVADO DURANTE A TRANSICAO");
     const auto now = GetTickCount64();
     if (reason != lastBlock || now-lastBlockLog >= 5000) {
         Log::instance().warn(std::string("NativePrototype blocked=") + reason + " stage=" + stageName(stage));
@@ -194,7 +201,10 @@ void configureNativeRivalPrototype(bool requested, bool nearPlayer, unsigned ret
     retirementKey=retireKey<=255&&retireKey!=VK_F8?retireKey:0;
     retirementModifiers=requireModifiers;
     retirementSeconds=std::isfinite(holdSeconds)?std::clamp(holdSeconds,1.0f,5.0f):1.5f;
-    if(retirementKey) std::snprintf(retirementHint,sizeof(retirementHint),"RETIRAR: %sVK %02X SEGURADO %.1f S",requireModifiers?"CTRL SHIFT ":"",retirementKey,retirementSeconds);
+    if(retirementKey>=0x41 && retirementKey<=0x5A)
+        std::snprintf(retirementHint,sizeof(retirementHint),"RETIRAR: %s%c POR %.1f S",requireModifiers?"CTRL+SHIFT+":"",static_cast<char>(retirementKey),retirementSeconds);
+    else if(retirementKey)
+        std::snprintf(retirementHint,sizeof(retirementHint),"RETIRAR: %sVK %02X POR %.1f S",requireModifiers?"CTRL SHIFT ":"",retirementKey,retirementSeconds);
     nearPlayerDebug=requested && nearPlayer;
     enabled=requested && VersionGuard::checkCurrentExecutable().supported;
     if (enabled) {
