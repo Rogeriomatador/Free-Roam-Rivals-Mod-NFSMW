@@ -305,7 +305,11 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
             std::ostringstream line;
             line<<"NativePrototype observation: active="<<owned.active<<" model=0x"<<std::hex<<owned.box.vehicleKey<<std::dec
                 <<" x="<<owned.box.center.x<<" y="<<owned.box.center.y<<" z="<<owned.box.center.z
-                <<" speedMps="<<owned.speed<<" displacementMeters="<<(traveled ? *traveled : -1)
+                <<" speedMps="<<owned.speed
+                <<" playerDistanceMeters="<<(current.playerMotion.position.finite ?
+                    worldUnitsToMeters(distance(owned.box.center,
+                        {current.playerMotion.position.x,current.playerMotion.position.y,current.playerMotion.position.z}),metric).value_or(-1.0f) : -1.0f)
+                <<" displacementMeters="<<(traveled ? *traveled : -1)
                 <<" movementObserved="<<(traveled && *traveled>=5)<<" playerPursuitState="<<static_cast<int>(pursuit)
                 <<" lifecycleProven=0";
             Log::instance().info(line.str());
@@ -386,7 +390,17 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
     if (stage==Stage::Retiring) {
         if (stable<6) { blocked("cleanup_requires_stable_clear_pursuit_window"); return; }
         const auto observed=NativeVehicleFactory::observeRemoval();
-        if (observed==NativeFactoryResult::Removed) { transition(Stage::Finished); return; }
+        if (observed==NativeFactoryResult::Removed) {
+            if (NativeVehicleFactory::safeToRetryAfterConfirmedRemoval()) {
+                attemptSpent=false; stable=0;
+                Log::instance().info("NativePrototype owned retirement confirmed; F8 may request a new safe search");
+                transition(Stage::Idle);
+            } else {
+                Log::instance().warn("NativePrototype owned removal confirmed but native fault blocks retry");
+                transition(Stage::Finished);
+            }
+            return;
+        }
         if (observed==NativeFactoryResult::RemovalPending) { blocked("waiting_for_both_native_registries"); return; }
         const auto external=NativeVehicleFactory::observeExternalRemoval();
         if (external==NativeFactoryResult::RemovedByEngine) {

@@ -52,6 +52,7 @@ std::uintptr_t lastExceptionInstruction=0,lastExceptionMemory=0;
 std::uintptr_t identityVtable=0,identitySim=0;
 std::uint32_t identityKey=0;
 const char* nativePhase="none";
+const char* roadResetReason="not_attempted";
 const char* identityReason="not_checked";
 std::size_t sourceBatchCursor = 0;
 bool disabled = false, prepared = false, compatibilityRejected = false;
@@ -545,25 +546,27 @@ bool vehiclePursuitClear(std::uintptr_t iv) {
 }
 bool ownedPursuitClear() { return vehiclePursuitClear(owned.iv); }
 bool roadResetCall() {
+    roadResetReason="begin";
 #if defined(_MSC_VER)
     __try {
 #endif
         auto* v = reinterpret_cast<IVehicle*>(owned.iv);
-        if (v->IsActive() || v->IsLoading() || v->IsDestroyed()) return false;
+        if (v->IsActive() || v->IsLoading() || v->IsDestroyed()) { roadResetReason="vehicle_state_invalid"; return false; }
         auto* ai = v->GetAIVehiclePtr();
-        if (!ai || *reinterpret_cast<std::uintptr_t*>(ai) != 0x892640) return false;
+        if (!ai || *reinterpret_cast<std::uintptr_t*>(ai) != 0x892640) { roadResetReason="ai_missing_or_vtable_changed"; return false; }
         domain::NativeRoadSeedBytes source{};
-        if (!domain::encodeNativeRoadSeed(owned.roadTarget.seed, source)) return false;
+        if (!domain::encodeNativeRoadSeed(owned.roadTarget.seed, source)) { roadResetReason="road_seed_encoding_failed"; return false; }
         // Actual target returns AL success (the SDK declares void).
         const bool reset = reinterpret_cast<bool(__thiscall*)(IVehicleAI*, const void*)>(0x422690)(ai, source.bytes.data());
-        if (!reset) return false;
+        if (!reset) { roadResetReason="native_reset_returned_false"; return false; }
         NativeOwnedSnapshot current{};
-        if (!ownedRead(current) || !current.box.valid || current.active) return false;
+        if (!ownedRead(current) || !current.box.valid || current.active) { roadResetReason="post_reset_snapshot_invalid"; return false; }
         const float dx = current.box.center.x - owned.roadTarget.position.x;
         const float dz = current.box.center.z - owned.roadTarget.position.z;
-        return dx*dx + dz*dz <= 1.0f;
+        if (dx*dx + dz*dz > 1.0f) { roadResetReason="post_reset_position_mismatch"; return false; }
+        roadResetReason="ok"; return true;
 #if defined(_MSC_VER)
-    } __except (captureNativeException(GetExceptionInformation())) { return false; }
+    } __except (captureNativeException(GetExceptionInformation())) { roadResetReason="native_seh_exception"; return false; }
 #endif
 }
 bool activationCall() {
@@ -593,7 +596,7 @@ bool activationCall() {
 NativeFactoryResult fault(const char* reason="native_operation") {
     disabled=true;
     std::ostringstream line;
-    line<<"NativeFactory fault reason="<<reason<<" identity="<<identityReason
+    line<<"NativeFactory fault reason="<<reason<<" roadResetDetail="<<roadResetReason<<" identity="<<identityReason
         <<" phase="<<nativePhase<<" exception=0x"<<std::hex<<lastNativeException
         <<" exceptionInstruction=0x"<<lastExceptionInstruction<<" exceptionMemory=0x"<<lastExceptionMemory
         <<" identityVtable=0x"<<identityVtable<<" identitySim=0x"<<identitySim<<" identityKey=0x"<<identityKey
@@ -863,5 +866,9 @@ NativeFactoryResult NativeVehicleFactory::observeRemoval() {
     if (owned.absentSamples < 2) return NativeFactoryResult::RemovalPending;
     owned = Owned{};
     return NativeFactoryResult::Removed;
+}
+
+bool NativeVehicleFactory::safeToRetryAfterConfirmedRemoval() {
+    return gameplayThread() && prepared && !disabled && !compatibilityRejected && !owned.p && !pending.p;
 }
 }
