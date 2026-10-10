@@ -295,6 +295,10 @@ if(MSVC)
 endif()
 add_test(NAME FreeRoamRivalsNativeFactoryAbiTests COMMAND FreeRoamRivalsNativeFactoryAbiTests)
 
+add_executable(FreeRoamRivalsRivalLocatorTests tests/rival_locator_tests.cpp)
+target_include_directories(FreeRoamRivalsRivalLocatorTests PRIVATE src)
+add_test(NAME FreeRoamRivalsRivalLocatorTests COMMAND FreeRoamRivalsRivalLocatorTests)
+
 add_executable(FreeRoamRivalsNativeFactorySafetyTests tests/native_factory_safety_tests.cpp)
 target_include_directories(FreeRoamRivalsNativeFactorySafetyTests PRIVATE src)
 add_test(NAME FreeRoamRivalsNativeFactorySafetyTests COMMAND FreeRoamRivalsNativeFactorySafetyTests)

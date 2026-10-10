@@ -5,6 +5,7 @@
 #include "ChallengeInputProbe.h"
 #include "NativeRivalHud.h"
 #include "../domain/LiveEncounter.h"
+#include "../domain/RivalLocator.h"
 #include "../persistence/LiveRivalStore.h"
 #include "../core/Log.h"
 #include <windows.h>
@@ -167,7 +168,17 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
         else if(!input.challengeSafe) line(view.lines[2],"DESAFIO BLOQUEADO: POLICIA OU ESTADO INCERTO");
         else line(view.lines[2],"SIGA ATRAS, ALINHADO, ATE %.0f METROS",config.challengeDistanceMeters);
         if(lastRejectionAt&&now-lastRejectionAt<3000) line(view.lines[2],"%s",rejectionText(lastRejection));
-        line(view.lines[3],"F8 NAO REMOVE O RIVAL");
+        // Straight-line location from current, valid world positions; no guessed route.
+        const auto locator=domain::locateRival(
+            {input.player.position.x,input.player.position.y,input.player.position.z},
+            {input.rival.position.x,input.rival.position.y,input.rival.position.z},
+            {input.player.forward.x,input.player.forward.y,input.player.forward.z},
+            std::isfinite(input.player.speed)&&input.player.speed>=3.0f);
+        if(locator.valid) {
+            if(locator.bearing==domain::RivalBearing::Unknown)
+                line(view.lines[3],"RICO %.0f M / MOVA-SE PARA VER DIRECAO",locator.distanceMeters);
+            else line(view.lines[3],"RICO %.0f M - %s",locator.distanceMeters,domain::rivalBearingName(locator.bearing));
+        } else line(view.lines[3],"LOCALIZACAO DO RIVAL INDISPONIVEL");
         line(view.lines[4],"%s",nativeRivalRetirementHint());
     }
     publishNativeRivalHud(view);
