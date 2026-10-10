@@ -108,7 +108,12 @@ LiveEncounterView LiveEncounter::tick(const LiveEncounterInput& in) {
     // lateral separation. Uncertainty for three seconds cancels the battle.
     const auto result=race_.tick({dt,view_.routeMatched?view_.signedLeadMeters:0,true,true,false,false});
     view_.holdProgress=race_.holdProgress01();view_.elapsedSeconds=race_.elapsedSeconds();
-    if(result!=OutrunOutcome::InProgress) return finish(result);
+    if(result!=OutrunOutcome::InProgress) {
+        // A timeout while the cars cannot be matched to one observed route
+        // must not manufacture a draw or award a result from uncertain data.
+        if(!view_.routeMatched) {race_.abort();return finish(OutrunOutcome::Aborted);}
+        return finish(result);
+    }
     return view_;
 }
 }

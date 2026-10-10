@@ -53,6 +53,9 @@ int main() {
     LiveEncounter timeout({300,3,1,5});auto timed=input();timed.acceptPressed=true;timeout.tick(timed);timed.acceptPressed=false;
     for(int n=1;n<=4;++n) {timed.player.position.z=n*2.5f;timed.rival.position.z=20+n*2.5f;v=timeout.tick(timed);}
     require(v.justFinished&&v.outcome==OutrunOutcome::RivalWon,"timeout uses matched trajectory lead");
+    LiveEncounter uncertainTimeout({300,3,1,5});auto uncertain=input();uncertain.acceptPressed=true;uncertainTimeout.tick(uncertain);uncertain.acceptPressed=false;
+    for(int n=1;n<=4;++n) {uncertain.player.position.x=n*6.0f;uncertain.player.position.z=n*2.5f;uncertain.rival.position.z=20+n*2.5f;v=uncertainTimeout.tick(uncertain);}
+    require(v.justFinished&&v.outcome==OutrunOutcome::Aborted,"timeout with unmatched route cannot manufacture a result");
     in.player.position.x=std::numeric_limits<float>::quiet_NaN();
     require(corner.tick(in).outcome==OutrunOutcome::Aborted,"nonfinite geometry rejected");
     require(finiteConfigFloat("nan",7)==7&&finiteConfigFloat("inf",7)==7&&finiteConfigFloat("2junk",7)==7,"invalid float settings fall back");
