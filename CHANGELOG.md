@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.0.45-dev — observed rival approach, race reactions and HUD feedback
+
+- New pure-domain reaction monitor tracks verified player/rival distance, following geometry, changes in separation, different road elevations, safe G challenge availability, result cooldown and active races; hysteresis prevents flickering and teleport-like sample jumps reset gap trends.
+- HUD surfaces the live phase and accurate challenge refusal reason; only genuinely available G challenges are highlighted green.
+- Outrun now emits a one-shot `leaderChanged` event only on a close, same-road overtaking switch; HUD announces which car overtook for 2.5 seconds and records the event.
+- Invalid world/telemetry/profile changes reset interaction states without retaining stale native pointers; new domain tests cover safety, changes, cooldown and overtake.
+- Win32 ASI installation remains fully preconfigured with full and upgrade ZIPs. Native goal/steering/acceleration writes are unchanged; no unverified AI-control behavior is claimed. See docs/RIVAL_REACTIONS_V45.md.
+
+
 ## v0.0.44-dev — live rival locator, guarded retirement/retry, reset diagnostics
 
 - The 2026-10-10 owner logs show v42 GTI generated about 74m away and autonomously drove far from the player without a locator; a later v43 spawn about 23m away failed at native road reset, was not activated and entered deferred cleanup.

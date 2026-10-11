@@ -2,7 +2,7 @@
 #include <cstdint>
 namespace frr::game {
 struct NativeRivalHudView {
-    bool visible=false,playerLeading=false;
+    bool visible=false,playerLeading=false,challengeReady=false;
     float holdProgress=0;
     char lines[6][64]{};
 };

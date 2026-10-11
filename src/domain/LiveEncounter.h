@@ -16,7 +16,7 @@ struct LiveEncounterInput {
     bool worldSafe=false,challengeSafe=false,acceptPressed=false,cancelPressed=false;
 };
 struct LiveEncounterView {
-    bool available=false,running=false,routeMatched=false,justStarted=false,justFinished=false;
+    bool available=false,running=false,routeMatched=false,justStarted=false,justFinished=false,leaderChanged=false;
     const char* reason="none"; // Static reason identifiers, never borrowed input strings.
     OutrunOutcome outcome=OutrunOutcome::InProgress;
     OutrunLeader leader=OutrunLeader::Rival;

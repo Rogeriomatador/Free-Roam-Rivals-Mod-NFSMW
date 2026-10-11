@@ -1,3 +1,7 @@
+## Atualização v45
+
+A interface passa a reagir a dados reais do encontro: aproximação/afastamento, direção e nível de estrada, perseguição, disponibilidade do desafio G, recusa contextual e ultrapassagem física reconhecida na trajetória. Mecanismos de direção da IA nativa permanecem sem alterações até existir ABI e provas suficientes. Leia [RIVAL_REACTIONS_V45.md](RIVAL_REACTIONS_V45.md). Próximo passo: pesquisas de resposta real do controlador nativo (rota, aceleração, perseguição), sem uso de ponteiros ou comandos não verificados.
+
 ## Atualização v44
 
 Distância/direção relativa ao movimento para localizar o GTI pelo HUD; comando Ctrl+Shift+R somente no preset play, retirada com verificações existentes; F8 só é rearmado depois de confirmação nas duas listas nativas e sem falha. Diagnóstico detalhado de road_reset_rejected. Validar dentro do jogo antes de declarar estabilidade. Consulte [RIVAL_LOCATOR_AND_RETRY_V44.md](RIVAL_LOCATOR_AND_RETRY_V44.md).

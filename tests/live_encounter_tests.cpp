@@ -23,7 +23,14 @@ int main() {
     in.acceptPressed=true;in.challengeSafe=true;require(!race.tick(in).running,"cooldown blocks immediate repeat");
     LiveEncounter overtake({20,0.5f,300,5});in=input();in.acceptPressed=true;overtake.tick(in);
     in.acceptPressed=false;in.player.speed=40;
-    for(int n=1;n<=8;++n) {in.player.position.z=n*10.0f;in.rival.position.z=20+n*2.5f;v=overtake.tick(in);if(v.justFinished)break;}
+    unsigned actualOvertakes=0;
+    for(int n=1;n<=8;++n) {
+        in.player.position.z=n*10.0f;in.rival.position.z=20+n*2.5f;
+        v=overtake.tick(in);
+        if(v.leaderChanged) ++actualOvertakes;
+        if(v.justFinished) break;
+    }
+    require(actualOvertakes>=1,"close observed overtake is surfaced as a one-shot UI event");
     require(v.outcome==OutrunOutcome::PlayerWon,"verified nearby overtake then player trail wins");
     LiveEncounter wrongRoad;in=input();in.acceptPressed=true;wrongRoad.tick(in);in.acceptPressed=false;
     for(int n=1;n<=16;++n) {in.player.position.x=std::min(n*5.0f,35.0f);in.player.position.z=n*2.5f;in.rival.position.z=20+n*2.5f;v=wrongRoad.tick(in);if(v.justFinished)break;}

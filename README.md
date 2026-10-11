@@ -50,6 +50,8 @@ Support for additional 1.3 executables will be added only after their addresses/
 
 ## Current status
 
+**v0.0.45-dev (reaction HUD):** measured approach and separation, following, different elevation, valid G challenge readiness, live rejection reasons and one-shot physically verified overtakes. This is **reactive gameplay UI**, not a new native driving AI: the Racer goal, speed, steering and road navigation writes are unchanged. [v45 reaction evidence/limitations](docs/RIVAL_REACTIONS_V45.md). Ready-to-extract full and existing-installation upgrade ZIPs continue to preserve existing saves/pools. 
+
 **v0.0.44-dev (experimental; ready-to-extract ZIP):** displays active Rico distance and player-travel-relative bearing in the HUD. The play preset binds Ctrl+Shift+R (hold 1.5 seconds) to guarded native removal, and F8 is re-armed only after the mod confirms full retirement and no native fault. Better road-reset failure details are logged. Native faults, streaming, world transitions and normal traffic never trigger automatic reconstruction. See [v44 testing notes](docs/RIVAL_LOCATOR_AND_RETRY_V44.md). The release provides **two ready-to-extract ZIPs**: use `FreeRoamRivals-v0.0.44-dev-upgrade.zip` for an **existing mod installation** (replaces only the ASI and main `FreeRoamRivals.ini`, preserves `Rivals.ini`, `VehiclePools.ini`, `UndergroundBlacklist.ini` and all `saves`), or the full ZIP for a clean install. Back up a customized main INI first; extract into the folder with `speed.exe` and accept replacement. No INI editing, renaming or preset copying is required. F8 creation remains manual and experimental. The full ZIP also offers `FreeRoamRivals-safe.ini` as an inactive alternative.
 
 
