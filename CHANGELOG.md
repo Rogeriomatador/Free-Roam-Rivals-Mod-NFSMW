@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.0.50-dev — melhora da chance de enxergar Rico e evidências de construtor nulo
+
+- Em teste PLAY 20–120 m, prioriza candidatos potencialmente no frustum primário, mantendo ordem de distância quando câmera não é confiável. Não promete desenho pela GPU nem interfere com IA, visibilidade real ou proteção de terreno/colisão.
+- Registra número de alvos vistos na câmera e porquê um alvo foi preferido.
+- Ao retornar `constructor_null`, registra baseline das listas, contador de capacidade nativa e chave/posição tentada; NÃO reinvoca o construtor no mesmo processo.
+- Novos testes do comparador; mantém ciclo de vida, F8 seguro, saves/cache e arquivos originais como em v49. Documentação em `docs/VISIBLE_PROTOTYPE_V50.md`.
+
+
 ## v0.0.49-dev — diagnóstico nativo de posição e F8 correto após falha
 
 - Corrige a mensagem enganosa de v48: `F8 queued` não deve ocorrer após `NativeFactory fault`, porque a fábrica fica desabilitada para novo spawn até reiniciar, mesmo quando a remoção do objeto antigo eventualmente conclua.

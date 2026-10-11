@@ -69,6 +69,7 @@ jobs:
           Copy-Item "docs/NATIVE_ASSET_INVENTORY_V47.md" "$pkg/NATIVE_ASSET_INVENTORY_V47.md"
           Copy-Item "docs/GUARDED_REENCOUNTER_V48.md" "$pkg/GUARDED_REENCOUNTER_V48.md"
           Copy-Item "docs/ROAD_RESET_EVIDENCE_V49.md" "$pkg/ROAD_RESET_EVIDENCE_V49.md"
+          Copy-Item "docs/VISIBLE_PROTOTYPE_V50.md" "$pkg/VISIBLE_PROTOTYPE_V50.md"
           Copy-Item "config/Rivals.ini" "$pkg/scripts/FreeRoamRivals/Rivals.ini"
           Copy-Item "config/VehiclePools.ini" "$pkg/scripts/FreeRoamRivals/VehiclePools.ini"
           Copy-Item "config/UndergroundBlacklist.ini" "$pkg/scripts/FreeRoamRivals/UndergroundBlacklist.ini"
@@ -98,7 +99,7 @@ jobs:
           Copy-Item "docs/NATIVE_ROAMING_STREAMING_RESEARCH.md" "$pkg/NATIVE_ROAMING_STREAMING_RESEARCH.md"
 
           @"
-          NFSMW Free Roam Rivals v0.0.49-dev
+          NFSMW Free Roam Rivals v0.0.50-dev
 
           INSTALL:
           1. BACK UP scripts\FreeRoamRivals\FreeRoamRivals.ini if it contains
@@ -129,6 +130,8 @@ jobs:
           F9 now audits on-disk CARS/GLOBAL/TRACKS and the registered
           attributes in safe Free Roam. Disk files do NOT prove native
           model residency and DO NOT bypass the Golf GTI prerequisite.
+          See VISIBLE_PROTOTYPE_V50.md for first-test successful GTI and
+          the second test constructor-null, near-camera F8 ranking, and limits.
           See ROAD_RESET_EVIDENCE_V49.md for logged ResetToRoad mismatch and
           accurate F8 availability after an irreversible native failure.
           See GUARDED_REENCOUNTER_V48.md for the October 11 bug, streaming
@@ -151,7 +154,7 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.49-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.50-dev.zip" -Force
 
           # Minimal update for existing v45 installations: preserve Rivals.ini,
           # VehiclePools.ini, UndergroundBlacklist.ini and all saved history.
@@ -165,8 +168,9 @@ jobs:
           Copy-Item "docs/NATIVE_ASSET_INVENTORY_V47.md" "$upgrade/NATIVE_ASSET_INVENTORY_V47.md"
           Copy-Item "docs/GUARDED_REENCOUNTER_V48.md" "$upgrade/GUARDED_REENCOUNTER_V48.md"
           Copy-Item "docs/ROAD_RESET_EVIDENCE_V49.md" "$upgrade/ROAD_RESET_EVIDENCE_V49.md"
+          Copy-Item "docs/VISIBLE_PROTOTYPE_V50.md" "$upgrade/VISIBLE_PROTOTYPE_V50.md"
           @"
-          FREE ROAM RIVALS v0.0.49-dev - EXISTING INSTALLATION UPGRADE
+          FREE ROAM RIVALS v0.0.50-dev - EXISTING INSTALLATION UPGRADE
 
           BACK UP your customized scripts\FreeRoamRivals\FreeRoamRivals.ini.
           Extract this ZIP to the existing NFSMW folder containing speed.exe,
@@ -186,12 +190,12 @@ jobs:
           steering and acceleration remain unchanged. In-game test pending.
           The game must be closed while replacing these files.
           "@ | Set-Content "$upgrade/INSTALAR-ATUALIZACAO.txt" -Encoding UTF8
-          Compress-Archive -Path "$upgrade/*" -DestinationPath "release/FreeRoamRivals-v0.0.49-dev-upgrade.zip" -Force
+          Compress-Archive -Path "$upgrade/*" -DestinationPath "release/FreeRoamRivals-v0.0.50-dev-upgrade.zip" -Force
 
       - name: Verify ready-to-install package
         shell: pwsh
         run: |
-          $path = "release/FreeRoamRivals-v0.0.49-dev.zip"
+          $path = "release/FreeRoamRivals-v0.0.50-dev.zip"
           if (!(Test-Path $path)) { throw "Install ZIP is missing" }
           Add-Type -AssemblyName System.IO.Compression
           $zip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $path).Path)
@@ -210,7 +214,8 @@ jobs:
               "PERSISTENT_WORLD_METRIC_V46.md",
               "NATIVE_ASSET_INVENTORY_V47.md",
               "GUARDED_REENCOUNTER_V48.md",
-              "ROAD_RESET_EVIDENCE_V49.md"
+              "ROAD_RESET_EVIDENCE_V49.md",
+              "VISIBLE_PROTOTYPE_V50.md"
             )
             foreach ($item in $required) {
               if ($names -cnotcontains $item) { throw "Missing package entry: $item" }
@@ -227,12 +232,12 @@ jobs:
             if (!$ini.Contains($setting)) { throw "Play INI missing $setting" }
           }
           if ($ini.Contains("RetireRivalKey=0" + [char]10)) { throw "Manual retirement was silently disabled" }
-          $upgradePath = "release/FreeRoamRivals-v0.0.49-dev-upgrade.zip"
+          $upgradePath = "release/FreeRoamRivals-v0.0.50-dev-upgrade.zip"
           if (!(Test-Path $upgradePath)) { throw "Upgrade ZIP is missing" }
           $upgradeZip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $upgradePath).Path)
           try {
             $upgradeNames = @($upgradeZip.Entries | ForEach-Object { $_.FullName.Replace("\\","/") })
-            foreach ($item in @("scripts/FreeRoamRivals.asi","scripts/FreeRoamRivals/FreeRoamRivals.ini","INSTALAR-ATUALIZACAO.txt","RIVAL_REACTIONS_V45.md","PERSISTENT_WORLD_METRIC_V46.md","NATIVE_ASSET_INVENTORY_V47.md","GUARDED_REENCOUNTER_V48.md","ROAD_RESET_EVIDENCE_V49.md")) {
+            foreach ($item in @("scripts/FreeRoamRivals.asi","scripts/FreeRoamRivals/FreeRoamRivals.ini","INSTALAR-ATUALIZACAO.txt","RIVAL_REACTIONS_V45.md","PERSISTENT_WORLD_METRIC_V46.md","NATIVE_ASSET_INVENTORY_V47.md","GUARDED_REENCOUNTER_V48.md","ROAD_RESET_EVIDENCE_V49.md","VISIBLE_PROTOTYPE_V50.md")) {
               if ($upgradeNames -cnotcontains $item) { throw "Upgrade missing: $item" }
             }
             foreach ($item in $upgradeNames) {
@@ -249,23 +254,23 @@ jobs:
       - name: Upload ready-to-install ZIP artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FreeRoamRivals-ReadyToInstall-v49
+          name: FreeRoamRivals-ReadyToInstall-v50
           path: |
-            release/FreeRoamRivals-v0.0.49-dev.zip
-            release/FreeRoamRivals-v0.0.49-dev-upgrade.zip
+            release/FreeRoamRivals-v0.0.50-dev.zip
+            release/FreeRoamRivals-v0.0.50-dev-upgrade.zip
           if-no-files-found: error
 
-      - name: Publish v0.0.49-dev GitHub Release
+      - name: Publish v0.0.50-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.49-dev"
+          $tag = "v0.0.50-dev"
 
           $files = @(
-            "release/FreeRoamRivals-v0.0.49-dev.zip",
-            "release/FreeRoamRivals-v0.0.49-dev-upgrade.zip"
+            "release/FreeRoamRivals-v0.0.50-dev.zip",
+            "release/FreeRoamRivals-v0.0.50-dev-upgrade.zip"
           )
           $published = $false
           for ($attempt = 1; $attempt -le 3; $attempt++) {
@@ -287,9 +292,9 @@ jobs:
             } else {
               gh release create $tag $files `
                 --target "${{ github.sha }}" `
-                --title "Free Roam Rivals v0.0.49-dev" `
+                --title "Free Roam Rivals v0.0.50-dev" `
                 --prerelease `
-                --notes "v0.0.49-dev: log real de 11/10 revela road_reset_rejected/post_reset_position_mismatch apos GTI criado a 118,889m. Esta revisao registra desvio X/Y/Z e dados da semente real do ResetToRoad e deixa F8 explicitamente indisponivel apos falha da fabrica nativa, evitando falsa fila de respawn. Nao relaxa criterio de ResetToRoad nem cria carro novo com identidade anterior incerta. Mantem v48, cache e todos os saves; requer novo teste real e investigacao da divergencia nativa."
+                --notes "v0.0.50-dev: os dois testes reais mostraram no primeiro GTA/GTI ativo a 42,8m e afastamento superior a 1km, mas sem prova de render na tela; segundo construtor retornou nulo. O F8 do prototipo perto do jogador passa a priorizar ruas potencialmente dentro do frustum da camera, mantendo todos limites de terreno e colisao. Falhas constructor_null registram contagens de IVehicle, PVehicle e capacidade antes da chamada para auxiliar diagnostico sem culpar pool cheio nao comprovado. Nao altera IA nem streaming e nao forca retry na mesma sessao. Dois ZIPs configurados e sem saves/cache; teste visual real ainda necessario."
             }
             if ($LASTEXITCODE -eq 0) { $published = $true; break }
             if ($attempt -lt 3) { Start-Sleep -Seconds 5 }

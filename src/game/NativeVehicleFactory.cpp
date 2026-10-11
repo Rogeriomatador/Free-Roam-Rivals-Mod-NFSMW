@@ -765,8 +765,23 @@ NativeFactoryResult NativeVehicleFactory::constructInactive(const NativeFactoryR
     lastNativeException=0; nativePhase="vehicle_params";
     const bool constructed = constructCall(request, created);
     InterlockedExchange(&constructionThread, 0);
-    // Never retry a constructor: even an exception can leave a partial allocation.
-    if (!constructed) return fault("constructor_failed_or_partial");
+    // Never retry a constructor: even a nullptr can follow side effects
+    // which the native engine cannot roll back safely.
+    if (!constructed) {
+        std::ostringstream why;
+        why << "NativeFactory constructor refusal evidence: phase=" << nativePhase
+            << " baselineLive=" << before.liveCount
+            << " baselinePhysical=" << before.physicalCount
+            << " nativeCapacityScalar=" << physicalCount
+            << " modelKey=0x" << std::hex << request.vehicleKey << std::dec
+            << " targetX=" << request.position.x
+            << " targetY=" << request.position.y
+            << " targetZ=" << request.position.z
+            << " partialAllocationUnknown=1 retryUnsafe=1"
+            << " capacityCauseUnproven=1";
+        Log::instance().warn(why.str());
+        return fault("constructor_failed_or_partial");
+    }
     if (contains(before.physical,before.physicalCount,created.p) ||
         contains(before.live,before.liveCount,created.iv)) return fault("constructor_returned_existing_identity");
     // Capture the returned allocation's scalar generation before waiting.
