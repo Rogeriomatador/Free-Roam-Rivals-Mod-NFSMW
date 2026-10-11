@@ -1,6 +1,7 @@
 #pragma once
 #include "LiveEncounter.h"
 #include <cmath>
+#include <initializer_list>
 
 namespace frr::domain {
 // View-relative direction derived from verified 3-D world coordinates and
