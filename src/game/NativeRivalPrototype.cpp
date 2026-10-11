@@ -12,6 +12,7 @@
 #include "../core/VersionGuard.h"
 #include "../domain/NativeSearchWindow.h"
 #include "../domain/AwayRetirement.h"
+#include "../domain/VisibleSpawnPreference.h"
 #include "../domain/PrototypeGroundProbe.h"
 #include <windows.h>
 #include <algorithm>
@@ -427,6 +428,7 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
         NativeRoadCaptureReport capture{};
         const auto targets = NativeVehicleFactory::captureRoadTargets(batchIndex, capture);
         std::vector<std::size_t> eligible;
+        std::vector<float> candidateMeters(targets.size(),0.0f);
         for (std::size_t i = 0; i < targets.size(); ++i) {
             const auto& target = targets[i];
             const auto box=conservativeBox(target,*key);
@@ -435,13 +437,30 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
             if (!d || !std::isfinite(*d) || *d<(nearPlayerDebug ? 20.0f : 350.0f) ||
                 *d>(nearPlayerDebug ? 120.0f : 850.0f)) continue;
             eligible.push_back(i);
+            candidateMeters[i]=*d;
         }
+        unsigned cameraVerifiedTargets=0,potentiallyOnscreenTargets=0;
+        std::vector<unsigned char> potentiallyOnscreen(targets.size(),0);
         if (nearPlayerDebug) {
-            const auto& p=current.playerMotion.position;
-            const SpatialVector3 player{p.x,p.y,p.z};
+            // The first v49 reproduction constructed a native, active GTI 43m
+            // away which instantly raced out of sight. Distance alone can
+            // choose an off-camera road. Prefer camera-intersecting road
+            // candidates for the explicit PLAY visibility test, but do NOT
+            // claim the renderer actually drew them.
+            const auto camera=CameraFrustumProbe::sample();
+            for(const auto i:eligible) {
+                const auto report=classifyPrimaryCameraFootprint(camera,
+                    conservativeBox(targets[i],*key));
+                if(!report.queryVerified) continue;
+                ++cameraVerifiedTargets;
+                if(report.visibility==CameraBoxVisibility::PotentiallyVisible) {
+                    potentiallyOnscreen[i]=1;
+                    ++potentiallyOnscreenTargets;
+                }
+            }
             std::stable_sort(eligible.begin(),eligible.end(),[&](std::size_t a,std::size_t b) {
-                return distance(conservativeBox(targets[a],*key).center,player)<
-                    distance(conservativeBox(targets[b],*key).center,player);
+                return preferDebugSpawnCandidate(potentiallyOnscreen[a]!=0,
+                    candidateMeters[a],potentiallyOnscreen[b]!=0,candidateMeters[b]);
             });
         }
         if (batchIndex >= candidateCursors.size()) { blocked("invalid_source_batch"); return; }
@@ -450,7 +469,11 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
             lastSearchReport = now;
             std::ostringstream line;
             line << "NativePrototype search: sourceBatch=" << batchIndex << " capturedTargets=" << targets.size()
-                << " distanceEligible=" << eligible.size() << " safetyChecks=" << window.count
+                << " distanceEligible=" << eligible.size()
+                << " primaryCameraVerifiedCandidates=" << cameraVerifiedTargets
+                << " potentiallyOnscreenCandidates=" << potentiallyOnscreenTargets
+                << " preferredOnscreenCandidate=" << (!eligible.empty() && potentiallyOnscreen[eligible[0]]!=0)
+                << " safetyChecks=" << window.count
                 << " candidateStart=" << window.start << " captureStatus=" << capture.status
                 << " liveSlots=" << capture.liveSlots << " sampledSlots=" << capture.sampledSlots
                 << " rejectVehicle=" << capture.rejected[1] << " rejectDriver=" << capture.rejected[2]
@@ -471,7 +494,10 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
             selectedTarget=target;
             std::ostringstream creation;
             creation << "NativePrototype native construction request: stock GTI, owned scalar road seed, inactive staging"
-                << " nearPlayerDebug=" << nearPlayerDebug << " distanceMeters=" << candidate.distanceFromPlayerMeters
+                << " nearPlayerDebug=" << nearPlayerDebug
+                << " cameraFrustumPotentiallyVisible=" << (potentiallyOnscreen[eligible[window.index(i)]]!=0)
+                << " rendererVisibilityProven=0"
+                << " distanceMeters=" << candidate.distanceFromPlayerMeters
                 << " x=" << target.position.x << " y=" << target.position.y << " z=" << target.position.z;
             Log::instance().info(creation.str());
             const auto result=NativeVehicleFactory::constructInactive(request);
