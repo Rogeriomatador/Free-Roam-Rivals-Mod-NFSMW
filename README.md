@@ -50,6 +50,9 @@ Support for additional 1.3 executables will be added only after their addresses/
 
 ## Current status
 
+**v0.0.55-dev:** o log real v54 demonstrou que Rico deixou de ter física acessível a apenas **151,178m**, quando o jogo ainda estava em Free Roam, portanto **não foi só por estar longe** e o limiar de retirada de 350m não foi alcançado. Uma auditoria **somente leitura** das duas listas de veículos será executada no instante da perda, com posição/velocidade/distância da última amostra confiável; o HUD distingue `RICO SUMIU PERTO DE VOCE`. Não força uma nova construção nem finge resolver streaming. O desafio segue como Outrun livre, não largada sincronizada: `[Staging] Enabled=0` e ainda não há controle nativo validado. [Evidência, mudanças e teste](docs/SUDDEN_NEARBY_LOSS_V55.md).
+
+
 **v0.0.54-dev:** o usuário confirmou que o minimapa original volta à posição correta com `FixHUD=1` no **WidescreenFix já instalado**. O Free Roam Rivals NÃO edita nem distribui esse plugin. A versão v54 acrescenta um **ZIP ASI-only** para atualizar apenas `scripts/FreeRoamRivals.asi`, mantendo todos os INIs, calibração e saves atuais; CI confere e bloqueia inclusão acidental de WidescreenFix, X360Stuff, XtendedInput, `dinput8.dll` e `speed.exe` nos três arquivos ZIP. [Instruções e downloads](docs/FRR_ONLY_UPDATE_V54.md). Mecânicas experimentais atuais permanecem como na v53.
 
 
