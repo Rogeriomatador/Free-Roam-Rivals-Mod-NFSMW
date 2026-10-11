@@ -366,8 +366,8 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
                     const auto retire=NativeVehicleFactory::requestRemoval();
                     if (retire==NativeFactoryResult::RemovalRequested) {
                         transition(Stage::Retiring);
-                        showNativeRivalStatus("RICO SAIU DA AREA",
-                            "REMOCAO EM ANDAMENTO - DEPOIS F8");
+                        showNativeRivalStatus("RICO FORA DA AREA",
+                            "REMOCAO SOLICITADA - AGUARDE REGISTROS NATIVOS");
                         return;
                     }
                     if (retire==NativeFactoryResult::Faulted) {
