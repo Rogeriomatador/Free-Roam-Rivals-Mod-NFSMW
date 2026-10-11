@@ -73,6 +73,7 @@ jobs:
           Copy-Item "docs/RICO_AHEAD_SPAWN_V51.md" "$pkg/RICO_AHEAD_SPAWN_V51.md"
           Copy-Item "docs/RICO_HUD_AND_STUCK_V52.md" "$pkg/RICO_HUD_AND_STUCK_V52.md"
           Copy-Item "docs/HUD_X360_RACE_STAGING_V53.md" "$pkg/HUD_X360_RACE_STAGING_V53.md"
+          Copy-Item "docs/FRR_ONLY_UPDATE_V54.md" "$pkg/FRR_ONLY_UPDATE_V54.md"
           Copy-Item "config/Rivals.ini" "$pkg/scripts/FreeRoamRivals/Rivals.ini"
           Copy-Item "config/VehiclePools.ini" "$pkg/scripts/FreeRoamRivals/VehiclePools.ini"
           Copy-Item "config/UndergroundBlacklist.ini" "$pkg/scripts/FreeRoamRivals/UndergroundBlacklist.ini"
@@ -102,7 +103,7 @@ jobs:
           Copy-Item "docs/NATIVE_ROAMING_STREAMING_RESEARCH.md" "$pkg/NATIVE_ROAMING_STREAMING_RESEARCH.md"
 
           @"
-          NFSMW Free Roam Rivals v0.0.53-dev
+          NFSMW Free Roam Rivals v0.0.54-dev
 
           INSTALL:
           1. BACK UP scripts\FreeRoamRivals\FreeRoamRivals.ini if it contains
@@ -142,6 +143,9 @@ jobs:
           RadarPosition=0/1/2/3 and RadarScale=0.5..1.5 for widescreen.
           Measured side-by-side readiness is read-only; no automatic braking,
           player input lock or countdown yet.
+          This archive contains no WidescreenFix, X360Stuff or speed.exe.
+          Use the ASI-only package to retain your existing FixHUD and INIs.
+          See FRR_ONLY_UPDATE_V54.md for all installation choices.
           See HUD_X360_RACE_STAGING_V53.md for compatibility and limits.
           See RICO_HUD_AND_STUCK_V52.md for earlier features.
           See RICO_AHEAD_SPAWN_V51.md for controls and expectations.
@@ -169,7 +173,7 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.53-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.54-dev.zip" -Force
 
           # Minimal update for existing v45 installations: preserve Rivals.ini,
           # VehiclePools.ini, UndergroundBlacklist.ini and all saved history.
@@ -187,8 +191,9 @@ jobs:
           Copy-Item "docs/RICO_AHEAD_SPAWN_V51.md" "$upgrade/RICO_AHEAD_SPAWN_V51.md"
           Copy-Item "docs/RICO_HUD_AND_STUCK_V52.md" "$upgrade/RICO_HUD_AND_STUCK_V52.md"
           Copy-Item "docs/HUD_X360_RACE_STAGING_V53.md" "$upgrade/HUD_X360_RACE_STAGING_V53.md"
+          Copy-Item "docs/FRR_ONLY_UPDATE_V54.md" "$upgrade/FRR_ONLY_UPDATE_V54.md"
           @"
-          FREE ROAM RIVALS v0.0.53-dev - EXISTING INSTALLATION UPGRADE
+          FREE ROAM RIVALS v0.0.54-dev - EXISTING INSTALLATION UPGRADE
 
           BACK UP your customized scripts\FreeRoamRivals\FreeRoamRivals.ini.
           Extract this ZIP to the existing NFSMW folder containing speed.exe,
@@ -208,12 +213,27 @@ jobs:
           steering and acceleration remain unchanged. In-game test pending.
           The game must be closed while replacing these files.
           "@ | Set-Content "$upgrade/INSTALAR-ATUALIZACAO.txt" -Encoding UTF8
-          Compress-Archive -Path "$upgrade/*" -DestinationPath "release/FreeRoamRivals-v0.0.53-dev-upgrade.zip" -Force
+          Compress-Archive -Path "$upgrade/*" -DestinationPath "release/FreeRoamRivals-v0.0.54-dev-upgrade.zip" -Force
+
+          # Exclusively the FRR ASI. Not one INI or third-party mod is included.
+          $asiOnly = "release/asi-only"
+          New-Item -ItemType Directory -Force "$asiOnly/scripts" | Out-Null
+          Copy-Item "artifact/FreeRoamRivals.asi" "$asiOnly/scripts/FreeRoamRivals.asi"
+          @"
+          Free Roam Rivals v0.0.54-dev - ASI ONLY
+          1. Close the game and back up scripts\FreeRoamRivals.asi.
+          2. Extract to the folder with speed.exe and replace only
+             scripts\FreeRoamRivals.asi.
+          This ZIP leaves WidescreenFix FixHUD=1, all other INIs, other
+          plugins, saved progress and the calibrated metric untouched.
+          Your existing F8/G and HUD configuration remain as before.
+          "@ | Set-Content "$asiOnly/INSTALAR-ASI-SOMENTE.txt" -Encoding UTF8
+          Compress-Archive -Path "$asiOnly/*" -DestinationPath "release/FreeRoamRivals-v0.0.54-dev-asi-only.zip" -Force
 
       - name: Verify ready-to-install package
         shell: pwsh
         run: |
-          $path = "release/FreeRoamRivals-v0.0.53-dev.zip"
+          $path = "release/FreeRoamRivals-v0.0.54-dev.zip"
           if (!(Test-Path $path)) { throw "Install ZIP is missing" }
           Add-Type -AssemblyName System.IO.Compression
           $zip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $path).Path)
@@ -236,7 +256,8 @@ jobs:
               "VISIBLE_PROTOTYPE_V50.md",
               "RICO_AHEAD_SPAWN_V51.md",
               "RICO_HUD_AND_STUCK_V52.md",
-              "HUD_X360_RACE_STAGING_V53.md"
+              "HUD_X360_RACE_STAGING_V53.md",
+              "FRR_ONLY_UPDATE_V54.md"
             )
             foreach ($item in $required) {
               if ($names -cnotcontains $item) { throw "Missing package entry: $item" }
@@ -253,12 +274,12 @@ jobs:
             if (!$ini.Contains($setting)) { throw "Play INI missing $setting" }
           }
           if ($ini.Contains("RetireRivalKey=0" + [char]10)) { throw "Manual retirement was silently disabled" }
-          $upgradePath = "release/FreeRoamRivals-v0.0.53-dev-upgrade.zip"
+          $upgradePath = "release/FreeRoamRivals-v0.0.54-dev-upgrade.zip"
           if (!(Test-Path $upgradePath)) { throw "Upgrade ZIP is missing" }
           $upgradeZip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $upgradePath).Path)
           try {
             $upgradeNames = @($upgradeZip.Entries | ForEach-Object { $_.FullName.Replace("\\","/") })
-            foreach ($item in @("scripts/FreeRoamRivals.asi","scripts/FreeRoamRivals/FreeRoamRivals.ini","INSTALAR-ATUALIZACAO.txt","RIVAL_REACTIONS_V45.md","PERSISTENT_WORLD_METRIC_V46.md","NATIVE_ASSET_INVENTORY_V47.md","GUARDED_REENCOUNTER_V48.md","ROAD_RESET_EVIDENCE_V49.md","VISIBLE_PROTOTYPE_V50.md","RICO_AHEAD_SPAWN_V51.md","RICO_HUD_AND_STUCK_V52.md","HUD_X360_RACE_STAGING_V53.md")) {
+            foreach ($item in @("scripts/FreeRoamRivals.asi","scripts/FreeRoamRivals/FreeRoamRivals.ini","INSTALAR-ATUALIZACAO.txt","RIVAL_REACTIONS_V45.md","PERSISTENT_WORLD_METRIC_V46.md","NATIVE_ASSET_INVENTORY_V47.md","GUARDED_REENCOUNTER_V48.md","ROAD_RESET_EVIDENCE_V49.md","VISIBLE_PROTOTYPE_V50.md","RICO_AHEAD_SPAWN_V51.md","RICO_HUD_AND_STUCK_V52.md","HUD_X360_RACE_STAGING_V53.md","FRR_ONLY_UPDATE_V54.md")) {
               if ($upgradeNames -cnotcontains $item) { throw "Upgrade missing: $item" }
             }
             foreach ($item in $upgradeNames) {
@@ -270,28 +291,32 @@ jobs:
           foreach ($item in $names) {
             if ($item -match '(?i)(/saves/|/world-metric-v1\.state$)') { throw "Main ZIP unexpectedly contains user state" }
           }
-          Write-Output "Both ZIPs verified: full install and existing-user upgrade with protected data."
+          # No FRR archive may ship third-party mods, loaders, shader packs
+          # or the protected NFSMW executable.
+          $forbidden = '(?i)(^|/)(speed\.exe|dinput8\.dll|[^/]*widescreenfix[^/]*|[^/]*x360stuff[^/]*|[^/]*xtendedinput[^/]*|[^/]*\.tpk|[^/]*\.dds|[^/]*\.hlsl)
 
       - name: Upload ready-to-install ZIP artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FreeRoamRivals-ReadyToInstall-v53
+          name: FreeRoamRivals-ReadyToInstall-v54
           path: |
-            release/FreeRoamRivals-v0.0.53-dev.zip
-            release/FreeRoamRivals-v0.0.53-dev-upgrade.zip
+            release/FreeRoamRivals-v0.0.54-dev.zip
+            release/FreeRoamRivals-v0.0.54-dev-upgrade.zip
+            release/FreeRoamRivals-v0.0.54-dev-asi-only.zip
           if-no-files-found: error
 
-      - name: Publish v0.0.53-dev GitHub Release
+      - name: Publish v0.0.54-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.53-dev"
+          $tag = "v0.0.54-dev"
 
           $files = @(
-            "release/FreeRoamRivals-v0.0.53-dev.zip",
-            "release/FreeRoamRivals-v0.0.53-dev-upgrade.zip"
+            "release/FreeRoamRivals-v0.0.54-dev.zip",
+            "release/FreeRoamRivals-v0.0.54-dev-upgrade.zip",
+            "release/FreeRoamRivals-v0.0.54-dev-asi-only.zip"
           )
           $published = $false
           for ($attempt = 1; $attempt -le 3; $attempt++) {
@@ -313,9 +338,129 @@ jobs:
             } else {
               gh release create $tag $files `
                 --target "${{ github.sha }}" `
-                --title "Free Roam Rivals v0.0.53-dev" `
+                --title "Free Roam Rivals v0.0.54-dev" `
                 --prerelease `
-                --notes "v0.0.53-dev: radar FRR redesenhado com distancia e marcas de orientacao, com posicao configuravel padrao lateral direita e escala adaptativa ao viewport, nao depende do Xbox360Stuff. Novos campos RadarPosition (0 lower-left,1 top-right,2 mid-right,3 off) e RadarScale 0.50..1.50 em [LiveRival]. Contrato testado de formacao lado a lado sem cutscene para preparar largada, mas NAO toma controle dos carros nem executa contagem sem ABI validada. Log real v52 indica world_identity_changed/streaming e falhas de constructor que exigem pesquisa. F8 e G continuam como antes; saves/cache intocados. Guia HUD_X360_RACE_STAGING_V53.md."
+                --notes "v0.0.54-dev: SOMENTE Free Roam Rivals. Nova atualizacao ASI-only contem so scripts/FreeRoamRivals.asi e instrucoes; todos os INIs, FixHUD=1 do WidescreenFix instalado, outros mods, cache e saves ficam intactos. O pipeline proibe incluir WidescreenFix, Xbox360Stuff, XtendedInput, dinput8.dll e speed.exe em qualquer um dos tres ZIPs. Os pacotes full e upgrade tambem estao disponiveis. Limites v53 sobre streaming e largada ainda se aplicam."
+            }
+            if ($LASTEXITCODE -eq 0) { $published = $true; break }
+            if ($attempt -lt 3) { Start-Sleep -Seconds 5 }
+          }
+          if (-not $published) { throw "Release publication failed after three attempts." }
+
+          foreach ($name in @("release/FreeRoamRivals-v0.0.54-dev.zip","release/FreeRoamRivals-v0.0.54-dev-upgrade.zip","release/FreeRoamRivals-v0.0.54-dev-asi-only.zip")) {
+            $testZip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $name).Path)
+            try {
+              foreach ($entry in $testZip.Entries) {
+                $filename = $entry.FullName.Replace([char]92,"/")
+                if ($filename -match $forbidden) { throw "Forbidden third-party or game file: $filename" }
+              }
+            } finally { $testZip.Dispose() }
+          }
+          $onlyZip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path "release/FreeRoamRivals-v0.0.54-dev-asi-only.zip").Path)
+          try {
+            $actual = @($onlyZip.Entries | ForEach-Object { $_.FullName.Replace([char]92,"/") } | Where-Object { $_ -notmatch '/
+
+      - name: Upload ready-to-install ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FreeRoamRivals-ReadyToInstall-v54
+          path: |
+            release/FreeRoamRivals-v0.0.54-dev.zip
+            release/FreeRoamRivals-v0.0.54-dev-upgrade.zip
+          if-no-files-found: error
+
+      - name: Publish v0.0.54-dev GitHub Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "v0.0.54-dev"
+
+          $files = @(
+            "release/FreeRoamRivals-v0.0.54-dev.zip",
+            "release/FreeRoamRivals-v0.0.54-dev-upgrade.zip"
+          )
+          $published = $false
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            $existing = gh release view $tag --json targetCommitish,assets 2>$null
+            if ($LASTEXITCODE -eq 0) {
+              $info = $existing | ConvertFrom-Json
+              if ($info.targetCommitish -ne "${{ github.sha }}") {
+                throw "Existing release target does not match this source commit."
+              }
+              foreach ($file in $files) {
+                $name = Split-Path $file -Leaf
+                if ($info.assets.name -notcontains $name) {
+                  gh release upload $tag $file
+                  if ($LASTEXITCODE -ne 0) { throw "Failed to publish $name" }
+                }
+              }
+              $published = $true
+              break
+            } else {
+              gh release create $tag $files `
+                --target "${{ github.sha }}" `
+                --title "Free Roam Rivals v0.0.54-dev" `
+                --prerelease `
+                --notes "v0.0.54-dev: radar FRR redesenhado com distancia e marcas de orientacao, com posicao configuravel padrao lateral direita e escala adaptativa ao viewport, nao depende do Xbox360Stuff. Novos campos RadarPosition (0 lower-left,1 top-right,2 mid-right,3 off) e RadarScale 0.50..1.50 em [LiveRival]. Contrato testado de formacao lado a lado sem cutscene para preparar largada, mas NAO toma controle dos carros nem executa contagem sem ABI validada. Log real v52 indica world_identity_changed/streaming e falhas de constructor que exigem pesquisa. F8 e G continuam como antes; saves/cache intocados. Guia HUD_X360_RACE_STAGING_V53.md."
+            }
+            if ($LASTEXITCODE -eq 0) { $published = $true; break }
+            if ($attempt -lt 3) { Start-Sleep -Seconds 5 }
+          }
+          if (-not $published) { throw "Release publication failed after three attempts." }
+ })
+            $expected = @("scripts/FreeRoamRivals.asi","INSTALAR-ASI-SOMENTE.txt")
+            if ($actual.Count -ne 2) { throw "ASI-only must have exactly two files." }
+            foreach ($entry in $actual) { if ($expected -cnotcontains $entry) { throw "ASI-only unexpected file: $entry" } }
+            foreach ($entry in $expected) { if ($actual -cnotcontains $entry) { throw "ASI-only missing file: $entry" } }
+          } finally { $onlyZip.Dispose() }
+          Write-Output "Three archives verified: WidescreenFix and game files absent; ASI-only retains every user INI."
+
+      - name: Upload ready-to-install ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FreeRoamRivals-ReadyToInstall-v54
+          path: |
+            release/FreeRoamRivals-v0.0.54-dev.zip
+            release/FreeRoamRivals-v0.0.54-dev-upgrade.zip
+          if-no-files-found: error
+
+      - name: Publish v0.0.54-dev GitHub Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "v0.0.54-dev"
+
+          $files = @(
+            "release/FreeRoamRivals-v0.0.54-dev.zip",
+            "release/FreeRoamRivals-v0.0.54-dev-upgrade.zip"
+          )
+          $published = $false
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            $existing = gh release view $tag --json targetCommitish,assets 2>$null
+            if ($LASTEXITCODE -eq 0) {
+              $info = $existing | ConvertFrom-Json
+              if ($info.targetCommitish -ne "${{ github.sha }}") {
+                throw "Existing release target does not match this source commit."
+              }
+              foreach ($file in $files) {
+                $name = Split-Path $file -Leaf
+                if ($info.assets.name -notcontains $name) {
+                  gh release upload $tag $file
+                  if ($LASTEXITCODE -ne 0) { throw "Failed to publish $name" }
+                }
+              }
+              $published = $true
+              break
+            } else {
+              gh release create $tag $files `
+                --target "${{ github.sha }}" `
+                --title "Free Roam Rivals v0.0.54-dev" `
+                --prerelease `
+                --notes "v0.0.54-dev: radar FRR redesenhado com distancia e marcas de orientacao, com posicao configuravel padrao lateral direita e escala adaptativa ao viewport, nao depende do Xbox360Stuff. Novos campos RadarPosition (0 lower-left,1 top-right,2 mid-right,3 off) e RadarScale 0.50..1.50 em [LiveRival]. Contrato testado de formacao lado a lado sem cutscene para preparar largada, mas NAO toma controle dos carros nem executa contagem sem ABI validada. Log real v52 indica world_identity_changed/streaming e falhas de constructor que exigem pesquisa. F8 e G continuam como antes; saves/cache intocados. Guia HUD_X360_RACE_STAGING_V53.md."
             }
             if ($LASTEXITCODE -eq 0) { $published = $true; break }
             if ($attempt -lt 3) { Start-Sleep -Seconds 5 }
