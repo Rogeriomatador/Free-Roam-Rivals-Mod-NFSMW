@@ -1694,6 +1694,8 @@ RuntimeProbeInstallResult RuntimeProbe::install(
     encounterConfig.enabled=config.outrunEnabled;
     encounterConfig.hudEnabled=config.rivalHudEnabled && config.nativeRivalPrototypeEnabled;
     encounterConfig.persistHistory=config.rivalHistoryEnabled;
+    encounterConfig.radarPosition=config.rivalRadarPosition;
+    encounterConfig.radarScale=config.rivalRadarScale;
     encounterConfig.challengeDistanceMeters=config.rivalChallengeDistanceMeters;
     encounterConfig.tuning.winLeadMeters=config.outrunWinLeadMeters;
     encounterConfig.tuning.leadHoldSeconds=config.outrunLeadHoldSeconds;

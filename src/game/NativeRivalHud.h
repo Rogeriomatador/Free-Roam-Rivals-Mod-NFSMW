@@ -11,7 +11,7 @@ struct NativeRivalHudView {
     float routeFront=0,routeRight=0,routeMeters=0;
     char lines[6][64]{};
 };
-void configureNativeRivalHud(bool enabled);
+void configureNativeRivalHud(bool enabled,int radarPosition=2,float radarScale=1.0f);
 void publishNativeRivalHud(const NativeRivalHudView& view);
 // Called ONLY before native EndScene, inside the existing scene. Reads mod
 // state only; restores the full D3D state and keeps no reset-sensitive resource.

@@ -72,6 +72,7 @@ jobs:
           Copy-Item "docs/VISIBLE_PROTOTYPE_V50.md" "$pkg/VISIBLE_PROTOTYPE_V50.md"
           Copy-Item "docs/RICO_AHEAD_SPAWN_V51.md" "$pkg/RICO_AHEAD_SPAWN_V51.md"
           Copy-Item "docs/RICO_HUD_AND_STUCK_V52.md" "$pkg/RICO_HUD_AND_STUCK_V52.md"
+          Copy-Item "docs/HUD_X360_RACE_STAGING_V53.md" "$pkg/HUD_X360_RACE_STAGING_V53.md"
           Copy-Item "config/Rivals.ini" "$pkg/scripts/FreeRoamRivals/Rivals.ini"
           Copy-Item "config/VehiclePools.ini" "$pkg/scripts/FreeRoamRivals/VehiclePools.ini"
           Copy-Item "config/UndergroundBlacklist.ini" "$pkg/scripts/FreeRoamRivals/UndergroundBlacklist.ini"
@@ -101,7 +102,7 @@ jobs:
           Copy-Item "docs/NATIVE_ROAMING_STREAMING_RESEARCH.md" "$pkg/NATIVE_ROAMING_STREAMING_RESEARCH.md"
 
           @"
-          NFSMW Free Roam Rivals v0.0.52-dev
+          NFSMW Free Roam Rivals v0.0.53-dev
 
           INSTALL:
           1. BACK UP scripts\FreeRoamRivals\FreeRoamRivals.ini if it contains
@@ -137,7 +138,12 @@ jobs:
           New FRR overlay: green RICO compass NEAR minimap (not a real
           Hud_Minimap icon), amber verified leader trail in Outrun, and
           passive warning after 12 seconds almost stationary.
-          See RICO_HUD_AND_STUCK_V52.md for use and remaining native limitations.
+          New independent FRR HUD: radar right by default, configurable
+          RadarPosition=0/1/2/3 and RadarScale=0.5..1.5 for widescreen.
+          Measured side-by-side readiness is read-only; no automatic braking,
+          player input lock or countdown yet.
+          See HUD_X360_RACE_STAGING_V53.md for compatibility and limits.
+          See RICO_HUD_AND_STUCK_V52.md for earlier features.
           See RICO_AHEAD_SPAWN_V51.md for controls and expectations.
           See VISIBLE_PROTOTYPE_V50.md for first-test successful GTI and
           the second test constructor-null, near-camera F8 ranking, and limits.
@@ -163,7 +169,7 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.52-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.53-dev.zip" -Force
 
           # Minimal update for existing v45 installations: preserve Rivals.ini,
           # VehiclePools.ini, UndergroundBlacklist.ini and all saved history.
@@ -180,8 +186,9 @@ jobs:
           Copy-Item "docs/VISIBLE_PROTOTYPE_V50.md" "$upgrade/VISIBLE_PROTOTYPE_V50.md"
           Copy-Item "docs/RICO_AHEAD_SPAWN_V51.md" "$upgrade/RICO_AHEAD_SPAWN_V51.md"
           Copy-Item "docs/RICO_HUD_AND_STUCK_V52.md" "$upgrade/RICO_HUD_AND_STUCK_V52.md"
+          Copy-Item "docs/HUD_X360_RACE_STAGING_V53.md" "$upgrade/HUD_X360_RACE_STAGING_V53.md"
           @"
-          FREE ROAM RIVALS v0.0.52-dev - EXISTING INSTALLATION UPGRADE
+          FREE ROAM RIVALS v0.0.53-dev - EXISTING INSTALLATION UPGRADE
 
           BACK UP your customized scripts\FreeRoamRivals\FreeRoamRivals.ini.
           Extract this ZIP to the existing NFSMW folder containing speed.exe,
@@ -201,12 +208,12 @@ jobs:
           steering and acceleration remain unchanged. In-game test pending.
           The game must be closed while replacing these files.
           "@ | Set-Content "$upgrade/INSTALAR-ATUALIZACAO.txt" -Encoding UTF8
-          Compress-Archive -Path "$upgrade/*" -DestinationPath "release/FreeRoamRivals-v0.0.52-dev-upgrade.zip" -Force
+          Compress-Archive -Path "$upgrade/*" -DestinationPath "release/FreeRoamRivals-v0.0.53-dev-upgrade.zip" -Force
 
       - name: Verify ready-to-install package
         shell: pwsh
         run: |
-          $path = "release/FreeRoamRivals-v0.0.52-dev.zip"
+          $path = "release/FreeRoamRivals-v0.0.53-dev.zip"
           if (!(Test-Path $path)) { throw "Install ZIP is missing" }
           Add-Type -AssemblyName System.IO.Compression
           $zip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $path).Path)
@@ -228,7 +235,8 @@ jobs:
               "ROAD_RESET_EVIDENCE_V49.md",
               "VISIBLE_PROTOTYPE_V50.md",
               "RICO_AHEAD_SPAWN_V51.md",
-              "RICO_HUD_AND_STUCK_V52.md"
+              "RICO_HUD_AND_STUCK_V52.md",
+              "HUD_X360_RACE_STAGING_V53.md"
             )
             foreach ($item in $required) {
               if ($names -cnotcontains $item) { throw "Missing package entry: $item" }
@@ -245,12 +253,12 @@ jobs:
             if (!$ini.Contains($setting)) { throw "Play INI missing $setting" }
           }
           if ($ini.Contains("RetireRivalKey=0" + [char]10)) { throw "Manual retirement was silently disabled" }
-          $upgradePath = "release/FreeRoamRivals-v0.0.52-dev-upgrade.zip"
+          $upgradePath = "release/FreeRoamRivals-v0.0.53-dev-upgrade.zip"
           if (!(Test-Path $upgradePath)) { throw "Upgrade ZIP is missing" }
           $upgradeZip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $upgradePath).Path)
           try {
             $upgradeNames = @($upgradeZip.Entries | ForEach-Object { $_.FullName.Replace("\\","/") })
-            foreach ($item in @("scripts/FreeRoamRivals.asi","scripts/FreeRoamRivals/FreeRoamRivals.ini","INSTALAR-ATUALIZACAO.txt","RIVAL_REACTIONS_V45.md","PERSISTENT_WORLD_METRIC_V46.md","NATIVE_ASSET_INVENTORY_V47.md","GUARDED_REENCOUNTER_V48.md","ROAD_RESET_EVIDENCE_V49.md","VISIBLE_PROTOTYPE_V50.md","RICO_AHEAD_SPAWN_V51.md","RICO_HUD_AND_STUCK_V52.md")) {
+            foreach ($item in @("scripts/FreeRoamRivals.asi","scripts/FreeRoamRivals/FreeRoamRivals.ini","INSTALAR-ATUALIZACAO.txt","RIVAL_REACTIONS_V45.md","PERSISTENT_WORLD_METRIC_V46.md","NATIVE_ASSET_INVENTORY_V47.md","GUARDED_REENCOUNTER_V48.md","ROAD_RESET_EVIDENCE_V49.md","VISIBLE_PROTOTYPE_V50.md","RICO_AHEAD_SPAWN_V51.md","RICO_HUD_AND_STUCK_V52.md","HUD_X360_RACE_STAGING_V53.md")) {
               if ($upgradeNames -cnotcontains $item) { throw "Upgrade missing: $item" }
             }
             foreach ($item in $upgradeNames) {
@@ -267,23 +275,23 @@ jobs:
       - name: Upload ready-to-install ZIP artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FreeRoamRivals-ReadyToInstall-v52
+          name: FreeRoamRivals-ReadyToInstall-v53
           path: |
-            release/FreeRoamRivals-v0.0.52-dev.zip
-            release/FreeRoamRivals-v0.0.52-dev-upgrade.zip
+            release/FreeRoamRivals-v0.0.53-dev.zip
+            release/FreeRoamRivals-v0.0.53-dev-upgrade.zip
           if-no-files-found: error
 
-      - name: Publish v0.0.52-dev GitHub Release
+      - name: Publish v0.0.53-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.52-dev"
+          $tag = "v0.0.53-dev"
 
           $files = @(
-            "release/FreeRoamRivals-v0.0.52-dev.zip",
-            "release/FreeRoamRivals-v0.0.52-dev-upgrade.zip"
+            "release/FreeRoamRivals-v0.0.53-dev.zip",
+            "release/FreeRoamRivals-v0.0.53-dev-upgrade.zip"
           )
           $published = $false
           for ($attempt = 1; $attempt -le 3; $attempt++) {
@@ -305,9 +313,9 @@ jobs:
             } else {
               gh release create $tag $files `
                 --target "${{ github.sha }}" `
-                --title "Free Roam Rivals v0.0.52-dev" `
+                --title "Free Roam Rivals v0.0.53-dev" `
                 --prerelease `
-                --notes "v0.0.52-dev: inclui indicador VERDE do Rico em bussola propria proxima do minimapa, com orientacao do proprio carro e dados nativos observados; seta AMARELA durante Outrun seguindo apenas a trilha real verificada do lider; detector de parada prolongada apos 12s de baixa velocidade e pouco deslocamento. Nao se trata ainda de insercao no Hud_Minimap original nem cria checkpoints ou GPS inventados. Sem alterar IA, teleporte, saves, garagem, carreira ou metric cache. Arquivos completos e upgrade prontos para instalar. Precisa de validacao visual no PC."
+                --notes "v0.0.53-dev: radar FRR redesenhado com distancia e marcas de orientacao, com posicao configuravel padrao lateral direita e escala adaptativa ao viewport, nao depende do Xbox360Stuff. Novos campos RadarPosition (0 lower-left,1 top-right,2 mid-right,3 off) e RadarScale 0.50..1.50 em [LiveRival]. Contrato testado de formacao lado a lado sem cutscene para preparar largada, mas NAO toma controle dos carros nem executa contagem sem ABI validada. Log real v52 indica world_identity_changed/streaming e falhas de constructor que exigem pesquisa. F8 e G continuam como antes; saves/cache intocados. Guia HUD_X360_RACE_STAGING_V53.md."
             }
             if ($LASTEXITCODE -eq 0) { $published = $true; break }
             if ($attempt -lt 3) { Start-Sleep -Seconds 5 }

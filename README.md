@@ -50,6 +50,9 @@ Support for additional 1.3 executables will be added only after their addresses/
 
 ## Current status
 
+**v0.0.53-dev:** Radar verde do FRR reposicionado por padrão para a lateral direita, redesenhado com distâncias e responsivo a 4:3/16:9/ultrawide. Configurável em `[LiveRival]`: `RadarPosition=0/1/2/3` (inferior esquerdo/superior direito/meio direito/desligado) e `RadarScale=0.5–1.5`. Detecta formação lado a lado em condição segura para preparar a futura largada, mas **ainda não assume controle do jogador, para o carro do Rico ou executa a contagem**. O log v52 confirma perda de contexto/stream em 19:08:18; não há ainda recarga física segura. Veja [HUD e compatibilidade Xbox360 v53](docs/HUD_X360_RACE_STAGING_V53.md).
+
+
 **v0.0.52-dev:** novo indicador **verde RICO** (bússola separada ao lado do minimapa nativo, com direção relativa à orientação física do jogador), **seta amarela de trilha observada** quando o jogador segue Rico em Outrun e aviso de **imobilização observada** após 12 s quase sem movimento. A posição de Rico é obtida de leitura verificada, mas o marcador ainda NÃO integra o minimapa FNG original. Nenhuma alteração de volante/objetivo da IA foi realizada. [Guia completo](docs/RICO_HUD_AND_STUCK_V52.md).
 
 

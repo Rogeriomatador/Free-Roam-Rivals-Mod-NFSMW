@@ -1,4 +1,5 @@
 #include "NativeRivalHud.h"
+#include "../domain/HudPlacement.h"
 #include <windows.h>
 #include <d3d9.h>
 #include <array>
@@ -7,10 +8,13 @@
 #include <cmath>
 #include <mutex>
 #include <vector>
+#include <cstdio>
 
 namespace frr::game {
 namespace {
 std::atomic<bool> enabled{false};
+std::atomic<int> radarPlacement{2};
+std::atomic<float> radarScale{1.0f};
 std::mutex mutex;
 NativeRivalHudView current{};
 std::uint64_t publishedAt=0;
@@ -75,7 +79,11 @@ void beacon(std::vector<Vertex>& out,float cx,float cy,float right,float forward
     quad(out,cx-2*scale,cy-2*scale,4*scale,4*scale,D3DCOLOR_ARGB(255,240,240,240));
 }
 }
-void configureNativeRivalHud(bool value) {enabled=value;}
+void configureNativeRivalHud(bool value,int placement,float scale) {
+    radarPlacement.store(std::clamp(placement,0,3));
+    radarScale.store(std::isfinite(scale)?std::clamp(scale,0.5f,1.5f):1.0f);
+    enabled.store(value);
+}
 void publishNativeRivalHud(const NativeRivalHudView& value) {
     std::lock_guard lock(mutex);current=value;publishedAt=GetTickCount64();
 }
@@ -87,8 +95,10 @@ void renderNativeRivalHud(void* raw) try {
     auto* device=static_cast<IDirect3DDevice9*>(raw);
     D3DVIEWPORT9 viewport{};
     if(FAILED(device->GetViewport(&viewport))||viewport.Width<360||viewport.Height<200) return;
-    const float scale=std::clamp(viewport.Width/1280.0f,1.0f,2.0f);
-    const float x=static_cast<float>(viewport.X)+12,y=static_cast<float>(viewport.Y)+12;
+    const auto layout=domain::placeRivalHud(float(viewport.Width),float(viewport.Height),
+        radarPlacement.load(),radarScale.load());
+    const float scale=layout.scale;
+    const float x=float(viewport.X)+layout.panelX,y=float(viewport.Y)+layout.panelY;
     // CPU-only storage is reused on the rendering thread; no GPU resource
     // survives this callback or needs reset handling.
     thread_local std::vector<Vertex> vertices;vertices.clear();vertices.reserve(50000);
@@ -104,26 +114,43 @@ void renderNativeRivalHud(void* raw) try {
     const float progress=std::isfinite(view.holdProgress)?std::clamp(view.holdProgress,0.0f,1.0f):0;
     quad(vertices,x+8*scale,y+76*scale,312*scale*progress,3*scale,
         view.playerLeading?D3DCOLOR_ARGB(255,70,220,110):D3DCOLOR_ARGB(255,245,95,80));
-    if(view.rivalBeaconValid) {
+    if(view.rivalBeaconValid&&layout.radarVisible) {
         // Separate FRR compass near the stock minimap: NOT a pin written
         // to the actual vanilla minimap/radar widget or map coordinates.
-        const float cx=static_cast<float>(viewport.X)+55*scale;
-        const float cy=static_cast<float>(viewport.Y+viewport.Height)-155*scale;
-        quad(vertices,cx-41*scale,cy-46*scale,82*scale,91*scale,
-            D3DCOLOR_ARGB(195,12,21,17));
-        smallText(vertices,"RICO",cx-12*scale,cy-39*scale,scale,
-            D3DCOLOR_ARGB(255,110,245,137));
+        const float cx=float(viewport.X)+layout.radarX;
+        const float cy=float(viewport.Y)+layout.radarY;
+        quad(vertices,cx-48*scale,cy-54*scale,96*scale,108*scale,
+            D3DCOLOR_ARGB(216,9,22,24));
+        // Distinct inner dial, edge ticks and unobtrusive distance value.
+        quad(vertices,cx-42*scale,cy-49*scale,84*scale,1.5f*scale,
+            D3DCOLOR_ARGB(255,42,191,106));
+        smallText(vertices,"RICO",cx-12*scale,cy-43*scale,scale,
+            D3DCOLOR_ARGB(255,134,255,175));
+        for(int k=0;k<16;++k){
+            const float a=float(k)*6.28318530718f/16.0f;
+            const float dx=std::sin(a),dy=std::cos(a);
+            const float start=29*scale,end=(k%4==0?34:31)*scale;
+            triangle(vertices,cx+dx*start,cy+dy*start,
+                cx+dx*end-dy*0.65f*scale,cy+dy*end+dx*0.65f*scale,
+                cx+dx*end+dy*0.65f*scale,cy+dy*end-dx*0.65f*scale,
+                D3DCOLOR_ARGB(205,40,155,101));
+        }
         beacon(vertices,cx,cy,view.rivalRight,view.rivalFront,scale,
             D3DCOLOR_ARGB(255,60,237,118));
+        char range[20]{};
+        if(std::isfinite(view.rivalMeters)&&view.rivalMeters>=0)
+            std::snprintf(range,sizeof(range),"%.0f M",view.rivalMeters);
+        smallText(vertices,range,cx-15*scale,cy+38*scale,scale,
+            D3DCOLOR_ARGB(255,225,237,230));
         if(view.rivalStationary)
-            smallText(vertices,"PARADO",cx-19*scale,cy+36*scale,scale,
+            smallText(vertices,"PARADO",cx-19*scale,cy+47*scale,scale,
                 D3DCOLOR_ARGB(255,255,175,72));
     }
     if(view.routeCueValid) {
         // Yellow arrow shows the ACTUAL OBSERVED leader trail in the
         // current Outrun; no invented intersections or race checkpoints.
-        const float cx=static_cast<float>(viewport.X+viewport.Width/2);
-        const float cy=static_cast<float>(viewport.Y)+150*scale;
+        const float cx=float(viewport.X)+layout.routeX;
+        const float cy=float(viewport.Y)+layout.routeY;
         quad(vertices,cx-55*scale,cy-47*scale,110*scale,92*scale,
             D3DCOLOR_ARGB(190,20,20,14));
         smallText(vertices,"TRILHA RICO",cx-32*scale,cy-40*scale,scale,

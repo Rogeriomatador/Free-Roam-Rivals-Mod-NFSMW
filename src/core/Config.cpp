@@ -106,6 +106,8 @@ Config Config::load() {
     cfg.retireHoldSeconds=std::clamp(iniFloat(ini,"Input","RetireHoldSeconds",1.5f),1.0f,5.0f);
     cfg.enabled=iniInt(ini,"General","Enabled",1)!=0;
     cfg.rivalHudEnabled=iniInt(ini,"LiveRival","HUDEnabled",1)!=0;
+    cfg.rivalRadarPosition=std::clamp(iniInt(ini,"LiveRival","RadarPosition",2),0,3);
+    cfg.rivalRadarScale=std::clamp(iniFloat(ini,"LiveRival","RadarScale",1.0f),0.5f,1.5f);
     cfg.rivalHistoryEnabled=iniInt(ini,"LiveRival","PersistHistory",1)!=0;
     cfg.rivalChallengeDistanceMeters=std::clamp(iniFloat(ini,"LiveRival","ChallengeDistanceMeters",60),10.0f,60.0f);
 

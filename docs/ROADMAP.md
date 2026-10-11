@@ -1,3 +1,7 @@
+## v53 — layout FRR independ. da HUD Xbox360 e pré-largada protegida
+
+A bússola está no meio direito por padrão, com novo estilo e dimensionamento para 4:3/16:9, e a posição é configurável no INI. Detecta carros naturalmente alinhados e parados lado a lado, mas trava a automação até existir prova de bloquear e restaurar controles e do freio da IA. A perda de streaming e as colisões com X360Stuff ainda exigem pesquisa: [HUD_X360_RACE_STAGING_V53.md](HUD_X360_RACE_STAGING_V53.md).
+
 ## v52 — bússola verde, trilha Outrun e telemetria de carro imóvel
 
 Indicadores reais em overlay FRR, não ícones internos do `Hud_Minimap`; remapeamento nativo de verde e path engine ainda exige ABI, lifecycle e teste de corrida. Detecção de Rico quase imóvel por 12s não move carro de forma insegura. [RICO_HUD_AND_STUCK_V52.md](RICO_HUD_AND_STUCK_V52.md).

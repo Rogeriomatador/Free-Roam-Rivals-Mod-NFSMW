@@ -7,6 +7,8 @@ struct NativeOwnedSnapshot;
 struct NativeEncounterConfig {
     bool enabled=false,hudEnabled=true,persistHistory=true;
     float challengeDistanceMeters=60;
+    int radarPosition=2;
+    float radarScale=1.0f;
     domain::OutrunTuning tuning{};
 };
 void configureNativeEncounter(const NativeEncounterConfig& config);
