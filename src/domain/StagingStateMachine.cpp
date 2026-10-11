@@ -1,6 +1,7 @@
 #include "StagingStateMachine.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace frr::domain {
 namespace {
@@ -57,6 +58,16 @@ StagingUpdate StagingStateMachine::tick(
         return makeUpdate(before);
     }
 
+    // Domain-only fail-closed rule. A verified in-game adapter must own BOTH
+    // vehicles and prove reversible control before a street-duel countdown.
+    // This does not pretend that mere INI flags or road geometry own inputs.
+    if (tuning_.requireNativeStartAuthority &&
+        (!std::isfinite(input.deltaSeconds) || input.deltaSeconds <= 0.0f ||
+         input.deltaSeconds > 0.5f || !input.playerControlCustodyVerified ||
+         !input.rivalBrakeCustodyVerified || !input.restorationVerified)) {
+        transition(StagingState::Aborted);
+        return makeUpdate(before);
+    }
     stateTimeSeconds_ += std::max(input.deltaSeconds, 0.0f);
 
     if (!input.playerValid ||
@@ -91,25 +102,30 @@ StagingUpdate StagingStateMachine::tick(
             break;
 
         case StagingState::Approach:
-            if (input.approachComplete ||
-                timedOut(
-                    stateTimeSeconds_,
-                    tuning_.approachTimeoutSeconds)) {
+            if (input.approachComplete) {
                 transition(StagingState::Align);
+            } else if (timedOut(stateTimeSeconds_, tuning_.approachTimeoutSeconds)) {
+                // In a real duel, a timeout must NOT stand in for the rival
+                // having actually reached the chosen road/formation.
+                transition(tuning_.requireNativeStartAuthority
+                    ? StagingState::Aborted : StagingState::Align);
             }
             break;
 
         case StagingState::Align:
-            if (input.vehiclesAligned) {
-                transition(StagingState::CameraIntro);
-            } else if (timedOut(
-                           stateTimeSeconds_,
-                           tuning_.alignmentTimeoutSeconds)) {
-                if (tuning_.allowHiddenAlignmentFallback &&
-                    input.hiddenAlignmentTransformSafe) {
+            if (input.vehiclesAligned &&
+                (!tuning_.requireNativeStartAuthority || input.bothStoppedVerified)) {
+                transition(tuning_.cinematicIntroEnabled ? StagingState::CameraIntro :
+                    tuning_.negotiationEnabled ? StagingState::Negotiating : StagingState::Ready);
+            } else if (timedOut(stateTimeSeconds_, tuning_.alignmentTimeoutSeconds)) {
+                if (!tuning_.requireNativeStartAuthority &&
+                    tuning_.allowHiddenAlignmentFallback && input.hiddenAlignmentTransformSafe) {
                     hiddenAlignmentRequested = true;
-                    transition(StagingState::CameraIntro);
+                    transition(tuning_.cinematicIntroEnabled ? StagingState::CameraIntro :
+                        tuning_.negotiationEnabled ? StagingState::Negotiating : StagingState::Ready);
                 } else {
+                    // Never teleport the player's or rival's live car to
+                    // manufacture a visible, cutscene-free line-up.
                     transition(StagingState::Aborted);
                 }
             }
@@ -136,31 +152,35 @@ StagingUpdate StagingStateMachine::tick(
             break;
 
         case StagingState::Ready:
-            if (input.enginesReady) {
+            if (tuning_.requireNativeStartAuthority &&
+                (!input.bothStoppedVerified || !input.vehiclesAligned)) {
+                transition(StagingState::Aborted);
+            } else if (input.enginesReady) {
                 transition(StagingState::Countdown);
-            } else if (timedOut(
-                           stateTimeSeconds_,
-                           tuning_.readyTimeoutSeconds)) {
+            } else if (timedOut(stateTimeSeconds_, tuning_.readyTimeoutSeconds)) {
                 transition(StagingState::Aborted);
             }
             break;
 
         case StagingState::Countdown:
-            if (input.countdownComplete) {
+            if (tuning_.requireNativeStartAuthority &&
+                (!input.bothStoppedVerified || !input.vehiclesAligned)) {
+                // A moving car cannot receive a valid simultaneous start.
+                transition(StagingState::Aborted);
+            } else if (input.countdownComplete) {
                 transition(StagingState::Release);
-            } else if (timedOut(
-                           stateTimeSeconds_,
-                           tuning_.countdownTimeoutSeconds)) {
+            } else if (timedOut(stateTimeSeconds_, tuning_.countdownTimeoutSeconds)) {
                 transition(StagingState::Aborted);
             }
             break;
 
         case StagingState::Release:
-            if (input.releaseComplete) {
+            if (input.releaseComplete &&
+                (!tuning_.requireNativeStartAuthority || input.nativeReleaseRestoredVerified)) {
+                // The future adapter must ACK release/restoration on BOTH
+                // vehicles; drawing GO! is not that ACK.
                 transition(StagingState::Completed);
-            } else if (timedOut(
-                           stateTimeSeconds_,
-                           tuning_.releaseTimeoutSeconds)) {
+            } else if (timedOut(stateTimeSeconds_, tuning_.releaseTimeoutSeconds)) {
                 transition(StagingState::Aborted);
             }
             break;
@@ -203,7 +223,7 @@ StagingUpdate StagingStateMachine::makeUpdate(
     out.stateChanged = state_ != before;
     out.requestHiddenAlignment = hiddenAlignmentRequested;
     out.suppressPlayerControl = controlSuppressed(state_);
-    out.cinematicCameraActive = cameraActive(state_);
+    out.cinematicCameraActive = tuning_.cinematicIntroEnabled && cameraActive(state_);
     out.completed = state_ == StagingState::Completed;
     out.aborted = state_ == StagingState::Aborted;
 
