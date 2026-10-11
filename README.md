@@ -50,7 +50,7 @@ Support for additional 1.3 executables will be added only after their addresses/
 
 ## Current status
 
-**v0.0.44-dev (experimental):** displays active Rico distance and player-travel-relative bearing in the HUD. The play preset binds Ctrl+Shift+R (hold 1.5 seconds) to guarded native removal, and F8 is re-armed only after the mod confirms full retirement and no native fault. Better road-reset failure details are logged. Native faults, streaming, world transitions and normal traffic never trigger automatic reconstruction. See [v44 testing notes](docs/RIVAL_LOCATOR_AND_RETRY_V44.md).
+**v0.0.44-dev (experimental; ready-to-extract ZIP):** displays active Rico distance and player-travel-relative bearing in the HUD. The play preset binds Ctrl+Shift+R (hold 1.5 seconds) to guarded native removal, and F8 is re-armed only after the mod confirms full retirement and no native fault. Better road-reset failure details are logged. Native faults, streaming, world transitions and normal traffic never trigger automatic reconstruction. See [v44 testing notes](docs/RIVAL_LOCATOR_AND_RETRY_V44.md). Once v44 release is available, its ZIP contains the PLAY INI already at `scripts/FreeRoamRivals/FreeRoamRivals.ini`: back up any customized INI, then extract the ZIP into the folder containing `speed.exe` and allow replacement. No manual config editing, filename change, or preset copying is required. F8 creation stays manual and experimental; the root-level `FreeRoamRivals-safe.ini` remains an alternate, disabled preset.
 
 
 **v0.0.43-dev — correct native frame time, challenge feedback and F7 conflict removal.**
