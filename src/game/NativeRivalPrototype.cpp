@@ -14,6 +14,7 @@
 #include "../domain/AwayRetirement.h"
 #include "../domain/VisibleSpawnPreference.h"
 #include "../domain/AheadSpawn.h"
+#include "../domain/NativeRivalLossProximity.h"
 #include "../domain/PrototypeGroundProbe.h"
 #include <windows.h>
 #include <algorithm>
@@ -353,9 +354,10 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
             if(!suddenLossReported) {
                 suddenLossReported=true;
                 const auto audit=NativeVehicleFactory::auditOwnedPresenceReadOnly();
-                const bool freshPosition=lastReliableRivalAt!=0 &&
-                    now>=lastReliableRivalAt && now-lastReliableRivalAt<=5000;
-                const float lastDistance=freshPosition ? lastReliableRivalDistanceMeters : -1.0f;
+                const auto proximity=classifyNativeRivalLoss(
+                    now,lastReliableRivalAt,lastReliableRivalDistanceMeters);
+                const bool freshPosition=proximity.observationFresh;
+                const float lastDistance=proximity.lastVerifiedDistanceMeters;
                 std::ostringstream incident;
                 incident << "NativePrototype sudden native presence loss:"
                     << " sameWorldContext=" << owned.contextMatches
@@ -364,7 +366,7 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
                     << " lastReliableDistanceMeters=" << lastDistance
                     << " lastReliableSpeedMps=" << (freshPosition?lastReliableRivalSpeedMps:-1.0f)
                     << " lastSampleAgeMs=" << (lastReliableRivalAt ? now-lastReliableRivalAt : 0)
-                    << " nearLossAtMost250Meters=" << (lastDistance>=0.0f&&lastDistance<=250.0f)
+                    << " nearLossAtMost250Meters=" << proximity.disappearedNearby
                     << " ownerRecorded=" << audit.ownerRecorded
                     << " contextVerified=" << audit.contextVerified
                     << " registryVerified=" << audit.registryVerified
