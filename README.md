@@ -50,6 +50,8 @@ Support for additional 1.3 executables will be added only after their addresses/
 
 ## Current status
 
+**v0.0.47-dev:** F9 também verifica, de modo estritamente **somente leitura**, os arquivos originais CARS/GEOMETRY.BIN, TEXTURES.BIN, GLOBAL e TRACKS que existem na sua instalação, e consulta os nomes internos registrados no runtime. Resultados entram no FreeRoamRivals.log e não habilitam spawns não comprovados: disco + atributo **não garantem residência dos recursos na memória do jogo**. [Pesquisa, limites e instruções](docs/NATIVE_ASSET_INVENTORY_V47.md).
+
 **v0.0.46-dev:** após a primeira calibração física comprovada, o mod salva automaticamente a escala em `scripts/FreeRoamRivals/world-metric-v1.state` e a reutiliza nas próximas inicializações com o mesmo `speed.exe`. Se a prova estiver ausente, corrompida ou incompatível, exige uma calibração normal; não adivinha metros. A confirmação posterior de movimento pode invalidar uma escala contraditória. Nenhuma edição de INI ou cópia manual de arquivos é necessária. **O Golf GTI e o F8 continuam sendo requisitos temporários do protótipo.** [Mais detalhes](docs/PERSISTENT_WORLD_METRIC_V46.md).
 
 **v0.0.45-dev (reaction HUD):** measured approach and separation, following, different elevation, valid G challenge readiness, live rejection reasons and one-shot physically verified overtakes. This is **reactive gameplay UI**, not a new native driving AI: the Racer goal, speed, steering and road navigation writes are unchanged. [v45 reaction evidence/limitations](docs/RIVAL_REACTIONS_V45.md). Ready-to-extract full and existing-installation upgrade ZIPs continue to preserve existing saves/pools. 
