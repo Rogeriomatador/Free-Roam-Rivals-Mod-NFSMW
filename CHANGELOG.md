@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.0.53-dev — layout responsivo, radar à direita e alinhamento de largada observável
+
+- Radar FRR movido por padrão ao meio direito, sem conflito com o minimapa original inferior esquerdo. Novo mostrador com graduações e metros, escala baseada em largura e altura do viewport, configurável pelo INI com posição 0–3 e tamanho 0.5–1.5.
+- Posição da seta de Outrun adaptada ao viewport. Sem exigir X360Stuff e sem alterar HUD FNG ou WidescreenFix.
+- Detecção passiva de dois carros quase parados lado a lado. HUD informa alinhamento sem prometer contagem ou controle automático antes de ABI de freio, bloqueio de input e restauração comprovados.
+- Novos testes de HUD responsivo e contrato de segurança da futura largada.
+- Log de v52 confirmou transição de mundo e identidade descarregada; **streaming físico, buzina nativa e largada automática continuam pendentes**. Veja `docs/HUD_X360_RACE_STAGING_V53.md`.
+
+
 ## v0.0.52-dev — navegação observável do rival, trilha de desafio e detecção de parada
 
 - Bússola verde original da sobreposição FRR acompanha a localização real de Rico relativa à frente física do jogador, mesmo parado. Fica perto do minimapa, mas não altera o minimapa original nem insere slots sem ABI.
