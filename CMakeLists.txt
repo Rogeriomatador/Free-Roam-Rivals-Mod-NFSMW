@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.52
+    VERSION 0.0.53
     LANGUAGES C CXX
 )
 
@@ -327,6 +327,14 @@ add_test(NAME FreeRoamRivalsLiveEncounterTests COMMAND FreeRoamRivalsLiveEncount
 add_executable(FreeRoamRivalsRivalMotionMonitorTests tests/rival_motion_monitor_tests.cpp)
 target_include_directories(FreeRoamRivalsRivalMotionMonitorTests PRIVATE src)
 add_test(NAME FreeRoamRivalsRivalMotionMonitorTests COMMAND FreeRoamRivalsRivalMotionMonitorTests)
+
+add_executable(FreeRoamRivalsHudPlacementTests tests/hud_placement_tests.cpp)
+target_include_directories(FreeRoamRivalsHudPlacementTests PRIVATE src)
+add_test(NAME FreeRoamRivalsHudPlacementTests COMMAND FreeRoamRivalsHudPlacementTests)
+
+add_executable(FreeRoamRivalsFormationReadinessTests tests/race_formation_readiness_tests.cpp)
+target_include_directories(FreeRoamRivalsFormationReadinessTests PRIVATE src)
+add_test(NAME FreeRoamRivalsFormationReadinessTests COMMAND FreeRoamRivalsFormationReadinessTests)
 
 add_executable(FreeRoamRivalsDirectionBeaconTests tests/direction_beacon_tests.cpp)
 target_include_directories(FreeRoamRivalsDirectionBeaconTests PRIVATE src)
