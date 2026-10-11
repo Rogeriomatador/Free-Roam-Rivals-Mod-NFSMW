@@ -6,6 +6,7 @@
 #include "VehicleCatalogProbe.h"
 #include "GameAssetInventory.h"
 #include "../domain/VehicleSelection.h"
+#include "../domain/ActiveModelObservation.h"
 #include "../core/Log.h"
 #include <windows.h>
 #include <tlhelp32.h>
@@ -138,6 +139,30 @@ void tickDiagnosticBundle(const domain::WorldMetricCalibration& metric, float up
         <<" active="<<fleet.enabledActiveVehicles<<" ignoredInactive="<<fleet.ignoredInactiveVehicles
         <<" failed="<<fleet.failedSpatialReads<<" boxes="<<fleet.boxes.size();
     Log::instance().info(spatial.str());
+    unsigned observedOtherModels=0;
+    for(const auto& model:catalog) {
+        const auto key=VehicleCatalogProbe::runtimeKeyForName(model.key);
+        if(!key) continue;
+        const auto evidence=domain::observeActiveModel(fleet.boxes,fleet.registryComplete,
+            fleet.failedSpatialReads,*key,world.vehicles.playerIVehicle);
+        if(evidence.reliable&&evidence.otherThanPlayer>0) ++observedOtherModels;
+        // An active vehicle is meaningful proof that *some* native instance
+        // uses this model NOW. It is not a loading/streaming contract for
+        // constructing a second instance or for offscreen world sections.
+        if(evidence.reliable&&evidence.observed>0) {
+            std::ostringstream present;
+            present<<"DiagnosticBundle activeModel: name="<<model.key
+                <<" activeVehicleBoxes="<<evidence.observed
+                <<" nonPlayer="<<evidence.otherThanPlayer
+                <<" canConstructAnother=unverified"
+                <<" spawnStreamingReady=unverified";
+            Log::instance().info(present.str());
+        }
+    }
+    Log::instance().info("DiagnosticBundle activeModel summary verifiedLiveSnapshot="+
+        std::to_string(fleet.registryComplete&&fleet.failedSpatialReads==0)+
+        " modelsSeenOnOtherCars="+std::to_string(observedOtherModels)+
+        " independentModelLoadingProven=0");
     for (unsigned i=0;i<4;++i) {
         std::size_t batch=0; NativeRoadCaptureReport report{};
         const auto targets=NativeVehicleFactory::captureRoadTargets(batch,report);
