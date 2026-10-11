@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.0.52-dev — navegação observável do rival, trilha de desafio e detecção de parada
+
+- Bússola verde original da sobreposição FRR acompanha a localização real de Rico relativa à frente física do jogador, mesmo parado. Fica perto do minimapa, mas não altera o minimapa original nem insere slots sem ABI.
+- Seta amarela mostra apenas a trilha real verificada do líder durante Outrun quando o jogador segue Rico; ela some em percursos não correspondentes ou eventos inválidos. Não inventa checkpoints/linhas de corrida.
+- Classificador conservador destaca possível imobilização após 12s próximo da mesma posição (<5 m, baixa velocidade) e revoga aviso ao sair; não força aceleração, teleporte ou reinicialização da AI sem provas nativas.
+- Reutiliza o desenho D3D9 existente com restauração de estado, novos testes de orientação/trilha/stall, sem modificar dinheiro, garagem, saves, parâmetros F8/G, streaming ou AI.
+- Evidência real do carro parado por ~2min e plano de minimapa nativo: [RICO_HUD_AND_STUCK_V52.md](docs/RICO_HUD_AND_STUCK_V52.md).
+
+
 ## v0.0.51-dev — criar Rico à frente do Golf GTI
 
 - No preset de teste próximo, filtra road targets pela direção física validada do Golf GTI, mesmo parado, exigindo candidato 20–115m à frente, corredor lateral/vertical limitado e também distância total segura 20–120m.

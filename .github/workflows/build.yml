@@ -71,6 +71,7 @@ jobs:
           Copy-Item "docs/ROAD_RESET_EVIDENCE_V49.md" "$pkg/ROAD_RESET_EVIDENCE_V49.md"
           Copy-Item "docs/VISIBLE_PROTOTYPE_V50.md" "$pkg/VISIBLE_PROTOTYPE_V50.md"
           Copy-Item "docs/RICO_AHEAD_SPAWN_V51.md" "$pkg/RICO_AHEAD_SPAWN_V51.md"
+          Copy-Item "docs/RICO_HUD_AND_STUCK_V52.md" "$pkg/RICO_HUD_AND_STUCK_V52.md"
           Copy-Item "config/Rivals.ini" "$pkg/scripts/FreeRoamRivals/Rivals.ini"
           Copy-Item "config/VehiclePools.ini" "$pkg/scripts/FreeRoamRivals/VehiclePools.ini"
           Copy-Item "config/UndergroundBlacklist.ini" "$pkg/scripts/FreeRoamRivals/UndergroundBlacklist.ini"
@@ -100,7 +101,7 @@ jobs:
           Copy-Item "docs/NATIVE_ROAMING_STREAMING_RESEARCH.md" "$pkg/NATIVE_ROAMING_STREAMING_RESEARCH.md"
 
           @"
-          NFSMW Free Roam Rivals v0.0.51-dev
+          NFSMW Free Roam Rivals v0.0.52-dev
 
           INSTALL:
           1. BACK UP scripts\FreeRoamRivals\FreeRoamRivals.ini if it contains
@@ -133,6 +134,10 @@ jobs:
           model residency and DO NOT bypass the Golf GTI prerequisite.
           In PLAY near-player mode, F8 now requires a clear road strictly
           AHEAD of the car's verified physical heading. No behind fallback.
+          New FRR overlay: green RICO compass NEAR minimap (not a real
+          Hud_Minimap icon), amber verified leader trail in Outrun, and
+          passive warning after 12 seconds almost stationary.
+          See RICO_HUD_AND_STUCK_V52.md for use and remaining native limitations.
           See RICO_AHEAD_SPAWN_V51.md for controls and expectations.
           See VISIBLE_PROTOTYPE_V50.md for first-test successful GTI and
           the second test constructor-null, near-camera F8 ranking, and limits.
@@ -158,7 +163,7 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.51-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.52-dev.zip" -Force
 
           # Minimal update for existing v45 installations: preserve Rivals.ini,
           # VehiclePools.ini, UndergroundBlacklist.ini and all saved history.
@@ -174,8 +179,9 @@ jobs:
           Copy-Item "docs/ROAD_RESET_EVIDENCE_V49.md" "$upgrade/ROAD_RESET_EVIDENCE_V49.md"
           Copy-Item "docs/VISIBLE_PROTOTYPE_V50.md" "$upgrade/VISIBLE_PROTOTYPE_V50.md"
           Copy-Item "docs/RICO_AHEAD_SPAWN_V51.md" "$upgrade/RICO_AHEAD_SPAWN_V51.md"
+          Copy-Item "docs/RICO_HUD_AND_STUCK_V52.md" "$upgrade/RICO_HUD_AND_STUCK_V52.md"
           @"
-          FREE ROAM RIVALS v0.0.51-dev - EXISTING INSTALLATION UPGRADE
+          FREE ROAM RIVALS v0.0.52-dev - EXISTING INSTALLATION UPGRADE
 
           BACK UP your customized scripts\FreeRoamRivals\FreeRoamRivals.ini.
           Extract this ZIP to the existing NFSMW folder containing speed.exe,
@@ -195,12 +201,12 @@ jobs:
           steering and acceleration remain unchanged. In-game test pending.
           The game must be closed while replacing these files.
           "@ | Set-Content "$upgrade/INSTALAR-ATUALIZACAO.txt" -Encoding UTF8
-          Compress-Archive -Path "$upgrade/*" -DestinationPath "release/FreeRoamRivals-v0.0.51-dev-upgrade.zip" -Force
+          Compress-Archive -Path "$upgrade/*" -DestinationPath "release/FreeRoamRivals-v0.0.52-dev-upgrade.zip" -Force
 
       - name: Verify ready-to-install package
         shell: pwsh
         run: |
-          $path = "release/FreeRoamRivals-v0.0.51-dev.zip"
+          $path = "release/FreeRoamRivals-v0.0.52-dev.zip"
           if (!(Test-Path $path)) { throw "Install ZIP is missing" }
           Add-Type -AssemblyName System.IO.Compression
           $zip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $path).Path)
@@ -221,7 +227,8 @@ jobs:
               "GUARDED_REENCOUNTER_V48.md",
               "ROAD_RESET_EVIDENCE_V49.md",
               "VISIBLE_PROTOTYPE_V50.md",
-              "RICO_AHEAD_SPAWN_V51.md"
+              "RICO_AHEAD_SPAWN_V51.md",
+              "RICO_HUD_AND_STUCK_V52.md"
             )
             foreach ($item in $required) {
               if ($names -cnotcontains $item) { throw "Missing package entry: $item" }
@@ -238,12 +245,12 @@ jobs:
             if (!$ini.Contains($setting)) { throw "Play INI missing $setting" }
           }
           if ($ini.Contains("RetireRivalKey=0" + [char]10)) { throw "Manual retirement was silently disabled" }
-          $upgradePath = "release/FreeRoamRivals-v0.0.51-dev-upgrade.zip"
+          $upgradePath = "release/FreeRoamRivals-v0.0.52-dev-upgrade.zip"
           if (!(Test-Path $upgradePath)) { throw "Upgrade ZIP is missing" }
           $upgradeZip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $upgradePath).Path)
           try {
             $upgradeNames = @($upgradeZip.Entries | ForEach-Object { $_.FullName.Replace("\\","/") })
-            foreach ($item in @("scripts/FreeRoamRivals.asi","scripts/FreeRoamRivals/FreeRoamRivals.ini","INSTALAR-ATUALIZACAO.txt","RIVAL_REACTIONS_V45.md","PERSISTENT_WORLD_METRIC_V46.md","NATIVE_ASSET_INVENTORY_V47.md","GUARDED_REENCOUNTER_V48.md","ROAD_RESET_EVIDENCE_V49.md","VISIBLE_PROTOTYPE_V50.md","RICO_AHEAD_SPAWN_V51.md")) {
+            foreach ($item in @("scripts/FreeRoamRivals.asi","scripts/FreeRoamRivals/FreeRoamRivals.ini","INSTALAR-ATUALIZACAO.txt","RIVAL_REACTIONS_V45.md","PERSISTENT_WORLD_METRIC_V46.md","NATIVE_ASSET_INVENTORY_V47.md","GUARDED_REENCOUNTER_V48.md","ROAD_RESET_EVIDENCE_V49.md","VISIBLE_PROTOTYPE_V50.md","RICO_AHEAD_SPAWN_V51.md","RICO_HUD_AND_STUCK_V52.md")) {
               if ($upgradeNames -cnotcontains $item) { throw "Upgrade missing: $item" }
             }
             foreach ($item in $upgradeNames) {
@@ -260,23 +267,23 @@ jobs:
       - name: Upload ready-to-install ZIP artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FreeRoamRivals-ReadyToInstall-v51
+          name: FreeRoamRivals-ReadyToInstall-v52
           path: |
-            release/FreeRoamRivals-v0.0.51-dev.zip
-            release/FreeRoamRivals-v0.0.51-dev-upgrade.zip
+            release/FreeRoamRivals-v0.0.52-dev.zip
+            release/FreeRoamRivals-v0.0.52-dev-upgrade.zip
           if-no-files-found: error
 
-      - name: Publish v0.0.51-dev GitHub Release
+      - name: Publish v0.0.52-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.51-dev"
+          $tag = "v0.0.52-dev"
 
           $files = @(
-            "release/FreeRoamRivals-v0.0.51-dev.zip",
-            "release/FreeRoamRivals-v0.0.51-dev-upgrade.zip"
+            "release/FreeRoamRivals-v0.0.52-dev.zip",
+            "release/FreeRoamRivals-v0.0.52-dev-upgrade.zip"
           )
           $published = $false
           for ($attempt = 1; $attempt -le 3; $attempt++) {
@@ -298,9 +305,9 @@ jobs:
             } else {
               gh release create $tag $files `
                 --target "${{ github.sha }}" `
-                --title "Free Roam Rivals v0.0.51-dev" `
+                --title "Free Roam Rivals v0.0.52-dev" `
                 --prerelease `
-                --notes "v0.0.51-dev: F8 modo teste perto do jogador passa a criar Rico somente em ruas a frente do sentido fisico do seu Golf GTI, 20 a 115m adiante, dentro do corredor lateral permitido e validacao atual de pista/colisao. Usa GetForwardVector do corpo do jogador, inclusive parado; nao confunde camera ou vetor de velocidade e nao escolhe rua atras como fallback. Prioriza candidatos tambem potencialmente na camera. Se nao houver alvo seguro a frente, informa e nao cria. Todos saves, cache, capacidade e controles de falhas nativas permanecem protegidos. Ainda nao muda a IA que pode acelerar e sair da frente; precisa testar no seu jogo."
+                --notes "v0.0.52-dev: inclui indicador VERDE do Rico em bussola propria proxima do minimapa, com orientacao do proprio carro e dados nativos observados; seta AMARELA durante Outrun seguindo apenas a trilha real verificada do lider; detector de parada prolongada apos 12s de baixa velocidade e pouco deslocamento. Nao se trata ainda de insercao no Hud_Minimap original nem cria checkpoints ou GPS inventados. Sem alterar IA, teleporte, saves, garagem, carreira ou metric cache. Arquivos completos e upgrade prontos para instalar. Precisa de validacao visual no PC."
             }
             if ($LASTEXITCODE -eq 0) { $published = $true; break }
             if ($attempt -lt 3) { Start-Sleep -Seconds 5 }

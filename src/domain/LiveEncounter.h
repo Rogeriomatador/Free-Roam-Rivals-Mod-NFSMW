@@ -18,6 +18,11 @@ struct LiveEncounterInput {
 struct LiveEncounterView {
     bool available=false,running=false,routeMatched=false,justStarted=false,justFinished=false,leaderChanged=false;
     const char* reason="none"; // Static reason identifiers, never borrowed input strings.
+    // Verified trail point ahead of the player while FOLLOWING Rico. This
+    // is NOT a native GPS path, waypoint, or race checkpoint.
+    bool observedTrailCueValid=false;
+    EncounterPoint observedTrailCue{};
+    float observedTrailCueDistance=0;
     OutrunOutcome outcome=OutrunOutcome::InProgress;
     OutrunLeader leader=OutrunLeader::Rival;
     float signedLeadMeters=0,holdProgress=0,remainingCooldown=0,elapsedSeconds=0;

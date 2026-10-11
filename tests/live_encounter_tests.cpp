@@ -16,6 +16,8 @@ int main() {
     in.challengeSafe=false;in.acceptPressed=true;
     require(!race.tick(in).running,"police blocks acceptance");
     in.challengeSafe=true;auto v=race.tick(in);require(v.justStarted&&v.running,"accepted challenge starts");
+    require(v.observedTrailCueValid&&v.observedTrailCueDistance>0,
+        "first observed Rico position is a valid trailing guidance point");
     in.acceptPressed=false;in.challengeSafe=false; // Already accepted race continues in pursuit.
     for(int n=1;n<=8;++n) {in.player.position.z=n*2.5f;in.rival.position.z=20+n*5.0f;in.rival.speed=20;v=race.tick(in);if(v.justFinished)break;}
     require(v.justFinished&&v.outcome==OutrunOutcome::RivalWon,"same trail lead and hold produce loss during pursuit");
@@ -35,6 +37,8 @@ int main() {
     LiveEncounter wrongRoad;in=input();in.acceptPressed=true;wrongRoad.tick(in);in.acceptPressed=false;
     for(int n=1;n<=16;++n) {in.player.position.x=std::min(n*5.0f,35.0f);in.player.position.z=n*2.5f;in.rival.position.z=20+n*2.5f;v=wrongRoad.tick(in);if(v.justFinished)break;}
     require(v.outcome==OutrunOutcome::Aborted,"different street cannot award a win");
+    require(!v.observedTrailCueValid,
+        "route abort removes potentially misleading trail guidance");
     LiveEncounter bridge;in=input();in.acceptPressed=true;bridge.tick(in);in.acceptPressed=false;
     for(int n=1;n<=20;++n) {in.player.position.y=std::min(n*3.0f,15.0f);in.player.position.z=n*2.5f;in.rival.position.z=20+n*2.5f;v=bridge.tick(in);if(v.justFinished)break;}
     require(v.outcome==OutrunOutcome::Aborted,"overpass cannot score from horizontal proximity");

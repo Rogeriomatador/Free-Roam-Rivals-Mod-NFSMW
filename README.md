@@ -50,6 +50,9 @@ Support for additional 1.3 executables will be added only after their addresses/
 
 ## Current status
 
+**v0.0.52-dev:** novo indicador **verde RICO** (bússola separada ao lado do minimapa nativo, com direção relativa à orientação física do jogador), **seta amarela de trilha observada** quando o jogador segue Rico em Outrun e aviso de **imobilização observada** após 12 s quase sem movimento. A posição de Rico é obtida de leitura verificada, mas o marcador ainda NÃO integra o minimapa FNG original. Nenhuma alteração de volante/objetivo da IA foi realizada. [Guia completo](docs/RICO_HUD_AND_STUCK_V52.md).
+
+
 **v0.0.51-dev:** F8 no modo PLAY próximo agora aceita **apenas pistas à frente da orientação física do carro do jogador**, entre aproximadamente 20 e 115 m à frente e 10–30 m de corredor lateral. O modelo continua sendo GTI; colisão, terreno e criação nativa protegida permanecem iguais. Se não encontrar pista à frente, informa e não nasce atrás. Ordena as candidatas dianteiras pela possível visibilidade da câmera e direção/centralidade. [Procedimento de teste](docs/RICO_AHEAD_SPAWN_V51.md).
 
 

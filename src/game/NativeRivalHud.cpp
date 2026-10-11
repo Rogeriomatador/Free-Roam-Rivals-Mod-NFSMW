@@ -48,6 +48,32 @@ void quad(std::vector<Vertex>& out,float x,float y,float w,float h,DWORD color) 
     const Vertex a{x,y,0,1,color},b{x+w,y,0,1,color},c{x+w,y+h,0,1,color},d{x,y+h,0,1,color};
     out.insert(out.end(),{a,b,c,a,c,d});
 }
+void triangle(std::vector<Vertex>& out,float ax,float ay,float bx,float by,
+              float cx,float cy,DWORD color) {
+    out.insert(out.end(),{{ax,ay,0,1,color},{bx,by,0,1,color},{cx,cy,0,1,color}});
+}
+void smallText(std::vector<Vertex>& out,const char* text,float x,float y,
+               float scale,DWORD color) {
+    for(unsigned i=0;text[i]&&i<24;++i){
+        const auto rows=glyph(text[i]);
+        for(unsigned row=0;row<7;++row)for(unsigned col=0;col<5;++col)
+            if(rows[row]&(1u<<(4-col)))
+                quad(out,x+(6*i+col)*scale,y+row*scale,scale,scale,color);
+    }
+}
+void beacon(std::vector<Vertex>& out,float cx,float cy,float right,float forward,
+            float scale,DWORD color){
+    if(!std::isfinite(right)||!std::isfinite(forward))return;
+    const auto size=std::hypot(right,forward);
+    if(size<0.5f||size>1.5f)return;
+    const float dx=right/size,dy=-forward/size;
+    // Correctly normalized player-relative vector, with arrow point outward.
+    const float tipX=cx+dx*31*scale,tipY=cy+dy*31*scale;
+    const float baseX=cx+dx*17*scale,baseY=cy+dy*17*scale;
+    triangle(out,tipX,tipY,baseX-dy*6*scale,baseY+dx*6*scale,
+        baseX+dy*6*scale,baseY-dx*6*scale,color);
+    quad(out,cx-2*scale,cy-2*scale,4*scale,4*scale,D3DCOLOR_ARGB(255,240,240,240));
+}
 }
 void configureNativeRivalHud(bool value) {enabled=value;}
 void publishNativeRivalHud(const NativeRivalHudView& value) {
@@ -78,6 +104,33 @@ void renderNativeRivalHud(void* raw) try {
     const float progress=std::isfinite(view.holdProgress)?std::clamp(view.holdProgress,0.0f,1.0f):0;
     quad(vertices,x+8*scale,y+76*scale,312*scale*progress,3*scale,
         view.playerLeading?D3DCOLOR_ARGB(255,70,220,110):D3DCOLOR_ARGB(255,245,95,80));
+    if(view.rivalBeaconValid) {
+        // Separate FRR compass near the stock minimap: NOT a pin written
+        // to the actual vanilla minimap/radar widget or map coordinates.
+        const float cx=static_cast<float>(viewport.X)+55*scale;
+        const float cy=static_cast<float>(viewport.Y+viewport.Height)-155*scale;
+        quad(vertices,cx-41*scale,cy-46*scale,82*scale,91*scale,
+            D3DCOLOR_ARGB(195,12,21,17));
+        smallText(vertices,"RICO",cx-12*scale,cy-39*scale,scale,
+            D3DCOLOR_ARGB(255,110,245,137));
+        beacon(vertices,cx,cy,view.rivalRight,view.rivalFront,scale,
+            D3DCOLOR_ARGB(255,60,237,118));
+        if(view.rivalStationary)
+            smallText(vertices,"PARADO",cx-19*scale,cy+36*scale,scale,
+                D3DCOLOR_ARGB(255,255,175,72));
+    }
+    if(view.routeCueValid) {
+        // Yellow arrow shows the ACTUAL OBSERVED leader trail in the
+        // current Outrun; no invented intersections or race checkpoints.
+        const float cx=static_cast<float>(viewport.X+viewport.Width/2);
+        const float cy=static_cast<float>(viewport.Y)+150*scale;
+        quad(vertices,cx-55*scale,cy-47*scale,110*scale,92*scale,
+            D3DCOLOR_ARGB(190,20,20,14));
+        smallText(vertices,"TRILHA RICO",cx-32*scale,cy-40*scale,scale,
+            D3DCOLOR_ARGB(255,250,205,88));
+        beacon(vertices,cx,cy,view.routeRight,view.routeFront,scale,
+            D3DCOLOR_ARGB(255,255,191,55));
+    }
     IDirect3DStateBlock9* state=nullptr;
     if(FAILED(device->CreateStateBlock(D3DSBT_ALL,&state))) return;
     if(FAILED(state->Capture())) {state->Release();return;}
