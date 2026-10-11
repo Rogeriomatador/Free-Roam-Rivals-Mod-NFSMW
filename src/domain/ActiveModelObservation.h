@@ -16,8 +16,11 @@ inline ActiveModelObservation observeActiveModel(
     bool registryComplete,unsigned failedSpatialReads,
     std::uint32_t requestedKey,std::uintptr_t playerIVehicle) {
     ActiveModelObservation result{};
-    result.reliable=registryComplete&&failedSpatialReads==0;
-    if(!result.reliable||requestedKey==0||playerIVehicle==0) return result;
+    // Without both player identity and model key, even a complete fleet scan
+    // cannot safely distinguish observed player/non-player model instances.
+    result.reliable=registryComplete&&failedSpatialReads==0&&
+        requestedKey!=0&&playerIVehicle!=0;
+    if(!result.reliable) return result;
     for(const auto& box:boxes) {
         if(!box.valid||box.vehicleKey!=requestedKey||box.identity==0) continue;
         ++result.observed;
