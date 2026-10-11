@@ -19,6 +19,8 @@ struct RuntimeProbeConfig {
     unsigned heartbeatFrames = 600;
 
     bool outrunEnabled=false, rivalHudEnabled=true, rivalHistoryEnabled=true;
+    int rivalRadarPosition=2;
+    float rivalRadarScale=1.0f;
     float rivalChallengeDistanceMeters=60, outrunWinLeadMeters=300, outrunLeadHoldSeconds=3, outrunMaxDurationSeconds=300;
     unsigned retireRivalVirtualKey=0;
     bool retireRequireControlShift=true;
