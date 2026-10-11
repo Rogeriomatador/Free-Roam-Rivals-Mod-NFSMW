@@ -545,6 +545,29 @@ bool vehiclePursuitClear(std::uintptr_t iv) {
 #endif
 }
 bool ownedPursuitClear() { return vehiclePursuitClear(owned.iv); }
+// Keep the C++ stream/RAII object outside any MSVC __try body. The guarded
+// call site passes only already copied, validated scalar observations.
+void logRoadResetMismatch(const NativeOwnedSnapshot& current,float dx,float dz) {
+    std::ostringstream difference;
+    difference << "NativeFactory road-reset position mismatch: targetX="
+        << owned.roadTarget.position.x << " targetY=" << owned.roadTarget.position.y
+        << " targetZ=" << owned.roadTarget.position.z
+        << " actualX=" << current.box.center.x << " actualY=" << current.box.center.y
+        << " actualZ=" << current.box.center.z
+        << " deltaX=" << dx
+        << " deltaY=" << (current.box.center.y-owned.roadTarget.position.y)
+        << " deltaZ=" << dz
+        << " horizontalDelta=" << std::sqrt(dx*dx+dz*dz)
+        << " segment=" << owned.roadTarget.seed.segment
+        << " node=" << owned.roadTarget.seed.node
+        << " lane=" << owned.roadTarget.seed.lane
+        << " time=" << owned.roadTarget.seed.segmentTime
+        << " offset=" << owned.roadTarget.seed.laneOffset
+        << " carActive=" << current.active
+        << " carLoading=" << current.loading
+        << " safetyGate=reject_no_activation";
+    Log::instance().warn(difference.str());
+}
 bool roadResetCall() {
     roadResetReason="begin";
 #if defined(_MSC_VER)
@@ -567,25 +590,7 @@ bool roadResetCall() {
             // A successful return from ResetToRoad does NOT guarantee that
             // the car reached the expected native position. Document the
             // actual discrepancy without weakening the strict 1-unit gate.
-            std::ostringstream difference;
-            difference << "NativeFactory road-reset position mismatch: targetX="
-                << owned.roadTarget.position.x << " targetY=" << owned.roadTarget.position.y
-                << " targetZ=" << owned.roadTarget.position.z
-                << " actualX=" << current.box.center.x << " actualY=" << current.box.center.y
-                << " actualZ=" << current.box.center.z
-                << " deltaX=" << dx
-                << " deltaY=" << (current.box.center.y-owned.roadTarget.position.y)
-                << " deltaZ=" << dz
-                << " horizontalDelta=" << std::sqrt(dx*dx+dz*dz)
-                << " segment=" << owned.roadTarget.seed.segment
-                << " node=" << owned.roadTarget.seed.node
-                << " lane=" << unsigned(owned.roadTarget.seed.lane)
-                << " time=" << owned.roadTarget.seed.segmentTime
-                << " offset=" << owned.roadTarget.seed.laneOffset
-                << " carActive=" << current.active
-                << " carLoading=" << current.loading
-                << " safetyGate=reject_no_activation";
-            Log::instance().warn(difference.str());
+            logRoadResetMismatch(current,dx,dz);
             roadResetReason="post_reset_position_mismatch";
             return false;
         }
