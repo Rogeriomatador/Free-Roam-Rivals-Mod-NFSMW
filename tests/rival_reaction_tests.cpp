@@ -30,10 +30,10 @@ int main() {
     s.rival.position.z=130;
     if(frame(3).state!=RivalReaction::Cruising) return 9;
     // Legitimate closing gaps, even while facing differently, use actual positions.
-    s.player.position.z=30;frame(3);
-    if(frame(3).state!=RivalReaction::Closing) return 10;
-    s.player.position.z=0;frame(3);
-    if(frame(3).state!=RivalReaction::FallingBehind) return 11;
+    for(int z=3;z<=27;z+=3) {s.player.position.z=static_cast<float>(z);monitor.update(s);}
+    if(frame(1).state!=RivalReaction::Closing) return 10;
+    for(int z=24;z>=-3;z-=3) {s.player.position.z=static_cast<float>(z);monitor.update(s);}
+    if(frame(1).state!=RivalReaction::FallingBehind) return 11;
     s.player.position.z=5000;
     if(frame(3).state!=RivalReaction::Distant) return 12; // no false close trend on teleport
     s.rival.position.y=std::numeric_limits<float>::quiet_NaN();
