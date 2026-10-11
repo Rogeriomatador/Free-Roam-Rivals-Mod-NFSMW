@@ -65,6 +65,8 @@ void blocked(const std::string& reason) {
             showNativeRivalStatus("RETIRADA PENDENTE", "AFASTE-SE 300M; CARRO DEVE FICAR OCULTO");
         else if(reason=="cleanup_requires_stable_clear_pursuit_window")
             showNativeRivalStatus("RETIRADA PENDENTE", "AGUARDE FIM DA PERSEGUICAO / TRANSICAO");
+        else if(NativeVehicleFactory::retryBlockedByFault())
+            showNativeRivalStatus("FALHA NA CRIACAO", "REINICIE O JOGO APOS A RETIRADA SEGURA");
         else if(reason=="cleanup_requires_fresh_loaded_identity")
             showNativeRivalStatus("RICO DESCARREGADO", "SEM REMOCAO CONFIRMADA - REINICIE PARA RETESTAR");
         else if(reason=="world_transition_no_old_pointer_reads")
@@ -264,9 +266,17 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
         if (stage==Stage::Idle && !attemptSpent) transition(Stage::Seeking);
         else if (stage==Stage::Seeking) blocked("search_already_in_progress_wait_10_seconds");
         else if (stage==Stage::Retiring) {
-            queuedF8AfterSafeRetirement=true;
-            showNativeRivalStatus("NOVO ENCONTRO SOLICITADO","AGUARDANDO REMOCAO NATIVA COMPROVADA");
-            Log::instance().info("NativePrototype F8 queued: only after BOTH native registries confirm owner removal on two completed frames; no duplicate construction.");
+            if (NativeVehicleFactory::retryBlockedByFault()) {
+                queuedF8AfterSafeRetirement=false;
+                showNativeRivalStatus("F8 INDISPONIVEL","FALHA NO MOTOR: REINICIE APOS FECHAR O JOGO");
+                Log::instance().warn("NativePrototype F8 refused: previous native road/constructor fault disabled all new construction for this process, even after safe owner retirement. Restart required.");
+            } else if(!queuedF8AfterSafeRetirement) {
+                queuedF8AfterSafeRetirement=true;
+                showNativeRivalStatus("NOVO ENCONTRO SOLICITADO","AGUARDANDO REMOCAO NATIVA COMPROVADA");
+                Log::instance().info("NativePrototype F8 queued: only after BOTH native registries confirm owner removal on two completed frames; no duplicate construction.");
+            } else {
+                showNativeRivalStatus("F8 JA AGUARDANDO","AGUARDANDO REMOCAO NATIVA COMPROVADA");
+            }
         } else if (stage==Stage::Active) {
             showNativeRivalStatus("RICO AINDA EXISTE","CTRL+SHIFT+R: RETIRADA SEGURA");
             Log::instance().info("NativePrototype F8 refused: existing owned car remains active; no duplicate spawn.");

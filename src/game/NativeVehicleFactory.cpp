@@ -545,6 +545,29 @@ bool vehiclePursuitClear(std::uintptr_t iv) {
 #endif
 }
 bool ownedPursuitClear() { return vehiclePursuitClear(owned.iv); }
+// Keep the C++ stream/RAII object outside any MSVC __try body. The guarded
+// call site passes only already copied, validated scalar observations.
+void logRoadResetMismatch(const NativeOwnedSnapshot& current,float dx,float dz) {
+    std::ostringstream difference;
+    difference << "NativeFactory road-reset position mismatch: targetX="
+        << owned.roadTarget.position.x << " targetY=" << owned.roadTarget.position.y
+        << " targetZ=" << owned.roadTarget.position.z
+        << " actualX=" << current.box.center.x << " actualY=" << current.box.center.y
+        << " actualZ=" << current.box.center.z
+        << " deltaX=" << dx
+        << " deltaY=" << (current.box.center.y-owned.roadTarget.position.y)
+        << " deltaZ=" << dz
+        << " horizontalDelta=" << std::sqrt(dx*dx+dz*dz)
+        << " segment=" << owned.roadTarget.seed.segment
+        << " node=" << owned.roadTarget.seed.node
+        << " lane=" << owned.roadTarget.seed.lane
+        << " time=" << owned.roadTarget.seed.segmentTime
+        << " offset=" << owned.roadTarget.seed.laneOffset
+        << " carActive=" << current.active
+        << " carLoading=" << current.loading
+        << " safetyGate=reject_no_activation";
+    Log::instance().warn(difference.str());
+}
 bool roadResetCall() {
     roadResetReason="begin";
 #if defined(_MSC_VER)
@@ -563,7 +586,14 @@ bool roadResetCall() {
         if (!ownedRead(current) || !current.box.valid || current.active) { roadResetReason="post_reset_snapshot_invalid"; return false; }
         const float dx = current.box.center.x - owned.roadTarget.position.x;
         const float dz = current.box.center.z - owned.roadTarget.position.z;
-        if (dx*dx + dz*dz > 1.0f) { roadResetReason="post_reset_position_mismatch"; return false; }
+        if (dx*dx + dz*dz > 1.0f) {
+            // A successful return from ResetToRoad does NOT guarantee that
+            // the car reached the expected native position. Document the
+            // actual discrepancy without weakening the strict 1-unit gate.
+            logRoadResetMismatch(current,dx,dz);
+            roadResetReason="post_reset_position_mismatch";
+            return false;
+        }
         roadResetReason="ok"; return true;
 #if defined(_MSC_VER)
     } __except (captureNativeException(GetExceptionInformation())) { roadResetReason="native_seh_exception"; return false; }
@@ -868,6 +898,12 @@ NativeFactoryResult NativeVehicleFactory::observeRemoval() {
     return NativeFactoryResult::Removed;
 }
 
+bool NativeVehicleFactory::retryBlockedByFault() {
+    // A single failed native construction/road operation disables further
+    // construction for this process. The existing owner can still be
+    // retired safely, but the user must restart before attempting F8 again.
+    return disabled || compatibilityRejected;
+}
 bool NativeVehicleFactory::safeToRetryAfterConfirmedRemoval() {
     return gameplayThread() && prepared && !disabled && !compatibilityRejected && !owned.p && !pending.p;
 }
