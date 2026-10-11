@@ -340,6 +340,14 @@ add_executable(FreeRoamRivalsFormationReadinessTests tests/race_formation_readin
 target_include_directories(FreeRoamRivalsFormationReadinessTests PRIVATE src)
 add_test(NAME FreeRoamRivalsFormationReadinessTests COMMAND FreeRoamRivalsFormationReadinessTests)
 
+# Native control is not implemented here: exercises the no-cutscene
+# staging contract, two-car release ACK and fail-closed rollback only.
+add_executable(FreeRoamRivalsStreetDuelStagingTests
+    tests/street_duel_staging_tests.cpp
+    src/domain/StagingStateMachine.cpp)
+target_include_directories(FreeRoamRivalsStreetDuelStagingTests PRIVATE src)
+add_test(NAME FreeRoamRivalsStreetDuelStagingTests COMMAND FreeRoamRivalsStreetDuelStagingTests)
+
 add_executable(FreeRoamRivalsDirectionBeaconTests tests/direction_beacon_tests.cpp)
 target_include_directories(FreeRoamRivalsDirectionBeaconTests PRIVATE src)
 add_test(NAME FreeRoamRivalsDirectionBeaconTests COMMAND FreeRoamRivalsDirectionBeaconTests)
