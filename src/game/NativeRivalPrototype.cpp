@@ -65,8 +65,14 @@ void blocked(const std::string& reason) {
             showNativeRivalStatus("RETIRADA PENDENTE", "AFASTE-SE 300M; CARRO DEVE FICAR OCULTO");
         else if(reason=="cleanup_requires_stable_clear_pursuit_window")
             showNativeRivalStatus("RETIRADA PENDENTE", "AGUARDE FIM DA PERSEGUICAO / TRANSICAO");
+        else if(reason=="cleanup_requires_fresh_loaded_identity")
+            showNativeRivalStatus("RICO DESCARREGADO", "SEM REMOCAO CONFIRMADA - REINICIE PARA RETESTAR");
+        else if(reason=="world_transition_no_old_pointer_reads")
+            showNativeRivalStatus("RIVAL EM OUTRO MUNDO", "SEM ACESSO SEGURO - REINICIE PARA RETESTAR");
         else showNativeRivalStatus("RETIRADA NATIVA PENDENTE", "AGUARDANDO REGISTROS E CONTEXTO SEGUROS");
-    } else showNativeRivalStatus("AGUARDANDO CONDICOES SEGURAS",
+    } else if(reason=="owned_vehicle_unavailable_wait_without_cleanup")
+        showNativeRivalStatus("RICO FORA DO ALCANCE", "MODELO DESCARREGADO - NAO DUPLICAR");
+    else showNativeRivalStatus("AGUARDANDO CONDICOES SEGURAS",
         stage==Stage::Seeking ? "DIRIJA O GOLF GTI E TENTE NOVAMENTE" : "RIVAL PRESERVADO DURANTE A TRANSICAO");
     const auto now = GetTickCount64();
     if (reason != lastBlock || now-lastBlockLog >= 5000) {
