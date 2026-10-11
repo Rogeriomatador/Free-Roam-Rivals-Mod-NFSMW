@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.0.51-dev — criar Rico à frente do Golf GTI
+
+- No preset de teste próximo, filtra road targets pela direção física validada do Golf GTI, mesmo parado, exigindo candidato 20–115m à frente, corredor lateral/vertical limitado e também distância total segura 20–120m.
+- **Nunca** volta a selecionar um alvo atrás se não houver estrada dianteira: informa "SEM PISTA LIVRE A FRENTE" ou orientação indisponível. Usa identidade IVehicle do jogador, caixa física coerente e orientação atual em vez da velocidade ou câmera.
+- Entre os alvos dianteiros, prioriza possível enquadramento pela câmera, direção semelhante e posição central próxima de 45m. Log detalha `frontConeCandidates`, `playerForwardMeters` e `playerLateralMeters`.
+- Novos testes de posição frente/atrás, lateral, ponte, escala, direção inválida e ordenação. Não altera a IA nativa, o streaming, F8 seguro, arquivos de saves nem o cache. Ver [RICO_AHEAD_SPAWN_V51.md](docs/RICO_AHEAD_SPAWN_V51.md).
+
+
 ## v0.0.50-dev — melhora da chance de enxergar Rico e evidências de construtor nulo
 
 - Em teste PLAY 20–120 m, prioriza candidatos potencialmente no frustum primário, mantendo ordem de distância quando câmera não é confiável. Não promete desenho pela GPU nem interfere com IA, visibilidade real ou proteção de terreno/colisão.
