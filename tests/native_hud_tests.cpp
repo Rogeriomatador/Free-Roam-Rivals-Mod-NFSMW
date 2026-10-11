@@ -59,7 +59,8 @@ int main(){
     std::strcpy(view.lines[2],"[G] DESAFIAR RICO");publishNativeRivalHud(view);
     renderNativeRivalHud(&device);
     require(draws==2&&greenPromptDrawn,"verified challenge-ready prompt drawn in green");
-    require(states==original&&captures==4&&applies==2&&releases==4,"ready HUD still fully restores D3D state");
+    // One previous failed CreateStateBlock must NOT count as a Capture or Release.
+    require(states==original&&captures==3&&applies==2&&releases==3,"ready HUD still fully restores D3D state");
     configureNativeRivalHud(false);renderNativeRivalHud(&device);require(draws==2,"disabled HUD skips device");
     std::cout<<"HUD COM call ordering, restoration and allocation failures passed (mock device; not gameplay rendering)\n";
 }
