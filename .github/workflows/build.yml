@@ -104,7 +104,10 @@ jobs:
              replacing files when prompted. No renaming or manual INI edits.
              The included FreeRoamRivals.ini is already the PLAY preset;
              an alternative conservative file is FreeRoamRivals-safe.ini.
-          3. Use a Golf GTI in ordinary Free Roam; drive to calibrate metres.
+          3. Use a Golf GTI in Free Roam. With an existing verified cache,
+             the metre scale is ready immediately: no driving to calibrate.
+             On the FIRST v46 launch without cache, drive once until verified.
+             The cache is then created automatically for later sessions.
           4. F8 creates one nearby GTI; F8 never removes an existing rival.
           5. Follow behind, within 60m, in the same direction. Press G when offered.
              Outrun scoring: hold 300m lead for 3 seconds; timeout 5 minutes.
@@ -139,7 +142,7 @@ jobs:
           New-Item -ItemType Directory -Force "release" | Out-Null
           Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.46-dev.zip" -Force
 
-          # Minimal update for existing v43 installations: preserve Rivals.ini,
+          # Minimal update for existing v45 installations: preserve Rivals.ini,
           # VehiclePools.ini, UndergroundBlacklist.ini and all saved history.
           $upgrade = "release/upgrade"
           New-Item -ItemType Directory -Force "$upgrade/scripts/FreeRoamRivals" | Out-Null
