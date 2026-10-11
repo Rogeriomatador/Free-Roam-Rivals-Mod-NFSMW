@@ -71,7 +71,8 @@ void renderNativeRivalHud(void* raw) try {
         const auto rows=glyph(view.lines[line][i]);
         for(unsigned row=0;row<7;++row) for(unsigned col=0;col<5;++col) if(rows[row]&(1u<<(4-col)))
             quad(vertices,x+(8+6*i+col)*scale,y+(8+11*line+row)*scale,scale,scale,
-                line==0?D3DCOLOR_ARGB(255,100,220,255):D3DCOLOR_ARGB(255,238,240,245));
+                line==0?D3DCOLOR_ARGB(255,100,220,255):
+                    (line==2&&view.challengeReady?D3DCOLOR_ARGB(255,105,240,145):D3DCOLOR_ARGB(255,238,240,245)));
     }
     quad(vertices,x+8*scale,y+76*scale,312*scale,3*scale,D3DCOLOR_ARGB(255,50,55,62));
     const float progress=std::isfinite(view.holdProgress)?std::clamp(view.holdProgress,0.0f,1.0f):0;
