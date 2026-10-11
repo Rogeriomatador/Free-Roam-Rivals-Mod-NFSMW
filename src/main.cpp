@@ -14,7 +14,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.48-dev";
+constexpr const char* kVersion = "0.0.49-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
