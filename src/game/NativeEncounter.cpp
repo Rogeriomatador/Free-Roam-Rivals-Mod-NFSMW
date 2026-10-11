@@ -144,7 +144,7 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
     if(config.enabled) result=encounter.tick(input);
     if(result.justStarted) {
         racePlayer=world.vehicles.playerIVehicle;raceRoad=world.roadNetwork;raceStatus=world.raceStatus;
-        Log::instance().info("LiveEncounter started: native roaming opponent, observed leader trail, 300m-style outrun scoring; vanillaEventCreated=0 AIWrites=0");
+        Log::instance().info("LiveEncounter started: mode=Outrun_only observed leader trail, 300m separation; sideBySideStart=0 jointCountdown=0 rivalBrakeWrites=0 playerControlWrites=0 vanillaEventCreated=0");
     }
     if(pressed&&!result.justStarted&&!result.running) {
         lastRejectionAt=GetTickCount64();lastRejection=config.enabled?result.reason:"disabled";
@@ -234,7 +234,7 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
         if(lastOvertakeAt && now-lastOvertakeAt<2500)
             line(view.lines[1],"%s",lastOvertakeLeader==domain::OutrunLeader::Player?
                 "VOCE ULTRAPASSOU RICO":"RICO ULTRAPASSOU VOCE");
-        else line(view.lines[1],"OUTRUN - %s",result.leader==domain::OutrunLeader::Player?"VOCE LIDERA":"RICO LIDERA");
+        else line(view.lines[1],"OUTRUN LIVRE - %s",result.leader==domain::OutrunLeader::Player?"VOCE LIDERA":"RICO LIDERA");
         line(view.lines[2],"VANTAGEM %.0f / %.0f METROS",std::abs(result.signedLeadMeters),config.tuning.winLeadMeters);
         line(view.lines[3],"%s",
             !result.routeMatched?"TRILHA DIFERENTE - REENCONTRE A ROTA":
