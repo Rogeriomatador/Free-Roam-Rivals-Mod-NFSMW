@@ -1,3 +1,7 @@
+## v48 — Rico fora de streaming e reencontro seguro
+
+Registro real do usuário mostrou spawn a 30 m e GTI afastando-se até 1,8 km antes de descarregar. Agora a busca por retirada acontece antes de sair do alcance, apenas em condição de ocultação e identidade verificadas, e F8 na retirada fica em fila até confirmar remoção em ambas as registries. Não há recuperação forçada de carros descarregados. [GUARDED_REENCOUNTER_V48.md](GUARDED_REENCOUNTER_V48.md).
+
 ## v47 — avaliar recursos nativos do jogo
 
 O comando F9 agora faz um inventário de arquivos de carro/mundo e atributos disponíveis. O próximo passo é provar a residência dos modelos, não apenas a existência dos arquivos. Veja [NATIVE_ASSET_INVENTORY_V47.md](NATIVE_ASSET_INVENTORY_V47.md).
