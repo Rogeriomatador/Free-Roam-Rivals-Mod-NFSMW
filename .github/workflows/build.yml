@@ -50,16 +50,17 @@ jobs:
           path: artifact/*.asi
           if-no-files-found: error
 
-      - name: Create install package
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Create ready-to-install package
         shell: pwsh
         run: |
           $pkg = "release/package"
           New-Item -ItemType Directory -Force "$pkg/scripts/FreeRoamRivals" | Out-Null
 
           Copy-Item "artifact/FreeRoamRivals.asi" "$pkg/scripts/FreeRoamRivals.asi"
-          Copy-Item "config/FreeRoamRivals.ini" "$pkg/scripts/FreeRoamRivals/FreeRoamRivals.ini"
-          Copy-Item "config/FreeRoamRivals-play.ini" "$pkg/FreeRoamRivals-play.ini"
+          # The main ZIP is plug-and-play: the PLAY preset is already the active INI.
+          # Ship the conservative default outside scripts for reference only.
+          Copy-Item "config/FreeRoamRivals-play.ini" "$pkg/scripts/FreeRoamRivals/FreeRoamRivals.ini"
+          Copy-Item "config/FreeRoamRivals.ini" "$pkg/FreeRoamRivals-safe.ini"
           Copy-Item "docs/TARGET_CAPTURE_V42_CHALLENGE_TIME.md" "$pkg/TARGET_CAPTURE_V42_CHALLENGE_TIME.md"
           Copy-Item "docs/LIVE_RIVAL_V42.md" "$pkg/LIVE_RIVAL_V42.md"
           Copy-Item "docs/RIVAL_LOCATOR_AND_RETRY_V44.md" "$pkg/RIVAL_LOCATOR_AND_RETRY_V44.md"
@@ -95,10 +96,12 @@ jobs:
           NFSMW Free Roam Rivals v0.0.44-dev
 
           INSTALL:
-          1. Replace scripts\FreeRoamRivals.asi. Preserve your other INIs.
-          2. Copy the included FreeRoamRivals-play.ini to
-             scripts\FreeRoamRivals\FreeRoamRivals.ini to enable challenges.
-             Packaged default INI keeps construction/challenges opt-in.
+          1. BACK UP scripts\FreeRoamRivals\FreeRoamRivals.ini if it contains
+             custom settings. This ZIP replaces the active mod INI and ASI.
+          2. Extract this ZIP into the game's ROOT folder (with speed.exe),
+             replacing files when prompted. No renaming or manual INI edits.
+             The included FreeRoamRivals.ini is already the PLAY preset;
+             an alternative conservative file is FreeRoamRivals-safe.ini.
           3. Use a Golf GTI in ordinary Free Roam; drive to calibrate metres.
           4. F8 creates one nearby GTI; F8 never removes an existing rival.
           5. Follow behind, within 60m, in the same direction. Press G when offered.
@@ -130,6 +133,49 @@ jobs:
 
           New-Item -ItemType Directory -Force "release" | Out-Null
           Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.44-dev.zip" -Force
+
+      - name: Verify ready-to-install package
+        shell: pwsh
+        run: |
+          $path = "release/FreeRoamRivals-v0.0.44-dev.zip"
+          if (!(Test-Path $path)) { throw "Install ZIP is missing" }
+          Add-Type -AssemblyName System.IO.Compression
+          $zip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $path).Path)
+          try {
+            $names = @($zip.Entries | ForEach-Object { $_.FullName.Replace("\\","/") })
+            $required = @(
+              "scripts/FreeRoamRivals.asi",
+              "scripts/FreeRoamRivals/FreeRoamRivals.ini",
+              "scripts/FreeRoamRivals/Rivals.ini",
+              "scripts/FreeRoamRivals/VehiclePools.ini",
+              "scripts/FreeRoamRivals/UndergroundBlacklist.ini",
+              "INSTALL.txt",
+              "FreeRoamRivals-safe.ini",
+              "RIVAL_LOCATOR_AND_RETRY_V44.md"
+            )
+            foreach ($item in $required) {
+              if ($names -cnotcontains $item) { throw "Missing package entry: $item" }
+            }
+          } finally { $zip.Dispose() }
+          $ini = Get-Content "release/package/scripts/FreeRoamRivals/FreeRoamRivals.ini" -Raw
+          foreach ($setting in @(
+            "NativeRivalPrototypeEnabled=1",
+            "NativeRivalPrototypeNearPlayer=1",
+            "RetireRivalKey=0x52",
+            "FallbackChallengeKey=0x47",
+            "Enabled=1"
+          )) {
+            if (!$ini.Contains($setting)) { throw "Play INI missing $setting" }
+          }
+          if ($ini.Contains("RetireRivalKey=0" + [char]10)) { throw "Manual retirement was silently disabled" }
+          Write-Output "Ready-to-install ZIP verified: fully configured, correct layout and safe alternate."
+
+      - name: Upload ready-to-install ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FreeRoamRivals-ReadyToInstall-v44
+          path: release/FreeRoamRivals-v0.0.44-dev.zip
+          if-no-files-found: error
 
       - name: Publish v0.0.44-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
