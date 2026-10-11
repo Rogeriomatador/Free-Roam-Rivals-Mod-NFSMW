@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.0.55-dev — perda física de Rico a 151m e modo Outrun explicitado
+
+- O teste real após v54 comprovou Rico ativo às 20:13:50.430 a **151,178m**, física inacessível às 20:13:51.199 ainda em Free Roam, muito antes da troca de mundo às 20:14:05.
+- Nova auditoria numérica de presença nas listas IVehicle/PVehicle, exclusiva da callback de gameplay e mesmo contexto, sem desreferenciar o objeto desaparecido. Um evento por perda relata distância, velocidade, idade e estado das duas listas sem atribuir causa não comprovada.
+- HUD identifica `RICO SUMIU PERTO DE VOCE` quando a última observação está perto, sem marcar automaticamente `FORA DO ALCANCE`. O motivo da interrupção do desafio passa a ser `rival_native_presence_lost`.
+- HUD do duelo informa `OUTRUN LIVRE` e log explicita `sideBySideStart=0`/`jointCountdown=0` para não confundir com corrida Sprint.
+- Testes de proximidade com 151m, 250m, telemetria velha e inválida. Nenhuma alteração na direção, no processamento de streaming do motor ou no WidescreenFix. [Relatório v55](docs/SUDDEN_NEARBY_LOSS_V55.md).
+
+
 ## v0.0.54-dev — distribuição isolada do script Free Roam Rivals
 
 - Novo **pacote ASI-only** com apenas `scripts/FreeRoamRivals.asi` e `INSTALAR-ASI-SOMENTE.txt`, recomendado para quem já tem instalação com `FixHUD=1` funcionando; nenhum INI, mod terceiro, arquivo de carreira ou cache é substituído.
