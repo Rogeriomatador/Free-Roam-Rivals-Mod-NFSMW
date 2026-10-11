@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.50
+    VERSION 0.0.51
     LANGUAGES C CXX
 )
 
@@ -324,6 +324,10 @@ add_test(NAME FreeRoamRivalsPrototypeGroundTests COMMAND FreeRoamRivalsPrototype
 add_executable(FreeRoamRivalsLiveEncounterTests tests/live_encounter_tests.cpp src/domain/LiveEncounter.cpp src/domain/OutrunRace.cpp)
 target_include_directories(FreeRoamRivalsLiveEncounterTests PRIVATE src)
 add_test(NAME FreeRoamRivalsLiveEncounterTests COMMAND FreeRoamRivalsLiveEncounterTests)
+add_executable(FreeRoamRivalsAheadSpawnTests tests/ahead_spawn_tests.cpp)
+target_include_directories(FreeRoamRivalsAheadSpawnTests PRIVATE src)
+add_test(NAME FreeRoamRivalsAheadSpawnTests COMMAND FreeRoamRivalsAheadSpawnTests)
+
 add_executable(FreeRoamRivalsVisibleSpawnPreferenceTests tests/visible_spawn_preference_tests.cpp)
 target_include_directories(FreeRoamRivalsVisibleSpawnPreferenceTests PRIVATE src)
 add_test(NAME FreeRoamRivalsVisibleSpawnPreferenceTests COMMAND FreeRoamRivalsVisibleSpawnPreferenceTests)
