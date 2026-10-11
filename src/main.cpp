@@ -98,6 +98,8 @@ int bootstrap() {
     probeConfig.retireHoldSeconds=config.retireHoldSeconds;
     probeConfig.outrunEnabled=config.outrunEnabled;
     probeConfig.rivalHudEnabled=config.rivalHudEnabled;
+    probeConfig.rivalRadarPosition=config.rivalRadarPosition;
+    probeConfig.rivalRadarScale=config.rivalRadarScale;
     probeConfig.rivalHistoryEnabled=config.rivalHistoryEnabled;
     probeConfig.rivalChallengeDistanceMeters=config.rivalChallengeDistanceMeters;
     probeConfig.outrunWinLeadMeters=config.outrunWinLeadMeters;
