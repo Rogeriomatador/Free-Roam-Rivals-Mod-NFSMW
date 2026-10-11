@@ -275,7 +275,12 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
     // No native factory/world reads while idle, including startup menus.
     // A new F8 request builds its own fresh stable-clear window.
     if (stage==Stage::Idle || stage==Stage::Finished || stage==Stage::Disabled) {
-        stable=0; showNativeRivalStatus(stage==Stage::Idle ? "F8: CRIAR RICO NO MUNDO" : "RIVAL ENCERRADO NESTA SESSAO", "USE O GOLF GTI E DIRIJA PARA CALIBRAR"); return;
+        stable=0;
+        const bool metricReady=validWorldMetricCalibration(metric);
+        showNativeRivalStatus(stage==Stage::Idle ? "F8: CRIAR RICO NO MUNDO" : "RIVAL ENCERRADO NESTA SESSAO",
+            metricReady ? "CALIBRACAO PRONTA - USE GOLF GTI" :
+                "USE GOLF GTI E DIRIJA PARA CALIBRAR");
+        return;
     }
     const auto current=GameBridge::sample();
     const auto pursuit=NativeVehicleFactory::pursuitState();
