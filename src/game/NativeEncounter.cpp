@@ -10,6 +10,7 @@
 #include "../domain/RivalReaction.h"
 #include "../domain/RivalMotionMonitor.h"
 #include "../domain/DirectionBeacon.h"
+#include "../domain/RaceFormationReadiness.h"
 #include "../persistence/LiveRivalStore.h"
 #include "../core/Log.h"
 #include <windows.h>
@@ -264,6 +265,22 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
             else line(view.lines[3],"RICO %.0f M - %s",locator.distanceMeters,domain::rivalBearingName(locator.bearing));
         } else line(view.lines[3],"LOCALIZACAO DO RIVAL INDISPONIVEL");
         line(view.lines[4],"%s",nativeRivalRetirementHint());
+    }
+    // Preparatory read-only staging: both vehicles must be physically
+    // side-by-side with compatible headings and almost fully stopped.
+    // v53 does NOT seize player controls or native AI brakes. Present a
+    // truthful lineup message; automatic countdown is not authorized until
+    // native custody/rollback operations have been verified.
+    if(!result.running&&headingVerified&&input.rival.valid) {
+        auto startPlayer=input.player;
+        startPlayer.forward=beaconForward;
+        startPlayer.valid=true;
+        const auto formation=domain::checkRaceFormation(startPlayer,input.rival,
+            valid&&input.challengeSafe);
+        if(formation.geometryAligned&&formation.bothStopped) {
+            line(view.lines[3],"CARROS ALINHADOS - RICO AO LADO");
+            line(view.lines[4],"LARGADA AUTOMATICA AINDA INDISPONIVEL");
+        }
     }
     publishNativeRivalHud(view);
 }
