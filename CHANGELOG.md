@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.0.48-dev — retirada segura antecipada e reencontro F8 após retirada comprovada
+
+- Corrige a interpretação do bug relatado em 11/10: Rico nasceu a 30 m e se afastou pela própria IA até >1,8 km; após entrar no streaming nativo, a retirada ficou aguardando snapshot legítimo e F8 não podia criar outro.
+- No preset PLAY `NearPlayer=1`, adiciona uma sondagem limitada (1/s) ao atingir 350–850 m. A remoção nativa é solicitada **apenas** se a caixa física/identidade ainda estiver válida e oculta pela câmera e por oito testes de mundo, sem Outrun ou perseguição, com estágio e mundo estáveis. Se não for comprovado, mantém o rival e informa o bloqueio; nenhuma escrita em ponteiros antigos.
+- F8, durante a retirada, fica em fila para recriar somente após ausência comprovada por duas amostras em quadros distintos das DUAS registries e factory sem falhas. Nunca substitui carro ainda vivo.
+- HUD diferencia streaming do carro e remoção aguardando identidade legítima; testes de política para estágio, validade de dados, distância e segurança de perseguição.
+- A IA nativa continua sem reação dinâmica à velocidade do jogador. F8 ainda exige Golf GTI; streaming perfeito entre regiões e liberação de um modelo não carregado continuam pendentes. Ver docs/GUARDED_REENCOUNTER_V48.md.
+
+
 ## v0.0.47-dev — pesquisador seguro de recursos de carro e mundo
 
 - Consulta pesquisas públicas de MWSDK, GlobalLib, NFSPluginSDK e NFS Modder's Corner sobre formatos do MW05; integra auditoria de arquivos locais do jogo, estritamente somente leitura.
