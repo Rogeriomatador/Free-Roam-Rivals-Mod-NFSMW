@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.44
+    VERSION 0.0.45
     LANGUAGES C CXX
 )
 
@@ -294,6 +294,10 @@ if(MSVC)
     target_compile_options(FreeRoamRivalsNativeFactoryAbiTests PRIVATE /d1reportSingleClassLayoutPVehicle)
 endif()
 add_test(NAME FreeRoamRivalsNativeFactoryAbiTests COMMAND FreeRoamRivalsNativeFactoryAbiTests)
+
+add_executable(FreeRoamRivalsRivalReactionTests tests/rival_reaction_tests.cpp)
+target_include_directories(FreeRoamRivalsRivalReactionTests PRIVATE src)
+add_test(NAME FreeRoamRivalsRivalReactionTests COMMAND FreeRoamRivalsRivalReactionTests)
 
 add_executable(FreeRoamRivalsRivalLocatorTests tests/rival_locator_tests.cpp)
 target_include_directories(FreeRoamRivalsRivalLocatorTests PRIVATE src)
