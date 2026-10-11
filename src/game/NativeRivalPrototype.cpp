@@ -14,6 +14,7 @@
 #include "../domain/AwayRetirement.h"
 #include "../domain/VisibleSpawnPreference.h"
 #include "../domain/AheadSpawn.h"
+#include "../domain/NativeRivalLossProximity.h"
 #include "../domain/PrototypeGroundProbe.h"
 #include <windows.h>
 #include <algorithm>
@@ -45,6 +46,10 @@ bool cleanupLatched=false, challengePending=false, queuedF8AfterSafeRetirement=f
 std::uint64_t lastAwayProbe=0, lastAwayWarn=0;
 SpatialVector3 startPosition{};
 NativeRoadTarget selectedTarget{};
+float lastReliableRivalDistanceMeters=-1.0f;
+float lastReliableRivalSpeedMps=-1.0f;
+std::uint64_t lastReliableRivalAt=0;
+bool suddenLossReported=false;
 
 const char* stageName(Stage s) {
     switch (s) {
@@ -59,6 +64,10 @@ const char* stageName(Stage s) {
 void transition(Stage next) {
     if (next!=Stage::Active) { interruptNativeEncounter(); encounterDelta=0; challengePending=false; }
     stage = next; stageStarted = GetTickCount64(); lastBlock.clear();
+    if(next==Stage::Active) {
+        suddenLossReported=false;lastReliableRivalAt=0;
+        lastReliableRivalDistanceMeters=-1.0f;lastReliableRivalSpeedMps=-1.0f;
+    }
     Log::instance().info(std::string("NativePrototype stage=") + stageName(next) + " maxOwned=1 gameplayCallback=1");
 }
 void blocked(const std::string& reason) {
@@ -78,8 +87,14 @@ void blocked(const std::string& reason) {
         showNativeRivalStatus("SEM PISTA LIVRE A FRENTE", "VIRE O CARRO PARA UMA RUA SEGURA");
     else if(stage==Stage::Seeking && reason=="player_forward_body_unverified")
         showNativeRivalStatus("DIRECAO DO CARRO INDISPONIVEL", "F8 AGUARDA FISICA SEGURA");
-    else if(reason=="owned_vehicle_unavailable_wait_without_cleanup")
-        showNativeRivalStatus("RICO FORA DO ALCANCE", "MODELO DESCARREGADO - NAO DUPLICAR");
+    else if(reason=="owned_vehicle_unavailable_wait_without_cleanup") {
+        if(lastReliableRivalDistanceMeters>=0.0f && lastReliableRivalDistanceMeters<=250.0f)
+            showNativeRivalStatus("RICO SUMIU PERTO DE VOCE",
+                "OBJETO NATIVO INDISPONIVEL - NAO DUPLICAR");
+        else
+            showNativeRivalStatus("RICO NAO ESTA DISPONIVEL",
+                "CARREGAMENTO OU REMOCAO INDETERMINADA");
+    }
     else showNativeRivalStatus("AGUARDANDO CONDICOES SEGURAS",
         stage==Stage::Seeking ? "DIRIJA O GOLF GTI E TENTE NOVAMENTE" : "RIVAL PRESERVADO DURANTE A TRANSICAO");
     const auto now = GetTickCount64();
@@ -336,6 +351,33 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
     }
     if (stage==Stage::Active) {
         if (!owned.available || owned.destroyed) {
+            if(!suddenLossReported) {
+                suddenLossReported=true;
+                const auto audit=NativeVehicleFactory::auditOwnedPresenceReadOnly();
+                const auto proximity=classifyNativeRivalLoss(
+                    now,lastReliableRivalAt,lastReliableRivalDistanceMeters);
+                const bool freshPosition=proximity.observationFresh;
+                const float lastDistance=proximity.lastVerifiedDistanceMeters;
+                std::ostringstream incident;
+                incident << "NativePrototype sudden native presence loss:"
+                    << " sameWorldContext=" << owned.contextMatches
+                    << " nativeAvailable=" << owned.available
+                    << " nativeDestroyed=" << owned.destroyed
+                    << " lastReliableDistanceMeters=" << lastDistance
+                    << " lastReliableSpeedMps=" << (freshPosition?lastReliableRivalSpeedMps:-1.0f)
+                    << " lastSampleAgeMs=" << (lastReliableRivalAt ? now-lastReliableRivalAt : 0)
+                    << " nearLossAtMost250Meters=" << proximity.disappearedNearby
+                    << " ownerRecorded=" << audit.ownerRecorded
+                    << " contextVerified=" << audit.contextVerified
+                    << " registryVerified=" << audit.registryVerified
+                    << " liveRegistryContainsOwner=" << audit.livePresent
+                    << " physicalRegistryContainsOwner=" << audit.physicalPresent
+                    << " liveCount=" << audit.liveCount
+                    << " physicalCount=" << audit.physicalCount
+                    << " causeNotEstablished=1"
+                    << " unsafeToForceRespawn=1";
+                Log::instance().warn(incident.str());
+            }
             const auto external=NativeVehicleFactory::observeExternalRemoval();
             if (external==NativeFactoryResult::RemovedByEngine) {
                 Log::instance().warn("NativePrototype native engine retired the vehicle; mod cleanup was not executed; lifetimeProven=0");
@@ -351,8 +393,23 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
                     Log::instance().warn("NativePrototype owner is stream-unavailable: F8 cannot create another car until BOTH registries prove retirement. Auto-cleanup was too late; do not force-clear native ownership.");
                 }
             }
-            interruptNativeEncounter("world_identity_changed"); encounterDelta=0; challengePending=false;
+            interruptNativeEncounter("rival_native_presence_lost"); encounterDelta=0; challengePending=false;
             return;
+        }
+        if (suddenLossReported) {
+            Log::instance().info("NativePrototype physical snapshot became available again without construction; nativeOwnerReused=1");
+            suddenLossReported=false;
+        }
+        if(current.playerMotion.position.finite && owned.box.valid &&
+            validWorldMetricCalibration(metric)) {
+            const auto m=worldUnitsToMeters(distance(owned.box.center,
+                {current.playerMotion.position.x,current.playerMotion.position.y,
+                 current.playerMotion.position.z}),metric);
+            if(m && std::isfinite(*m)) {
+                lastReliableRivalDistanceMeters=*m;
+                lastReliableRivalSpeedMps=owned.speed;
+                lastReliableRivalAt=now;
+            }
         }
         tickNativeEncounter(current,owned,metric,encounterDelta,challengePending);
         encounterDelta=0; challengePending=false;

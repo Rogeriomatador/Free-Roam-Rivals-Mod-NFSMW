@@ -879,6 +879,24 @@ NativeFactoryResult NativeVehicleFactory::requestRemoval() {
     owned.removing = true;
     return NativeFactoryResult::RemovalRequested;
 }
+NativeOwnedPresenceAudit NativeVehicleFactory::auditOwnedPresenceReadOnly() {
+    NativeOwnedPresenceAudit result{};
+    result.ownerRecorded=owned.p!=0 && owned.iv!=0;
+    if (!gameplayThread() || !result.ownerRecorded) return result;
+    Context current{};
+    if (!freshWorld(current) || !same(current,owned.context)) return result;
+    result.contextVerified=true;
+    Registry list{};
+    if (!registry(list)) return result;
+    result.registryVerified=true;
+    result.liveCount=list.liveCount;
+    result.physicalCount=list.physicalCount;
+    // Compare numeric identities only; the engine may already have freed
+    // the vehicle and no remembered pointer may be dereferenced.
+    result.livePresent=contains(list.live,list.liveCount,owned.iv);
+    result.physicalPresent=contains(list.physical,list.physicalCount,owned.p);
+    return result;
+}
 NativeFactoryResult NativeVehicleFactory::observeExternalRemoval() {
     if (!gameplayThread() || !owned.p || owned.removing) return NativeFactoryResult::Blocked;
     Context context{}; Registry list{};

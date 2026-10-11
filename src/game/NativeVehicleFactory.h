@@ -21,6 +21,13 @@ struct NativeRoadCaptureReport {
     unsigned rejected[10]{};
     unsigned rejectedContext = 0;
 };
+// Numerical registry membership only. Never dereferences a stale owned IVehicle
+// or PVehicle. Valid only for the same verified Free Roam world.
+struct NativeOwnedPresenceAudit {
+    bool ownerRecorded=false, contextVerified=false, registryVerified=false;
+    bool livePresent=false, physicalPresent=false;
+    unsigned liveCount=0,physicalCount=0;
+};
 struct NativeOwnedSnapshot {
     bool owned = false, available = false, contextMatches = false;
     bool loading = false, active = false, destroyed = false, racerPrepared = false, roadPrepared = false;
@@ -51,6 +58,7 @@ public:
     static std::vector<NativeRoadTarget> captureRoadTargets(std::size_t& batchIndex,
         NativeRoadCaptureReport& report);
     static NativeOwnedSnapshot snapshot();
+    static NativeOwnedPresenceAudit auditOwnedPresenceReadOnly();
     static NativeFactoryResult constructInactive(const NativeFactoryRequest& request);
     static NativeFactoryResult confirmConstructionInactive();
     static NativeFactoryResult prepareRacerInactive();
