@@ -2,7 +2,7 @@
 
 ## Evidência: dois testes reais da v49 em 11/10/2026
 
-**Primeiro teste (14:58–15:01):** F8 às 15:00:06. O GTA foi construído a 42,7661 m às 15:00:07, confirmado por dois frames, IA Racer preparada, estrada pronta e carro **fisicamente ativado** às 15:00:08.955. O motor registrou aceleração de cerca de 0,68 a 60,1 m/s (até 216 km/h), a 626m do jogador 36 segundos depois; o deslocamento total passou de 1,3 km. Após 15:00:45.706 o snapshot ficou indisponível. Retirada preventiva foi adiada por falta de prova de câmera **e oito oclusões**. O log não pode comprovar que a GPU renderizou o GTI nem que ele estava na frente da câmera quando começou a dirigir.
+**Primeiro teste (14:58–15:01):** F8 às 15:00:06. O GTI foi construído a 42,7661 m às 15:00:07, confirmado por dois frames, IA Racer preparada, estrada pronta e carro **fisicamente ativado** às 15:00:08.955. O motor registrou aceleração de cerca de 0,68 a 60,1 m/s (até 216 km/h), a 626m do jogador 36 segundos depois; o deslocamento total passou de 1,3 km. Após 15:00:45.706 o snapshot ficou indisponível. Retirada preventiva foi adiada por falta de prova de câmera **e oito oclusões**. O log não pode comprovar que a GPU renderizou o GTI nem que ele estava na frente da câmera quando começou a dirigir.
 
 **Segundo teste (15:01–15:04):** F8 às 15:03:22, candidata a 60,4122 m. Às 15:03:23.876 `PVehicle::Construct` retornou NULL, `phase=constructor_null`, `exception=0`; nenhum carro foi ativado. A factory travou novas criações corretamente para evitar corrupção ou alocação parcial. O número de veículos ativos registrado pouco antes estava próximo a 20; isso **não prova** que o limite de capacidade foi a causa.
 
