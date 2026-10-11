@@ -2,6 +2,8 @@
 #include <iostream>
 #include <cstdlib>
 #include <cmath>
+#include <utility>
+#include <initializer_list>
 using namespace frr::domain;
 static void ok(bool c,const char* why){if(!c){std::cerr<<why<<"\n";std::exit(1);}}
 int main(){
