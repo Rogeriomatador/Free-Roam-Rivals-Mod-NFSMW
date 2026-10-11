@@ -47,16 +47,19 @@ void LiveEncounter::startTrail(const EncounterCar& follower,const EncounterCar& 
 }
 LiveEncounterView LiveEncounter::finish(OutrunOutcome outcome) {
     view_.running=false;view_.justFinished=true;view_.outcome=outcome;
+    view_.observedTrailCueValid=false;view_.observedTrailCueDistance=0;
     cooldown_=15;view_.remainingCooldown=cooldown_;view_.available=false;
     return view_;
 }
 LiveEncounterView LiveEncounter::interrupt(const char* reason) {
     view_.justStarted=view_.justFinished=view_.leaderChanged=false;view_.available=false;view_.reason=reason;
+    view_.observedTrailCueValid=false;view_.observedTrailCueDistance=0;
     if(race_.running()) {race_.abort();return finish(OutrunOutcome::Aborted);}
     return view_;
 }
 LiveEncounterView LiveEncounter::tick(const LiveEncounterInput& in) {
     view_.justStarted=view_.justFinished=view_.leaderChanged=false;
+    view_.observedTrailCueValid=false;view_.observedTrailCueDistance=0;
     if(!std::isfinite(in.deltaSeconds)||in.deltaSeconds<0||in.deltaSeconds>1) return interrupt("invalid_delta");
     if(!in.worldSafe) return interrupt("world_unsafe");
     if(!valid(in.player)) return interrupt("invalid_player_telemetry");
@@ -78,6 +81,9 @@ LiveEncounterView LiveEncounter::tick(const LiveEncounterInput& in) {
         view_.running=true;view_.justStarted=true;view_.outcome=OutrunOutcome::InProgress;
         view_.leader=leader_;view_.routeMatched=true;view_.signedLeadMeters=-leaderProgress_;view_.holdProgress=0;
         view_.elapsedSeconds=0;
+        view_.observedTrailCueValid=true;
+        view_.observedTrailCue=in.rival.position;
+        view_.observedTrailCueDistance=distance(in.player.position,in.rival.position);
         return view_;
     }
     if(in.cancelPressed) return interrupt("cancelled");
@@ -120,6 +126,32 @@ LiveEncounterView LiveEncounter::tick(const LiveEncounterInput& in) {
     previousPlayer_=in.player;previousRival_=in.rival;
     if(unmatchedSeconds_>=3) return interrupt("route_unmatched");
     view_.leader=leader_;
+    // Route hints derive ONLY from a leader trail actually observed during
+    // this run. Do not draw a hint on an unmatched street or when the player
+    // is leading (the game has no verified fixed route to prescribe).
+    if(view_.routeMatched&&leader_==OutrunLeader::Rival) {
+        for(std::size_t i=0;i<count_;++i) {
+            const auto& candidate=point(i);
+            if(candidate.progress<followerProgress_+25.0f) continue;
+            if(std::abs(candidate.position.y-in.player.position.y)>7.0f) continue;
+            view_.observedTrailCue=candidate.position;
+            view_.observedTrailCueDistance=distance(in.player.position,candidate.position);
+            view_.observedTrailCueValid=std::isfinite(view_.observedTrailCueDistance)&&
+                view_.observedTrailCueDistance>=4&&view_.observedTrailCueDistance<=300;
+            break;
+        }
+        // Short trail (first seconds after challenge) may contain only a
+        // leader anchor; use that OBSERVED point if it remains ahead.
+        if(!view_.observedTrailCueValid && count_>0 &&
+           point(count_-1).progress>followerProgress_+4) {
+            const auto& last=point(count_-1);
+            view_.observedTrailCue=last.position;
+            view_.observedTrailCueDistance=distance(in.player.position,last.position);
+            view_.observedTrailCueValid=std::isfinite(view_.observedTrailCueDistance)&&
+                view_.observedTrailCueDistance>=4&&view_.observedTrailCueDistance<=300&&
+                std::abs(last.position.y-in.player.position.y)<=7;
+        }
+    }
     view_.signedLeadMeters=(leader_==OutrunLeader::Player?1.0f:-1.0f)*std::max(0.0f,leaderProgress_-followerProgress_);
     // An unmatched route resets the hold timer, rather than awarding a win for
     // lateral separation. Uncertainty for three seconds cancels the battle.
