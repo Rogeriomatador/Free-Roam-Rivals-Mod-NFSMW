@@ -11,6 +11,7 @@
 #include "../core/Log.h"
 #include "../core/VersionGuard.h"
 #include "../domain/NativeSearchWindow.h"
+#include "../domain/AwayRetirement.h"
 #include "../domain/PrototypeGroundProbe.h"
 #include <windows.h>
 #include <algorithm>
@@ -38,7 +39,8 @@ std::string lastBlock;
 unsigned retirementKey=0;bool retirementModifiers=true;float retirementSeconds=1.5f;
 char retirementHint[64]="RIVAL PERMANECE APOS A CORRIDA";
 float cleanupHold=0, encounterDelta=0;
-bool cleanupLatched=false, challengePending=false;
+bool cleanupLatched=false, challengePending=false, queuedF8AfterSafeRetirement=false;
+std::uint64_t lastAwayProbe=0, lastAwayWarn=0;
 SpatialVector3 startPosition{};
 NativeRoadTarget selectedTarget{};
 
@@ -206,6 +208,7 @@ void configureNativeRivalPrototype(bool requested, bool nearPlayer, unsigned ret
     else if(retirementKey)
         std::snprintf(retirementHint,sizeof(retirementHint),"RETIRAR: %sVK %02X POR %.1f S",requireModifiers?"CTRL SHIFT ":"",retirementKey,retirementSeconds);
     nearPlayerDebug=requested && nearPlayer;
+    queuedF8AfterSafeRetirement=false;lastAwayProbe=0;lastAwayWarn=0;
     enabled=requested && VersionGuard::checkCurrentExecutable().supported;
     if (enabled) {
         unsigned char bytes[256]{}; SIZE_T got=0;
@@ -254,7 +257,16 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
     if (pressed) {
         if (stage==Stage::Idle && !attemptSpent) transition(Stage::Seeking);
         else if (stage==Stage::Seeking) blocked("search_already_in_progress_wait_10_seconds");
-        else Log::instance().info("NativePrototype F8 ignored: existing rival retained; manual retirement requires an explicitly configured key.");
+        else if (stage==Stage::Retiring) {
+            queuedF8AfterSafeRetirement=true;
+            showNativeRivalStatus("NOVO ENCONTRO SOLICITADO","AGUARDANDO REMOCAO NATIVA COMPROVADA");
+            Log::instance().info("NativePrototype F8 queued: only after BOTH native registries confirm owner removal on two completed frames; no duplicate construction.");
+        } else if (stage==Stage::Active) {
+            showNativeRivalStatus("RICO AINDA EXISTE","CTRL+SHIFT+R: RETIRADA SEGURA");
+            Log::instance().info("NativePrototype F8 refused: existing owned car remains active; no duplicate spawn.");
+        } else {
+            Log::instance().info(std::string("NativePrototype F8 refused: stage=")+stageName(stage)+"; pending native owner/fault, never force respawn.");
+        }
     }
     const auto now=GetTickCount64();
     // Confirmation follows completed gameplay frames, not the 250ms search
@@ -307,13 +319,65 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
                 Log::instance().warn("NativePrototype native engine retired the vehicle; mod cleanup was not executed; lifetimeProven=0");
                 transition(Stage::Disabled);
             } else if (external==NativeFactoryResult::RemovalPending) blocked("confirming_external_native_retirement");
-            else blocked("owned_vehicle_unavailable_wait_without_cleanup");
+            else {
+                blocked("owned_vehicle_unavailable_wait_without_cleanup");
+                // It may remain in IVehicle/PVehicle registries while its
+                // streamed model has no usable physics. Never Kill/teleport
+                // it or invoke a second constructor with unknown lifetime.
+                if(now-lastAwayWarn>=5000){
+                    lastAwayWarn=now;
+                    Log::instance().warn("NativePrototype owner is stream-unavailable: F8 cannot create another car until BOTH registries prove retirement. Auto-cleanup was too late; do not force-clear native ownership.");
+                }
+            }
             interruptNativeEncounter("world_identity_changed"); encounterDelta=0; challengePending=false;
             return;
         }
         tickNativeEncounter(current,owned,metric,encounterDelta,challengePending);
         encounterDelta=0; challengePending=false;
         if (!owned.active) blocked("native_vehicle_inactive_no_forced_reactivation");
+        // Avoid the owner's v47 failure: native GTI drove >1800m away
+        // before retirement was requested and then entered streaming.
+        // Near-player PLAY prototype may retire offscreen *early* using
+        // existing guarded native removal, while the object is still active.
+        // Never apply this to the long-distance preset or an active Outrun.
+        if (current.playerMotion.position.finite &&
+            validWorldMetricCalibration(metric) &&
+            now-lastAwayProbe>=1000) {
+            lastAwayProbe=now;
+            const auto m=worldUnitsToMeters(distance(owned.box.center,
+                {current.playerMotion.position.x,current.playerMotion.position.y,
+                 current.playerMotion.position.z}),metric);
+            const bool safeWindow=shouldProbeSafeAwayRetirement({
+                nearPlayerDebug,owned.active,!owned.loading && !owned.destroyed,
+                owned.box.valid,pursuit==PursuitSafetyState::Clear &&
+                current.mode==WorldProbeMode::FreeRoamCandidate &&
+                owned.contextMatches && owned.ownedPursuitClear,
+                nativeEncounterRunning(),stable,m.value_or(-1.0f)
+            });
+            if (safeWindow) {
+                if (hiddenForPrototype(owned.box,current,metric)) {
+                    Log::instance().info("NativePrototype pre-streaming retirement: distant 350-850m, hidden by verified camera AND world rays, no race/pursuit; native identity still live");
+                    const auto retire=NativeVehicleFactory::requestRemoval();
+                    if (retire==NativeFactoryResult::RemovalRequested) {
+                        transition(Stage::Retiring);
+                        showNativeRivalStatus("RICO SAIU DA AREA",
+                            "REMOCAO EM ANDAMENTO - DEPOIS F8");
+                        return;
+                    }
+                    if (retire==NativeFactoryResult::Faulted) {
+                        beginCleanup("prestream_native_removal_fault");
+                        return;
+                    }
+                    if(now-lastAwayWarn>=5000) {
+                        lastAwayWarn=now;
+                        Log::instance().warn("NativePrototype guarded early removal not accepted; preserving existing owner and blocking duplicate spawn.");
+                    }
+                } else if(now-lastAwayWarn>=5000) {
+                    lastAwayWarn=now;
+                    Log::instance().info("NativePrototype pre-streaming retirement deferred: hidden camera + full world occlusion unverified. No object was killed.");
+                }
+            }
+        }
         if (now-lastObservation>=1000) {
             lastObservation=now;
             const auto traveled=worldUnitsToMeters(distance(startPosition,owned.box.center),metric);
@@ -408,8 +472,14 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
         if (observed==NativeFactoryResult::Removed) {
             if (NativeVehicleFactory::safeToRetryAfterConfirmedRemoval()) {
                 attemptSpent=false; stable=0;
-                Log::instance().info("NativePrototype owned retirement confirmed; F8 may request a new safe search");
-                transition(Stage::Idle);
+                if(queuedF8AfterSafeRetirement) {
+                    queuedF8AfterSafeRetirement=false;
+                    Log::instance().info("NativePrototype owned retirement confirmed; queued F8 begins a NEW native search after two-frame absence.");
+                    transition(Stage::Seeking);
+                } else {
+                    Log::instance().info("NativePrototype owned retirement confirmed; F8 may request a new safe search");
+                    transition(Stage::Idle);
+                }
             } else {
                 Log::instance().warn("NativePrototype owned removal confirmed but native fault blocks retry");
                 transition(Stage::Finished);
