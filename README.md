@@ -50,6 +50,9 @@ Support for additional 1.3 executables will be added only after their addresses/
 
 ## Current status
 
+**v0.0.54-dev:** o usuário confirmou que o minimapa original volta à posição correta com `FixHUD=1` no **WidescreenFix já instalado**. O Free Roam Rivals NÃO edita nem distribui esse plugin. A versão v54 acrescenta um **ZIP ASI-only** para atualizar apenas `scripts/FreeRoamRivals.asi`, mantendo todos os INIs, calibração e saves atuais; CI confere e bloqueia inclusão acidental de WidescreenFix, X360Stuff, XtendedInput, `dinput8.dll` e `speed.exe` nos três arquivos ZIP. [Instruções e downloads](docs/FRR_ONLY_UPDATE_V54.md). Mecânicas experimentais atuais permanecem como na v53.
+
+
 **v0.0.53-dev:** Radar verde do FRR reposicionado por padrão para a lateral direita, redesenhado com distâncias e responsivo a 4:3/16:9/ultrawide. Configurável em `[LiveRival]`: `RadarPosition=0/1/2/3` (inferior esquerdo/superior direito/meio direito/desligado) e `RadarScale=0.5–1.5`. Detecta formação lado a lado em condição segura para preparar a futura largada, mas **ainda não assume controle do jogador, para o carro do Rico ou executa a contagem**. O log v52 confirma perda de contexto/stream em 19:08:18; não há ainda recarga física segura. Veja [HUD e compatibilidade Xbox360 v53](docs/HUD_X360_RACE_STAGING_V53.md).
 
 
