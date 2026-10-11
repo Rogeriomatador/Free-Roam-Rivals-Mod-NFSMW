@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.0.49-dev — diagnóstico nativo de posição e F8 correto após falha
+
+- Corrige a mensagem enganosa de v48: `F8 queued` não deve ocorrer após `NativeFactory fault`, porque a fábrica fica desabilitada para novo spawn até reiniciar, mesmo quando a remoção do objeto antigo eventualmente conclua.
+- Exibe `F8 INDISPONIVEL` / reinicie e não repete milhares de linhas F8 para um pedido já pendente.
+- Ao obter `post_reset_position_mismatch`, registra coordenadas solicitadas e reais, erro X/Y/Z, distância horizontal e seed da estrada. Continua rejeitando erro horizontal maior que 1 unidade e não ativa o GTI incompatível.
+- Mantém as verificações e rotinas seguras da v48, seus salvamentos, cache e arquivos do jogo sem mudanças; **o ResetToRoad ainda exige investigação e validação dentro do jogo**.
+
+
 ## v0.0.48-dev — retirada segura antecipada e reencontro F8 após retirada comprovada
 
 - Corrige a interpretação do bug relatado em 11/10: Rico nasceu a 30 m e se afastou pela própria IA até >1,8 km; após entrar no streaming nativo, a retirada ficou aguardando snapshot legítimo e F8 não podia criar outro.
