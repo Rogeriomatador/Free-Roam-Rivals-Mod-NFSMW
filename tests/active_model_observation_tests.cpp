@@ -1,6 +1,7 @@
 #include "domain/ActiveModelObservation.h"
 #include <cstdlib>
 #include <iostream>
+#include <utility>
 using namespace frr::domain;
 static void test(bool ok,const char* msg) {if(!ok){std::cerr<<msg<<'\n';std::exit(1);}}
 int main(){
