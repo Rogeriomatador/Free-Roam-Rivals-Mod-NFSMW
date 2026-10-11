@@ -50,6 +50,8 @@ Support for additional 1.3 executables will be added only after their addresses/
 
 ## Current status
 
+**v0.0.49-dev:** novo log v48 de 11/10 mostrou que a criação a 118,889 m falhou no `ResetToRoad`: o carro não ficou no ponto esperado, provocando `road_reset_rejected` e bloqueio de F8 por **falha nativa irrecuperável até reiniciar**. A v49 registra deltas e seed exatas para encontrar a causa e **não aceita F8 em fila enquanto a factory estiver bloqueada**. O critério de posição e de remoção continua estrito. [Diagnóstico e teste](docs/ROAD_RESET_EVIDENCE_V49.md).
+
 **v0.0.48-dev:** a captura real de 11/10 mostrou Rico **criado a 30 m** e afastando-se dirigindo até mais de 1,8 km, onde a física ficou indisponível e a solicitação de remoção tardia ficou bloqueada. O protótipo próximo agora tenta uma retirada antecipada APENAS quando o GTI ainda está carregado, 350–850 m distante, fora de vista e com oito raios de oclusão verificados, sem desafio/perseguição; F8 durante retirada fica em fila e só avança após remoção confirmada nas duas registries nativas. Sem teleportes, exclusões forçadas ou promessas de persistência de streaming. [Relato, controles e limites](docs/GUARDED_REENCOUNTER_V48.md).
 
 **v0.0.47-dev:** F9 também verifica, de modo estritamente **somente leitura**, os arquivos originais CARS/GEOMETRY.BIN, TEXTURES.BIN, GLOBAL e TRACKS que existem na sua instalação, e consulta os nomes internos registrados no runtime. Resultados entram no FreeRoamRivals.log e não habilitam spawns não comprovados: disco + atributo **não garantem residência dos recursos na memória do jogo**. [Pesquisa, limites e instruções](docs/NATIVE_ASSET_INVENTORY_V47.md).
