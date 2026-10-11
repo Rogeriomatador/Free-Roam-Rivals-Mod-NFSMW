@@ -41,5 +41,10 @@ int main() {
     s.rival.position={0,0,50};s.player.position={0,0,0};s.elapsedSeconds=0;s.telemetrySafe=true;
     if(frame(2).state!=RivalReaction::Unavailable) return 14; // frozen physics never advances hysteresis
     if(std::string_view(rivalReactionLabel(RivalReaction::Ready))!="RICO AO ALCANCE - DESAFIE") return 15;
+    RivalReactionMonitor parallelRoad;
+    RivalReactionInput side{};side.telemetrySafe=true;side.elapsedSeconds=0.25f;
+    side.player={{0,0,0},{0,0,1},12,true};
+    side.rival={{28,0,25},{0,0,1},12,true};
+    for(int i=0;i<4;++i) if(parallelRoad.update(side).state==RivalReaction::Following) return 16;
     return 0;
 }
