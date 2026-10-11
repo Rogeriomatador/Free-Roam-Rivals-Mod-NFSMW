@@ -1,6 +1,7 @@
 #pragma once
 #include "LiveEncounter.h"
 #include <cmath>
+#include <initializer_list>
 namespace frr::domain {
 struct FormationCheck {
     bool geometryAligned=false;
