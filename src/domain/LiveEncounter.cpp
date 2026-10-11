@@ -51,12 +51,12 @@ LiveEncounterView LiveEncounter::finish(OutrunOutcome outcome) {
     return view_;
 }
 LiveEncounterView LiveEncounter::interrupt(const char* reason) {
-    view_.justStarted=view_.justFinished=false;view_.available=false;view_.reason=reason;
+    view_.justStarted=view_.justFinished=view_.leaderChanged=false;view_.available=false;view_.reason=reason;
     if(race_.running()) {race_.abort();return finish(OutrunOutcome::Aborted);}
     return view_;
 }
 LiveEncounterView LiveEncounter::tick(const LiveEncounterInput& in) {
-    view_.justStarted=view_.justFinished=false;
+    view_.justStarted=view_.justFinished=view_.leaderChanged=false;
     if(!std::isfinite(in.deltaSeconds)||in.deltaSeconds<0||in.deltaSeconds>1) return interrupt("invalid_delta");
     if(!in.worldSafe) return interrupt("world_unsafe");
     if(!valid(in.player)) return interrupt("invalid_player_telemetry");
@@ -93,6 +93,7 @@ LiveEncounterView LiveEncounter::tick(const LiveEncounterInput& in) {
     if(dot(offset,leading->forward)>5&&dot(leading->forward,followingCar->forward)>=0.75f&&
         lateral<=7&&std::abs(offset.y)<=3&&distance(leading->position,followingCar->position)<=30) {
         leader_=leader_==OutrunLeader::Player?OutrunLeader::Rival:OutrunLeader::Player;
+        view_.leaderChanged=true;
         std::swap(leading,followingCar);startTrail(*followingCar,*leading);
     }
     const float advance=distance(point(count_-1).position,leading->position);
