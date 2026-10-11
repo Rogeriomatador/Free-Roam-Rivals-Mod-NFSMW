@@ -2,6 +2,7 @@
 #include "VehicleSpatialEvidence.h"
 #include <cmath>
 #include <algorithm>
+#include <initializer_list>
 
 namespace frr::domain {
 
