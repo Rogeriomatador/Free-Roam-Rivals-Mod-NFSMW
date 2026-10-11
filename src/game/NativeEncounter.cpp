@@ -4,9 +4,12 @@
 #include "GameBridge.h"
 #include "ChallengeInputProbe.h"
 #include "NativeRivalHud.h"
+#include "VehicleSpatialProbe.h"
 #include "../domain/LiveEncounter.h"
 #include "../domain/RivalLocator.h"
 #include "../domain/RivalReaction.h"
+#include "../domain/RivalMotionMonitor.h"
+#include "../domain/DirectionBeacon.h"
 #include "../persistence/LiveRivalStore.h"
 #include "../core/Log.h"
 #include <windows.h>
@@ -22,6 +25,7 @@ namespace {
 NativeEncounterConfig config{};
 domain::LiveEncounter encounter{};
 domain::RivalReactionMonitor reactionMonitor{};
+domain::RivalMotionMonitor stationaryMonitor{};
 std::optional<persistence::LiveRivalStore> store;
 persistence::LiveRivalRecord history{};
 bool historyWritable=false;
@@ -78,7 +82,7 @@ const char* resultText(domain::OutrunOutcome r) {
 }
 void configureNativeEncounter(const NativeEncounterConfig& value) {
     config=value;encounter=domain::LiveEncounter(value.tuning,value.challengeDistanceMeters);
-    reactionMonitor.reset();lastOvertakeAt=0;
+    reactionMonitor.reset();stationaryMonitor.reset();lastOvertakeAt=0;
     configureNativeRivalHud(value.hudEnabled);
     wchar_t executable[32768]{};
     const auto size=GetModuleFileNameW(nullptr,executable,32768);
@@ -86,7 +90,7 @@ void configureNativeEncounter(const NativeEncounterConfig& value) {
 }
 bool nativeEncounterRunning() {return encounter.running();}
 void interruptNativeEncounter(const char* reason) {
-    record(encounter.interrupt(reason));reactionMonitor.reset();lastOvertakeAt=0;
+    record(encounter.interrupt(reason));reactionMonitor.reset();stationaryMonitor.reset();lastOvertakeAt=0;
 }
 void showNativeRivalStatus(const char* message,const char* detail) {
     auto view=panel();line(view.lines[1],"%s",message);line(view.lines[2],"%s",detail);
@@ -100,7 +104,7 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
     if(!world.career.profileKeyAvailable||!world.career.profileKey) {interruptNativeEncounter("profile_unavailable");showNativeRivalStatus("AGUARDANDO PERFIL");return;}
     if(loadedProfile!=world.career.profileKey) {
         interruptNativeEncounter("profile_changed");loadedProfile=world.career.profileKey;
-        lastResultAt=0;lastOvertakeAt=0;lastPlayerForward={0,0,1};reactionMonitor.reset();
+        lastResultAt=0;lastOvertakeAt=0;lastPlayerForward={0,0,1};reactionMonitor.reset();stationaryMonitor.reset();
         history={loadedProfile};historyWritable=false;
         if(store) {
             const auto loaded=store->load(loadedProfile);
@@ -153,6 +157,17 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
         Log::instance().info(evidence.str());
     }
     record(result);
+    // Native Racer may stop for traffic or because its goal cannot recover.
+    // Do not declare a cause or mutate native controls from this observation.
+    const auto stationary=stationaryMonitor.update(
+        {r.center.x/unit,r.center.y/unit,r.center.z/unit},rival.speed,dt,
+        valid&&rival.active&&!rival.loading&&!rival.destroyed);
+    if(stationary.changed) {
+        Log::instance().warn(std::string("Rico stationary observation: potentiallyBlocked=")+
+            (stationary.stationaryLong?"1":"0")+
+            " secondsNearAnchor="+std::to_string(stationary.secondsNearAnchor)+
+            " nativeSteeringWrites=0 nativeReset=0");
+    }
     const auto reaction=reactionMonitor.update({input.player,input.rival,dt,valid,
         result.running,config.enabled && result.available,result.remainingCooldown});
     if(reaction.changed) {
@@ -172,6 +187,43 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
         Log::instance().info(log.str());
     }
     auto view=panel();
+    view.rivalStationary=stationary.stationaryLong;
+    // The primary vehicle's physics orientation remains meaningful when
+    // the player stops. Do not rely on the stale previous velocity vector.
+    // These 2D indicators never claim membership in the game's minimap.
+    domain::EncounterPoint beaconForward{};
+    bool headingVerified=false;
+    const auto playerFleet=VehicleSpatialProbe::sample();
+    if(playerFleet.registryComplete&&world.vehicles.playerIVehicle) {
+        unsigned matches=0;
+        for(const auto& box:playerFleet.boxes) {
+            if(box.identity!=world.vehicles.playerIVehicle||!box.valid) continue;
+            if(std::hypot(box.center.x-p.x,box.center.z-p.z)>5*unit||
+               std::abs(box.center.y-p.y)>5*unit) continue;
+            beaconForward={box.forward.x,box.forward.y,box.forward.z};
+            headingVerified=true;++matches;
+        }
+        if(matches!=1) headingVerified=false;
+    }
+    const domain::EncounterPoint playerMetres{p.x/unit,p.y/unit,p.z/unit};
+    if(headingVerified) {
+        const auto rivalBeacon=domain::directionBeacon(playerMetres,beaconForward,
+            input.rival.position);
+        if(rivalBeacon.valid) {
+            view.rivalBeaconValid=true;
+            view.rivalFront=rivalBeacon.front;view.rivalRight=rivalBeacon.right;
+            view.rivalMeters=rivalBeacon.distanceMeters;
+        }
+        if(result.running&&result.observedTrailCueValid) {
+            const auto cue=domain::directionBeacon(playerMetres,beaconForward,
+                result.observedTrailCue);
+            if(cue.valid) {
+                view.routeCueValid=true;
+                view.routeFront=cue.front;view.routeRight=cue.right;
+                view.routeMeters=cue.distanceMeters;
+            }
+        }
+    }
     line(view.lines[5],"VITORIAS %llu / DERROTAS %llu",static_cast<unsigned long long>(history.wins),
         static_cast<unsigned long long>(history.losses));
     if(result.running) {
@@ -180,11 +232,16 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
                 "VOCE ULTRAPASSOU RICO":"RICO ULTRAPASSOU VOCE");
         else line(view.lines[1],"OUTRUN - %s",result.leader==domain::OutrunLeader::Player?"VOCE LIDERA":"RICO LIDERA");
         line(view.lines[2],"VANTAGEM %.0f / %.0f METROS",std::abs(result.signedLeadMeters),config.tuning.winLeadMeters);
-        line(view.lines[3],"%s",result.routeMatched?"MANTENHA A VANTAGEM PARA VENCER":"AGUARDANDO MESMA TRAJETORIA");
+        line(view.lines[3],"%s",
+            !result.routeMatched?"TRILHA DIFERENTE - REENCONTRE A ROTA":
+            result.observedTrailCueValid?"SETA AMARELA = TRILHA REAL DO RICO":
+            "MESMA TRAJETORIA - MANTENHA A VANTAGEM");
         line(view.lines[4],"TEMPO %.0f S - RIVAL CONTINUA APOS CORRIDA",result.elapsedSeconds);
         view.playerLeading=result.leader==domain::OutrunLeader::Player;view.holdProgress=result.holdProgress;
     } else {
         if(lastResultAt&&now-lastResultAt<8000) line(view.lines[1],"%s",resultText(lastResult));
+        else if(stationary.stationaryLong)
+            line(view.lines[1],"RICO QUASE PARADO HA %.0f S",stationary.secondsNearAnchor);
         else line(view.lines[1],"%s / %.0f KM/H",domain::rivalReactionLabel(reaction.state),rival.speed*3.6f);
         view.challengeReady=config.enabled&&result.available;
         if(view.challengeReady) line(view.lines[2],"[%c] DESAFIAR RICO",static_cast<char>(ChallengeInputProbe::fallbackVirtualKey()));
