@@ -1,3 +1,7 @@
+## Atualização v44
+
+Distância/direção relativa ao movimento para localizar o GTI pelo HUD; comando Ctrl+Shift+R somente no preset play, retirada com verificações existentes; F8 só é rearmado depois de confirmação nas duas listas nativas e sem falha. Diagnóstico detalhado de road_reset_rejected. Validar dentro do jogo antes de declarar estabilidade. Consulte [RIVAL_LOCATOR_AND_RETRY_V44.md](RIVAL_LOCATOR_AND_RETRY_V44.md).
+
 ## Atualização v43
 
 Corrigida interpretação de tempo nativo com prova no executável e teste de regressão. G foi reconhecido na captura v42; um desafio terminou abortado em 0,259s. A razão específica não era registrada. v43 acrescenta razões de recusa/interrupção, preserva verificações e remove F7 por padrão. Retenção em transições continua sem causa/solução comprovadas. Veja [TARGET_CAPTURE_V42_CHALLENGE_TIME.md](TARGET_CAPTURE_V42_CHALLENGE_TIME.md).

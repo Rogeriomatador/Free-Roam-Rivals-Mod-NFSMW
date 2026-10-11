@@ -50,18 +50,20 @@ jobs:
           path: artifact/*.asi
           if-no-files-found: error
 
-      - name: Create install package
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Create ready-to-install package
         shell: pwsh
         run: |
           $pkg = "release/package"
           New-Item -ItemType Directory -Force "$pkg/scripts/FreeRoamRivals" | Out-Null
 
           Copy-Item "artifact/FreeRoamRivals.asi" "$pkg/scripts/FreeRoamRivals.asi"
-          Copy-Item "config/FreeRoamRivals.ini" "$pkg/scripts/FreeRoamRivals/FreeRoamRivals.ini"
-          Copy-Item "config/FreeRoamRivals-play.ini" "$pkg/FreeRoamRivals-play.ini"
+          # The main ZIP is plug-and-play: the PLAY preset is already the active INI.
+          # Ship the conservative default outside scripts for reference only.
+          Copy-Item "config/FreeRoamRivals-play.ini" "$pkg/scripts/FreeRoamRivals/FreeRoamRivals.ini"
+          Copy-Item "config/FreeRoamRivals.ini" "$pkg/FreeRoamRivals-safe.ini"
           Copy-Item "docs/TARGET_CAPTURE_V42_CHALLENGE_TIME.md" "$pkg/TARGET_CAPTURE_V42_CHALLENGE_TIME.md"
           Copy-Item "docs/LIVE_RIVAL_V42.md" "$pkg/LIVE_RIVAL_V42.md"
+          Copy-Item "docs/RIVAL_LOCATOR_AND_RETRY_V44.md" "$pkg/RIVAL_LOCATOR_AND_RETRY_V44.md"
           Copy-Item "config/Rivals.ini" "$pkg/scripts/FreeRoamRivals/Rivals.ini"
           Copy-Item "config/VehiclePools.ini" "$pkg/scripts/FreeRoamRivals/VehiclePools.ini"
           Copy-Item "config/UndergroundBlacklist.ini" "$pkg/scripts/FreeRoamRivals/UndergroundBlacklist.ini"
@@ -91,26 +93,35 @@ jobs:
           Copy-Item "docs/NATIVE_ROAMING_STREAMING_RESEARCH.md" "$pkg/NATIVE_ROAMING_STREAMING_RESEARCH.md"
 
           @"
-          NFSMW Free Roam Rivals v0.0.43-dev
+          NFSMW Free Roam Rivals v0.0.44-dev
 
           INSTALL:
-          1. Replace scripts\FreeRoamRivals.asi. Preserve your other INIs.
-          2. Copy the included FreeRoamRivals-play.ini to
-             scripts\FreeRoamRivals\FreeRoamRivals.ini to enable challenges.
-             Packaged default INI keeps construction/challenges opt-in.
+          1. BACK UP scripts\FreeRoamRivals\FreeRoamRivals.ini if it contains
+             custom settings. This ZIP replaces the active mod INI and ASI.
+          2. Extract this ZIP into the game's ROOT folder (with speed.exe),
+             replacing files when prompted. No renaming or manual INI edits.
+             The included FreeRoamRivals.ini is already the PLAY preset;
+             an alternative conservative file is FreeRoamRivals-safe.ini.
           3. Use a Golf GTI in ordinary Free Roam; drive to calibrate metres.
           4. F8 creates one nearby GTI; F8 never removes an existing rival.
           5. Follow behind, within 60m, in the same direction. Press G when offered.
              Outrun scoring: hold 300m lead for 3 seconds; timeout 5 minutes.
-          6. Manual retirement defaults OFF; F7 is never polled by default.
-             A race result does not retire the car. One construction per session.
-          7. F9 requests a bounded read-only audit. Send FreeRoamRivals.log and
+          6. In this PLAY preset, hold Ctrl+Shift+R for 1.5s to REQUEST
+             safe removal (not immediate); F7 is never polled.
+             Cleanup requires no pursuit, verified owned identity, hidden and
+             at least 300m away. No engine object is deleted blindly.
+          7. ONLY after native retirement is confirmed absent from BOTH registries
+             in two completed frames, F8 can request another guarded spawn.
+             Any native fault blocks same-session retry: restart to retest.
+          8. The HUD shows live Rico straight-line distance and travel-relative
+             direction while you move; it does not place a map waypoint.
+          9. F9 requests a bounded read-only audit. Send FreeRoamRivals.log and
              NativeExceptions.log after your gameplay test.
-          See TARGET_CAPTURE_V42_CHALLENGE_TIME.md for current controls/time fix.
-          LIVE_RIVAL_V42.md describes the original integration; F7 is superseded.
+          See RIVAL_LOCATOR_AND_RETRY_V44.md for this version safety and controls.
+          LIVE_RIVAL_V42.md describes the initial live encounter integration.
 
-          Native driving was observed in the owner's v41 capture. New challenge,
-          HUD and retirement behavior still need target-game validation.
+          Native driving was observed in the owner's v41 capture. New locator,
+          road-reset diagnostics, repeat-retirement and HUD still need PC validation.
           Native roaming AI does not follow a player-selected race route.
           No cash, garage or vanilla save writes; no full tuned rival system yet.
           This is a development release, not a final/stable version.
@@ -121,16 +132,107 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.43-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.44-dev.zip" -Force
 
-      - name: Publish v0.0.43-dev GitHub Release
+          # Minimal update for existing v43 installations: preserve Rivals.ini,
+          # VehiclePools.ini, UndergroundBlacklist.ini and all saved history.
+          $upgrade = "release/upgrade"
+          New-Item -ItemType Directory -Force "$upgrade/scripts/FreeRoamRivals" | Out-Null
+          Copy-Item "artifact/FreeRoamRivals.asi" "$upgrade/scripts/FreeRoamRivals.asi"
+          Copy-Item "config/FreeRoamRivals-play.ini" "$upgrade/scripts/FreeRoamRivals/FreeRoamRivals.ini"
+          Copy-Item "docs/RIVAL_LOCATOR_AND_RETRY_V44.md" "$upgrade/RIVAL_LOCATOR_AND_RETRY_V44.md"
+          @"
+          FREE ROAM RIVALS v0.0.44-dev - EXISTING INSTALLATION UPGRADE
+
+          BACK UP your customized scripts\FreeRoamRivals\FreeRoamRivals.ini.
+          Extract this ZIP to the existing NFSMW folder containing speed.exe,
+          replacing the two mod files. NO INI EDITS or renames are needed.
+          This UPGRADE only replaces:
+          - scripts\FreeRoamRivals.asi
+          - scripts\FreeRoamRivals\FreeRoamRivals.ini
+
+          Existing Rivals.ini, VehiclePools.ini, UndergroundBlacklist.ini and
+          scripts\FreeRoamRivals\saves are NOT included and remain untouched.
+          The main INI has F8 spawning, G challenge, and Ctrl+Shift+R 1.5s
+          guarded retirement, already configured. Actual gameplay unverified.
+          The game must be closed while replacing these files.
+          "@ | Set-Content "$upgrade/INSTALAR-ATUALIZACAO.txt" -Encoding UTF8
+          Compress-Archive -Path "$upgrade/*" -DestinationPath "release/FreeRoamRivals-v0.0.44-dev-upgrade.zip" -Force
+
+      - name: Verify ready-to-install package
+        shell: pwsh
+        run: |
+          $path = "release/FreeRoamRivals-v0.0.44-dev.zip"
+          if (!(Test-Path $path)) { throw "Install ZIP is missing" }
+          Add-Type -AssemblyName System.IO.Compression
+          $zip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $path).Path)
+          try {
+            $names = @($zip.Entries | ForEach-Object { $_.FullName.Replace("\\","/") })
+            $required = @(
+              "scripts/FreeRoamRivals.asi",
+              "scripts/FreeRoamRivals/FreeRoamRivals.ini",
+              "scripts/FreeRoamRivals/Rivals.ini",
+              "scripts/FreeRoamRivals/VehiclePools.ini",
+              "scripts/FreeRoamRivals/UndergroundBlacklist.ini",
+              "INSTALL.txt",
+              "FreeRoamRivals-safe.ini",
+              "RIVAL_LOCATOR_AND_RETRY_V44.md"
+            )
+            foreach ($item in $required) {
+              if ($names -cnotcontains $item) { throw "Missing package entry: $item" }
+            }
+          } finally { $zip.Dispose() }
+          $ini = Get-Content "release/package/scripts/FreeRoamRivals/FreeRoamRivals.ini" -Raw
+          foreach ($setting in @(
+            "NativeRivalPrototypeEnabled=1",
+            "NativeRivalPrototypeNearPlayer=1",
+            "RetireRivalKey=0x52",
+            "FallbackChallengeKey=0x47",
+            "Enabled=1"
+          )) {
+            if (!$ini.Contains($setting)) { throw "Play INI missing $setting" }
+          }
+          if ($ini.Contains("RetireRivalKey=0" + [char]10)) { throw "Manual retirement was silently disabled" }
+          $upgradePath = "release/FreeRoamRivals-v0.0.44-dev-upgrade.zip"
+          if (!(Test-Path $upgradePath)) { throw "Upgrade ZIP is missing" }
+          $upgradeZip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $upgradePath).Path)
+          try {
+            $upgradeNames = @($upgradeZip.Entries | ForEach-Object { $_.FullName.Replace("\\","/") })
+            foreach ($item in @("scripts/FreeRoamRivals.asi","scripts/FreeRoamRivals/FreeRoamRivals.ini","INSTALAR-ATUALIZACAO.txt")) {
+              if ($upgradeNames -cnotcontains $item) { throw "Upgrade missing: $item" }
+            }
+            foreach ($item in $upgradeNames) {
+              if ($item -match '(?i)(?:/saves/|/Rivals\.ini$|/VehiclePools\.ini$|/UndergroundBlacklist\.ini$)') {
+                throw "Upgrade must not overwrite customized data: $item"
+              }
+            }
+          } finally { $upgradeZip.Dispose() }
+          foreach ($item in $names) {
+            if ($item -match '(?i)/saves/') { throw "Main ZIP unexpectedly contains user saves" }
+          }
+          Write-Output "Both ZIPs verified: full install and existing-user upgrade with protected data."
+
+      - name: Upload ready-to-install ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FreeRoamRivals-ReadyToInstall-v44
+          path: |
+            release/FreeRoamRivals-v0.0.44-dev.zip
+            release/FreeRoamRivals-v0.0.44-dev-upgrade.zip
+          if-no-files-found: error
+
+      - name: Publish v0.0.44-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.43-dev"
+          $tag = "v0.0.44-dev"
 
+          $files = @(
+            "release/FreeRoamRivals-v0.0.44-dev.zip",
+            "release/FreeRoamRivals-v0.0.44-dev-upgrade.zip"
+          )
           $published = $false
           for ($attempt = 1; $attempt -le 3; $attempt++) {
             $existing = gh release view $tag --json targetCommitish,assets 2>$null
@@ -139,17 +241,21 @@ jobs:
               if ($info.targetCommitish -ne "${{ github.sha }}") {
                 throw "Existing release target does not match this source commit."
               }
-              if ($info.assets.name -contains "FreeRoamRivals-v0.0.43-dev.zip") {
-                $published = $true
-                break
+              foreach ($file in $files) {
+                $name = Split-Path $file -Leaf
+                if ($info.assets.name -notcontains $name) {
+                  gh release upload $tag $file
+                  if ($LASTEXITCODE -ne 0) { throw "Failed to publish $name" }
+                }
               }
-              gh release upload $tag "release/FreeRoamRivals-v0.0.43-dev.zip"
+              $published = $true
+              break
             } else {
-              gh release create $tag "release/FreeRoamRivals-v0.0.43-dev.zip" `
+              gh release create $tag $files `
                 --target "${{ github.sha }}" `
-                --title "Free Roam Rivals v0.0.43-dev" `
+                --title "Free Roam Rivals v0.0.44-dev" `
                 --prerelease `
-                --notes "v0.0.43-dev: corrige interpretação do tempo nativo (int32 fixo em milissegundos convertido para segundos só nos callbacks FRR; argumento original preservado). Desativa retirada manual por padrão: F7 deixa de ser consultado. G mostra/loga motivos de recusa; interrupções registram razão e amostra. Congela pontuação com física sem avanço e velocidade antiga. Captura v42 confirma desafio iniciado e interrompido; sumiço em transições não tem causa comprovada. INI play incluído. Validação no jogo pendente."
+                --notes "v0.0.44-dev: exibe distancia e direcao relativa do GTI ativo no HUD. Preset play opta por Ctrl+Shift+R segurado 1,5s para solicitar remocao nativa segura; F8 pode criar outro SOMENTE apos a retirada confirmada nas duas listas e sem falha nativa. Melhor diagnostico de road_reset_rejected. Sem marcador no mapa, teleporte ou recuperacao automatica de streaming. Exige validacao real no jogo."
             }
             if ($LASTEXITCODE -eq 0) { $published = $true; break }
             if ($attempt -lt 3) { Start-Sleep -Seconds 5 }
