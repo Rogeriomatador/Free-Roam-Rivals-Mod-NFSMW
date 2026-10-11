@@ -13,7 +13,7 @@ IDirect3DDevice9 device{&methods};
 IDirect3DStateBlock9 block{&blockMethods};
 std::map<D3DRENDERSTATETYPE,DWORD> states, saved;
 unsigned draws=0,captures=0,applies=0,releases=0,mutations=0;
-bool failCreate=false,failCapture=false;
+bool failCreate=false,failCapture=false,greenPromptDrawn=false;
 void require(bool ok,const char* message){if(!ok){std::cerr<<message<<'\n';std::exit(1);}}
 HRESULT STDMETHODCALLTYPE viewport(IDirect3DDevice9*,D3DVIEWPORT9* out){*out={0,0,1280,720,0,1};return D3D_OK;}
 HRESULT STDMETHODCALLTYPE create(IDirect3DDevice9*,D3DSTATEBLOCKTYPE type,IDirect3DStateBlock9** out){require(type==D3DSBT_ALL,"HUD captures all device states");if(failCreate)return E_OUTOFMEMORY;*out=&block;return D3D_OK;}
@@ -26,7 +26,16 @@ HRESULT STDMETHODCALLTYPE vertexShader(IDirect3DDevice9*,IDirect3DVertexShader9*
 HRESULT STDMETHODCALLTYPE pixelShader(IDirect3DDevice9*,IDirect3DPixelShader9*){return D3D_OK;}
 HRESULT STDMETHODCALLTYPE fvf(IDirect3DDevice9*,DWORD){return D3D_OK;}
 HRESULT STDMETHODCALLTYPE stage(IDirect3DDevice9*,DWORD,D3DTEXTURESTAGESTATETYPE,DWORD){return D3D_OK;}
-HRESULT STDMETHODCALLTYPE draw(IDirect3DDevice9*,D3DPRIMITIVETYPE type,UINT count,const void* vertices,UINT stride){require(type==D3DPT_TRIANGLELIST&&count>0&&vertices&&stride==20,"bounded valid HUD vertices");require(captures>applies,"draw inside captured state window");++draws;return D3D_OK;}
+HRESULT STDMETHODCALLTYPE draw(IDirect3DDevice9*,D3DPRIMITIVETYPE type,UINT count,const void* vertices,UINT stride){
+    require(type==D3DPT_TRIANGLELIST&&count>0&&vertices&&stride==20,"bounded valid HUD vertices");
+    require(captures>applies,"draw inside captured state window");
+    const auto* bytes=static_cast<const unsigned char*>(vertices);
+    for(UINT i=0;i<count*3;++i){
+        DWORD color=0;std::memcpy(&color,bytes+static_cast<size_t>(i)*stride+16,sizeof(color));
+        if(color==D3DCOLOR_ARGB(255,105,240,145)) greenPromptDrawn=true;
+    }
+    ++draws;return D3D_OK;
+}
 }
 int main(){
     methods.GetViewport=viewport;methods.CreateStateBlock=create;methods.SetRenderState=renderState;
@@ -44,6 +53,13 @@ int main(){
     require(draws==1&&mutations==previousMutations&&releases==2,"failed capture cannot mutate device; block released");
     failCapture=false;failCreate=true;renderNativeRivalHud(&device);
     require(draws==1&&mutations==previousMutations,"failed state allocation cannot mutate device");
-    configureNativeRivalHud(false);renderNativeRivalHud(&device);require(draws==1,"disabled HUD skips device");
+    // A green G prompt must come only from an explicit domain challenge-ready flag.
+    require(!greenPromptDrawn,"non-ready HUD cannot paint challenge-ready green text");
+    failCreate=false;view.challengeReady=true;
+    std::strcpy(view.lines[2],"[G] DESAFIAR RICO");publishNativeRivalHud(view);
+    renderNativeRivalHud(&device);
+    require(draws==2&&greenPromptDrawn,"verified challenge-ready prompt drawn in green");
+    require(states==original&&captures==4&&applies==2&&releases==4,"ready HUD still fully restores D3D state");
+    configureNativeRivalHud(false);renderNativeRivalHud(&device);require(draws==2,"disabled HUD skips device");
     std::cout<<"HUD COM call ordering, restoration and allocation failures passed (mock device; not gameplay rendering)\n";
 }
