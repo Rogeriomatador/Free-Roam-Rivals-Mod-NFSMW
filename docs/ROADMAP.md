@@ -1,3 +1,7 @@
+## v47 — avaliar recursos nativos do jogo
+
+O comando F9 agora faz um inventário de arquivos de carro/mundo e atributos disponíveis. O próximo passo é provar a residência dos modelos, não apenas a existência dos arquivos. Veja [NATIVE_ASSET_INVENTORY_V47.md](NATIVE_ASSET_INVENTORY_V47.md).
+
 ## Atualização v46 — evitar repetir a calibração
 
 A escala física é automaticamente preservada após comprovação e restaurada no próximo lançamento, sem editar INI. Em novas instalações, uma calibração válida inicial ainda é necessária; o modelo Golf GTI e F8 permanecem para limitar risco dos protótipos de criação. Mais detalhes em [PERSISTENT_WORLD_METRIC_V46.md](PERSISTENT_WORLD_METRIC_V46.md).

@@ -66,6 +66,7 @@ jobs:
           Copy-Item "docs/RIVAL_LOCATOR_AND_RETRY_V44.md" "$pkg/RIVAL_LOCATOR_AND_RETRY_V44.md"
           Copy-Item "docs/RIVAL_REACTIONS_V45.md" "$pkg/RIVAL_REACTIONS_V45.md"
           Copy-Item "docs/PERSISTENT_WORLD_METRIC_V46.md" "$pkg/PERSISTENT_WORLD_METRIC_V46.md"
+          Copy-Item "docs/NATIVE_ASSET_INVENTORY_V47.md" "$pkg/NATIVE_ASSET_INVENTORY_V47.md"
           Copy-Item "config/Rivals.ini" "$pkg/scripts/FreeRoamRivals/Rivals.ini"
           Copy-Item "config/VehiclePools.ini" "$pkg/scripts/FreeRoamRivals/VehiclePools.ini"
           Copy-Item "config/UndergroundBlacklist.ini" "$pkg/scripts/FreeRoamRivals/UndergroundBlacklist.ini"
@@ -95,7 +96,7 @@ jobs:
           Copy-Item "docs/NATIVE_ROAMING_STREAMING_RESEARCH.md" "$pkg/NATIVE_ROAMING_STREAMING_RESEARCH.md"
 
           @"
-          NFSMW Free Roam Rivals v0.0.46-dev
+          NFSMW Free Roam Rivals v0.0.47-dev
 
           INSTALL:
           1. BACK UP scripts\FreeRoamRivals\FreeRoamRivals.ini if it contains
@@ -123,6 +124,10 @@ jobs:
              Driving AI and vehicle controller remain native and unchanged.
           9. F9 requests a bounded read-only audit. Send FreeRoamRivals.log and
              NativeExceptions.log after your gameplay test.
+          F9 now audits on-disk CARS/GLOBAL/TRACKS and the registered
+          attributes in safe Free Roam. Disk files do NOT prove native
+          model residency and DO NOT bypass the Golf GTI prerequisite.
+          See NATIVE_ASSET_INVENTORY_V47.md for research and interpretation.
           See PERSISTENT_WORLD_METRIC_V46.md for automatic physical-unit caching.
           See RIVAL_REACTIONS_V45.md for interaction limits and controls.
           See RIVAL_LOCATOR_AND_RETRY_V44.md for native lifecycle safety.
@@ -140,7 +145,7 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.46-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.47-dev.zip" -Force
 
           # Minimal update for existing v45 installations: preserve Rivals.ini,
           # VehiclePools.ini, UndergroundBlacklist.ini and all saved history.
@@ -151,8 +156,9 @@ jobs:
           Copy-Item "docs/RIVAL_LOCATOR_AND_RETRY_V44.md" "$upgrade/RIVAL_LOCATOR_AND_RETRY_V44.md"
           Copy-Item "docs/RIVAL_REACTIONS_V45.md" "$upgrade/RIVAL_REACTIONS_V45.md"
           Copy-Item "docs/PERSISTENT_WORLD_METRIC_V46.md" "$upgrade/PERSISTENT_WORLD_METRIC_V46.md"
+          Copy-Item "docs/NATIVE_ASSET_INVENTORY_V47.md" "$upgrade/NATIVE_ASSET_INVENTORY_V47.md"
           @"
-          FREE ROAM RIVALS v0.0.46-dev - EXISTING INSTALLATION UPGRADE
+          FREE ROAM RIVALS v0.0.47-dev - EXISTING INSTALLATION UPGRADE
 
           BACK UP your customized scripts\FreeRoamRivals\FreeRoamRivals.ini.
           Extract this ZIP to the existing NFSMW folder containing speed.exe,
@@ -172,12 +178,12 @@ jobs:
           steering and acceleration remain unchanged. In-game test pending.
           The game must be closed while replacing these files.
           "@ | Set-Content "$upgrade/INSTALAR-ATUALIZACAO.txt" -Encoding UTF8
-          Compress-Archive -Path "$upgrade/*" -DestinationPath "release/FreeRoamRivals-v0.0.46-dev-upgrade.zip" -Force
+          Compress-Archive -Path "$upgrade/*" -DestinationPath "release/FreeRoamRivals-v0.0.47-dev-upgrade.zip" -Force
 
       - name: Verify ready-to-install package
         shell: pwsh
         run: |
-          $path = "release/FreeRoamRivals-v0.0.46-dev.zip"
+          $path = "release/FreeRoamRivals-v0.0.47-dev.zip"
           if (!(Test-Path $path)) { throw "Install ZIP is missing" }
           Add-Type -AssemblyName System.IO.Compression
           $zip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $path).Path)
@@ -193,7 +199,8 @@ jobs:
               "FreeRoamRivals-safe.ini",
               "RIVAL_LOCATOR_AND_RETRY_V44.md",
               "RIVAL_REACTIONS_V45.md",
-              "PERSISTENT_WORLD_METRIC_V46.md"
+              "PERSISTENT_WORLD_METRIC_V46.md",
+              "NATIVE_ASSET_INVENTORY_V47.md"
             )
             foreach ($item in $required) {
               if ($names -cnotcontains $item) { throw "Missing package entry: $item" }
@@ -210,12 +217,12 @@ jobs:
             if (!$ini.Contains($setting)) { throw "Play INI missing $setting" }
           }
           if ($ini.Contains("RetireRivalKey=0" + [char]10)) { throw "Manual retirement was silently disabled" }
-          $upgradePath = "release/FreeRoamRivals-v0.0.46-dev-upgrade.zip"
+          $upgradePath = "release/FreeRoamRivals-v0.0.47-dev-upgrade.zip"
           if (!(Test-Path $upgradePath)) { throw "Upgrade ZIP is missing" }
           $upgradeZip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $upgradePath).Path)
           try {
             $upgradeNames = @($upgradeZip.Entries | ForEach-Object { $_.FullName.Replace("\\","/") })
-            foreach ($item in @("scripts/FreeRoamRivals.asi","scripts/FreeRoamRivals/FreeRoamRivals.ini","INSTALAR-ATUALIZACAO.txt","RIVAL_REACTIONS_V45.md","PERSISTENT_WORLD_METRIC_V46.md")) {
+            foreach ($item in @("scripts/FreeRoamRivals.asi","scripts/FreeRoamRivals/FreeRoamRivals.ini","INSTALAR-ATUALIZACAO.txt","RIVAL_REACTIONS_V45.md","PERSISTENT_WORLD_METRIC_V46.md","NATIVE_ASSET_INVENTORY_V47.md")) {
               if ($upgradeNames -cnotcontains $item) { throw "Upgrade missing: $item" }
             }
             foreach ($item in $upgradeNames) {
@@ -232,23 +239,23 @@ jobs:
       - name: Upload ready-to-install ZIP artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FreeRoamRivals-ReadyToInstall-v46
+          name: FreeRoamRivals-ReadyToInstall-v47
           path: |
-            release/FreeRoamRivals-v0.0.46-dev.zip
-            release/FreeRoamRivals-v0.0.46-dev-upgrade.zip
+            release/FreeRoamRivals-v0.0.47-dev.zip
+            release/FreeRoamRivals-v0.0.47-dev-upgrade.zip
           if-no-files-found: error
 
-      - name: Publish v0.0.46-dev GitHub Release
+      - name: Publish v0.0.47-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.46-dev"
+          $tag = "v0.0.47-dev"
 
           $files = @(
-            "release/FreeRoamRivals-v0.0.46-dev.zip",
-            "release/FreeRoamRivals-v0.0.46-dev-upgrade.zip"
+            "release/FreeRoamRivals-v0.0.47-dev.zip",
+            "release/FreeRoamRivals-v0.0.47-dev-upgrade.zip"
           )
           $published = $false
           for ($attempt = 1; $attempt -le 3; $attempt++) {
@@ -270,9 +277,9 @@ jobs:
             } else {
               gh release create $tag $files `
                 --target "${{ github.sha }}" `
-                --title "Free Roam Rivals v0.0.46-dev" `
+                --title "Free Roam Rivals v0.0.47-dev" `
                 --prerelease `
-                --notes "v0.0.46-dev: apos calibracao fisica verificada uma vez, salva automaticamente a escala e restaura nas proximas aberturas do MESMO speed.exe sem dirigir novamente. Cache vinculado ao MD5, com limites, prova de amostras, checksum e rejeicao de arquivo incorreto/corrompido; invalida se nova prova fisica contradizer. Na primeira execucao sem cache ainda e preciso calibrar. Golf GTI e F8 continuam exigidos para spawn experimental. ZIP completo e ZIP upgrade preconfigurados sem incluir saves nem cache. Direcao da IA nativa permanece inalterada; precisa de teste real."
+                --notes "v0.0.47-dev: pesquisa e diagnostico de arquivos originais do MW05, usando layouts documentados de CARS, GLOBAL e TRACKS, integrada ao F9. Audita em modo somente leitura geometria/texturas de carros e atributos reconhecidos na memoria (em Free Roam seguro). Arquivos em disco NAO provam que recursos do carro estao carregados; nao altera F8, GTI, IA nativa, spawn ou calibração persistente da v46. ZIP completo e ZIP de atualizacao preconfigurados e sem sobrescrever saves ou cache. Requer teste real no PC."
             }
             if ($LASTEXITCODE -eq 0) { $published = $true; break }
             if ($attempt -lt 3) { Start-Sleep -Seconds 5 }

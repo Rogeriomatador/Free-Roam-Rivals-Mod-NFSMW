@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.46
+    VERSION 0.0.47
     LANGUAGES C CXX
 )
 
@@ -103,6 +103,7 @@ nfsmw_add_plugin(FreeRoamRivals
         src/core/ProfileKey.cpp
         src/core/VersionGuard.cpp
         src/game/DiagnosticBundle.cpp
+        src/game/GameAssetInventory.cpp
         src/game/CameraFrustumProbe.cpp
         src/game/ChallengeInputProbe.cpp
         src/game/GameplayLoopHook.cpp
@@ -323,6 +324,14 @@ add_test(NAME FreeRoamRivalsPrototypeGroundTests COMMAND FreeRoamRivalsPrototype
 add_executable(FreeRoamRivalsLiveEncounterTests tests/live_encounter_tests.cpp src/domain/LiveEncounter.cpp src/domain/OutrunRace.cpp)
 target_include_directories(FreeRoamRivalsLiveEncounterTests PRIVATE src)
 add_test(NAME FreeRoamRivalsLiveEncounterTests COMMAND FreeRoamRivalsLiveEncounterTests)
+add_executable(FreeRoamRivalsActiveModelObservationTests tests/active_model_observation_tests.cpp)
+target_include_directories(FreeRoamRivalsActiveModelObservationTests PRIVATE src)
+add_test(NAME FreeRoamRivalsActiveModelObservationTests COMMAND FreeRoamRivalsActiveModelObservationTests)
+
+add_executable(FreeRoamRivalsGameAssetInventoryTests tests/game_asset_inventory_tests.cpp src/game/GameAssetInventory.cpp)
+target_include_directories(FreeRoamRivalsGameAssetInventoryTests PRIVATE src)
+add_test(NAME FreeRoamRivalsGameAssetInventoryTests COMMAND FreeRoamRivalsGameAssetInventoryTests)
+
 add_executable(FreeRoamRivalsWorldMetricCacheTests tests/world_metric_cache_tests.cpp src/persistence/WorldMetricCache.cpp src/domain/WorldMetricCalibration.cpp)
 target_include_directories(FreeRoamRivalsWorldMetricCacheTests PRIVATE src)
 target_compile_definitions(FreeRoamRivalsWorldMetricCacheTests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)

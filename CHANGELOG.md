@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.0.47-dev — pesquisador seguro de recursos de carro e mundo
+
+- Consulta pesquisas públicas de MWSDK, GlobalLib, NFSPluginSDK e NFS Modder's Corner sobre formatos do MW05; integra auditoria de arquivos locais do jogo, estritamente somente leitura.
+- F9 registra quais pares GEOMETRY.BIN/TEXTURES.BIN de carros do catálogo e quais arquivos GLOBAL/TRACKS existem no layout retail; ignora arquivos vazios e bloqueia nomes de pasta inseguros.
+- Quando em Free Roam estável, F9 registra quais nomes internos de carro a base de atributos carregada no motor reconhece; a consulta **não** prova texturas/modelos residentes e não permite contornar o Golf GTI.
+- Testes de nomes, limites, caminhos, arquivos não vazios e ausência de alterações nos dados do jogo. Preserva F8/G, spawn nativo conservador e cache de calibração da v46.
+
+
 ## v0.0.46-dev — cache persistente de calibração física verificada
 
 - Após vinte ou mais amostras de movimento estável e prova da escala em metros, salva automaticamente a calibração em arquivo separado do save, ligado ao MD5 do executável exato, com limites de valor, validação do número de amostras, bits exatos e checksum.
