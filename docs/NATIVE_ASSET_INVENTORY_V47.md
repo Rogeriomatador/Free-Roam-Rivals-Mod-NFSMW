@@ -16,7 +16,7 @@ Ao pressionar F9 no Free Roam, a v47 executa um inventário limitado a no máxim
 - CARS/<NOME_INTERNO_MAIÚSCULO>/GEOMETRY.BIN e TEXTURES.BIN, arquivo comum não vazio;
 - para cada modelo, em **Free Roam seguro**, consulta a coleção de atributos pvehicle pelo NFSPluginSDK e registra sua chave.
 
-Dados são colocados no próprio scripts/FreeRoamRivals/FreeRoamRivals.log, em linhas com prefixo `DiagnosticBundle assets:`, `DiagnosticBundle assetModel:` e `DiagnosticBundle attributeModel:`. Nenhum arquivo do jogo é alterado. Uma pasta ou textura ausente no endereço esperado pode indicar empacotamento diferente ou mods; não significa que o modelo seja impossível. A presença no disco ou no cadastro de atributos **não prova** que o motor terminou de carregar o modelo em RAM/GPU ou que o spawn é seguro.
+Dados são colocados no próprio scripts/FreeRoamRivals/FreeRoamRivals.log, em linhas com prefixo `DiagnosticBundle assets:`, `DiagnosticBundle assetModel:`, `DiagnosticBundle attributeModel:` e `DiagnosticBundle activeModel:`. Após conferir que não há perseguição, o F9 cruza as chaves dos atributos registrados com as **caixas físicas de IVehicle ativos** do coletor espacial, mas só apresenta contagens se a lista foi lida completamente e sem falhas; separa `activeVehicleBoxes` do número `nonPlayer` e registra que uma nova construção ainda é `unverified`. Nenhum arquivo do jogo é alterado. Uma pasta ou textura ausente no endereço esperado pode indicar empacotamento diferente ou mods; não significa que o modelo seja impossível. A presença no disco ou no cadastro de atributos **não prova** que o motor terminou de carregar o modelo em RAM/GPU ou que o spawn é seguro.
 
 ## Por que não removemos a exigência de Golf GTI nesta etapa
 
@@ -33,4 +33,4 @@ Em v46, F8 cria um único carro nativo em um ponto de estrada, com a segurança 
 
 ## Validação automatizada
 
-Novo teste verifica nomes de pastas restritos, ausência de leitura fora de CARS, detecção de pares completos, arquivos vazios, estrutura de TRACKS/GLOBAL e nenhuma modificação de arquivos. Windows CI roda todos os testes já existentes, compilação e verificação dos ZIPs. O jogo no computador do autor precisa fornecer a prova real de recursos de runtime.
+Novos testes verificam nomes de pastas restritos, ausência de leitura fora de CARS, detecção de pares completos, arquivos vazios, estrutura de TRACKS/GLOBAL, nenhuma modificação de arquivos, contagem de IVehicles ativos por modelo e falha fechada se a frota observada estiver incompleta. Windows CI roda todos os testes já existentes, compilação e verificação dos ZIPs. O jogo no computador do autor precisa fornecer a prova real de recursos de runtime.
