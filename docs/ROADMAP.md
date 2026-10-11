@@ -1,3 +1,7 @@
+## v52 — bússola verde, trilha Outrun e telemetria de carro imóvel
+
+Indicadores reais em overlay FRR, não ícones internos do `Hud_Minimap`; remapeamento nativo de verde e path engine ainda exige ABI, lifecycle e teste de corrida. Detecção de Rico quase imóvel por 12s não move carro de forma insegura. [RICO_HUD_AND_STUCK_V52.md](RICO_HUD_AND_STUCK_V52.md).
+
 ## v48 — Rico fora de streaming e reencontro seguro
 
 Registro real do usuário mostrou spawn a 30 m e GTI afastando-se até 1,8 km antes de descarregar. Agora a busca por retirada acontece antes de sair do alcance, apenas em condição de ocultação e identidade verificadas, e F8 na retirada fica em fila até confirmar remoção em ambas as registries. Não há recuperação forçada de carros descarregados. [GUARDED_REENCOUNTER_V48.md](GUARDED_REENCOUNTER_V48.md).
