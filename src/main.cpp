@@ -14,7 +14,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.45-dev";
+constexpr const char* kVersion = "0.0.46-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -92,6 +92,7 @@ int bootstrap() {
     }
 
     game::RuntimeProbeConfig probeConfig{};
+    probeConfig.verifiedExecutableMd5=check.executable.md5;
     probeConfig.retireRivalVirtualKey=config.retireRivalVirtualKey;
     probeConfig.retireRequireControlShift=config.retireRequireControlShift;
     probeConfig.retireHoldSeconds=config.retireHoldSeconds;

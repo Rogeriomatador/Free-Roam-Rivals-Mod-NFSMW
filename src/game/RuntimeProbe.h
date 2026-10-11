@@ -1,8 +1,11 @@
 #pragma once
+#include <string>
 
 namespace frr::game {
 
 struct RuntimeProbeConfig {
+    // Populated ONLY after the exact executable passes VersionGuard.
+    std::string verifiedExecutableMd5;
     bool diagnosticBundleEnabled = false;
     bool renderProbeEnabled = true;
     bool inputProbeEnabled = true;

@@ -1,3 +1,7 @@
+## Atualização v46 — evitar repetir a calibração
+
+A escala física é automaticamente preservada após comprovação e restaurada no próximo lançamento, sem editar INI. Em novas instalações, uma calibração válida inicial ainda é necessária; o modelo Golf GTI e F8 permanecem para limitar risco dos protótipos de criação. Mais detalhes em [PERSISTENT_WORLD_METRIC_V46.md](PERSISTENT_WORLD_METRIC_V46.md).
+
 ## Atualização v45
 
 A interface passa a reagir a dados reais do encontro: aproximação/afastamento, direção e nível de estrada, perseguição, disponibilidade do desafio G, recusa contextual e ultrapassagem física reconhecida na trajetória. Mecanismos de direção da IA nativa permanecem sem alterações até existir ABI e provas suficientes. Leia [RIVAL_REACTIONS_V45.md](RIVAL_REACTIONS_V45.md). Próximo passo: pesquisas de resposta real do controlador nativo (rota, aceleração, perseguição), sem uso de ponteiros ou comandos não verificados.

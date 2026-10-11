@@ -31,12 +31,15 @@
 #include "../domain/WorldCollisionEvidence.h"
 #include "../domain/WorldMetricCalibration.h"
 #include "../persistence/UndergroundBlacklistStore.h"
+#include "../persistence/WorldMetricCache.h"
 
 
 #include <windows.h>
 
 #include <atomic>
 #include <chrono>
+#include <cmath>
+#include <filesystem>
 #include <cstdint>
 #include <iomanip>
 #include <limits>
@@ -127,6 +130,12 @@ constexpr bool kAbsoluteSpeedMetersPerSecondSourceVerified = true;
 std::atomic<bool> g_metricCalibrationVerified{false};
 std::atomic<float> g_metricWorldUnitsPerMeter{0.0f};
 bool g_loggedMetricCalibration = false;
+std::filesystem::path g_metricCachePath;
+std::string g_metricCacheExecutableMd5;
+bool g_metricLoadedFromCache=false;
+bool g_metricCacheCrossChecked=false;
+bool g_metricCacheContradicted=false;
+bool g_metricCacheSaveAttempted=false;
 
 bool g_haveMotionClock = false;
 std::chrono::steady_clock::time_point g_lastMotionClock{};
@@ -960,35 +969,59 @@ void sampleAndLog(
             motionDeltaSeconds
         );
 
-    if (!g_metricCalibrationVerified.load(
-            std::memory_order_acquire)) {
-        const auto candidateCalibration =
+    // Revalidate a previously proved disk calibration passively once new stable
+    // driving observations are available. Never derive a scale from guessed
+    // world constants or bypass the existing exact-car/road/pursuit gates.
+    const bool checkMetric=!g_metricCalibrationVerified.load(std::memory_order_acquire) ||
+        (g_metricLoadedFromCache&&!g_metricCacheCrossChecked);
+    if (checkMetric && !g_metricCacheContradicted) {
+        const auto candidateCalibration=
             frr::domain::promoteMotionScaleToWorldMetric(
-                g_motionScaleSnapshot,
-                kAbsoluteSpeedMetersPerSecondSourceVerified
-            );
-
+                g_motionScaleSnapshot,kAbsoluteSpeedMetersPerSecondSourceVerified);
         if (candidateCalibration.verified) {
-            g_metricWorldUnitsPerMeter.store(
-                candidateCalibration.worldUnitsPerMeter,
-                std::memory_order_relaxed
-            );
-            g_metricCalibrationVerified.store(
-                true,
-                std::memory_order_release
-            );
-
-            if (!g_loggedMetricCalibration) {
-                std::ostringstream line;
-                line << "World metric calibration verified: source=MW05_GetAbsoluteSpeed_mps"
-                     << " worldUnitsPerMeter="
-                     << std::fixed << std::setprecision(5)
-                     << candidateCalibration.worldUnitsPerMeter
-                     << " window=" << g_motionScaleSnapshot.windowSamples
-                     << " cv=" << g_motionScaleSnapshot.coefficientOfVariation
-                     << ". Metric thresholds may now consume this scale; spawn remains separately gated.";
-                Log::instance().info(line.str());
-                g_loggedMetricCalibration = true;
+            if (g_metricLoadedFromCache) {
+                const auto saved=g_metricWorldUnitsPerMeter.load(std::memory_order_relaxed);
+                const auto relative=std::abs(candidateCalibration.worldUnitsPerMeter-saved)/saved;
+                if (!std::isfinite(relative)||relative>0.05f) {
+                    // Fail closed rather than changing the distance scale under
+                    // a possibly active native rival. Next run can recalibrate.
+                    g_metricCalibrationVerified.store(false,std::memory_order_release);
+                    g_metricWorldUnitsPerMeter.store(0.0f,std::memory_order_relaxed);
+                    g_metricCacheContradicted=true;
+                    std::string reason;
+                    if (!g_metricCachePath.empty() &&
+                        !frr::persistence::WorldMetricCache(g_metricCachePath).discard(reason))
+                        Log::instance().warn("World metric cache invalidation failed: "+reason);
+                    Log::instance().warn("World metric cache contradicted by stable physical-motion evidence; metric mutation gates disabled for this session. Restart and calibrate to recover.");
+                } else {
+                    g_metricCacheCrossChecked=true;
+                    Log::instance().info("World metric cache passively cross-checked against current verified motion; discrepancy within 5 percent.");
+                }
+            } else {
+                g_metricWorldUnitsPerMeter.store(
+                    candidateCalibration.worldUnitsPerMeter,std::memory_order_relaxed);
+                g_metricCalibrationVerified.store(true,std::memory_order_release);
+                if (!g_loggedMetricCalibration) {
+                    std::ostringstream line;
+                    line << "World metric calibration verified: source=MW05_GetAbsoluteSpeed_mps"
+                         << " worldUnitsPerMeter=" << std::fixed << std::setprecision(5)
+                         << candidateCalibration.worldUnitsPerMeter
+                         << " window=" << g_motionScaleSnapshot.windowSamples
+                         << " cv=" << g_motionScaleSnapshot.coefficientOfVariation
+                         << ". Metric thresholds may now consume this scale; spawn remains separately gated.";
+                    Log::instance().info(line.str());
+                    g_loggedMetricCalibration=true;
+                }
+                if (!g_metricCacheSaveAttempted && !g_metricCachePath.empty() &&
+                    !g_metricCacheExecutableMd5.empty()) {
+                    g_metricCacheSaveAttempted=true;
+                    std::string reason;
+                    if (frr::persistence::WorldMetricCache(g_metricCachePath).save(
+                        candidateCalibration,g_metricCacheExecutableMd5,
+                        g_motionScaleSnapshot.windowSamples,reason))
+                        Log::instance().info("Verified world metric cached for later launches; next restart does not require driving to recalibrate.");
+                    else Log::instance().warn("World metric cache could not be saved (calibration still valid this session): "+reason);
+                }
             }
         }
     }
@@ -1631,6 +1664,32 @@ RuntimeProbeInstallResult RuntimeProbe::install(
     const RuntimeProbeConfig& config
 ) {
     g_config = config;
+    // RuntimeProbe::install is called only after the supported executable
+    // fingerprint is established by main::bootstrap. A cached scale must be
+    // bound to that verified fingerprint; never copy arbitrary INI values.
+    g_metricCachePath.clear();g_metricCacheExecutableMd5.clear();
+    g_metricLoadedFromCache=false;g_metricCacheCrossChecked=false;
+    g_metricCacheContradicted=false;g_metricCacheSaveAttempted=false;
+    g_metricWorldUnitsPerMeter.store(0.0f,std::memory_order_relaxed);
+    g_metricCalibrationVerified.store(false,std::memory_order_release);
+    if (!config.verifiedExecutableMd5.empty()) {
+        wchar_t executable[32768]{};
+        const auto count=GetModuleFileNameW(nullptr,executable,32768);
+        if (count>0&&count<32768) {
+            g_metricCachePath=std::filesystem::path(executable).parent_path()/
+                L"scripts"/L"FreeRoamRivals"/L"world-metric-v1.state";
+            g_metricCacheExecutableMd5=config.verifiedExecutableMd5;
+            const auto cached=frr::persistence::WorldMetricCache(g_metricCachePath).load(g_metricCacheExecutableMd5);
+            if (cached.ok) {
+                g_metricWorldUnitsPerMeter.store(cached.metric.worldUnitsPerMeter,std::memory_order_relaxed);
+                g_metricCalibrationVerified.store(true,std::memory_order_release);
+                g_metricLoadedFromCache=true;
+                Log::instance().info("Verified world metric cache restored for supported speed.exe; repeated drive calibration not required. Physical-motion cross-check remains armed.");
+            } else if (cached.found)
+                Log::instance().warn("Ignoring world metric cache; will use safe physical-motion calibration: "+cached.error);
+            else Log::instance().info("No previous verified world metric cache: one physical-motion calibration is required, then automatically remembered.");
+        }
+    }
     NativeEncounterConfig encounterConfig{};
     encounterConfig.enabled=config.outrunEnabled;
     encounterConfig.hudEnabled=config.rivalHudEnabled && config.nativeRivalPrototypeEnabled;

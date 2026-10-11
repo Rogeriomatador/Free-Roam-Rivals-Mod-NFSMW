@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.0.46-dev — cache persistente de calibração física verificada
+
+- Após vinte ou mais amostras de movimento estável e prova da escala em metros, salva automaticamente a calibração em arquivo separado do save, ligado ao MD5 do executável exato, com limites de valor, validação do número de amostras, bits exatos e checksum.
+- Reutiliza o valor nas partidas seguintes antes dos hooks; não é necessário dirigir novamente só para calibrar. Recalibração normal na primeira utilização ou após cache inválido.
+- Confirma passivamente o valor ao obter novos dados; divergência forte invalida o cache e bloqueia o uso inseguro daquela escala até reiniciar. Nenhuma alteração das chamadas nativas de direção/IA/streaming ou das demais regras de spawn.
+- HUD distingue `CALIBRACAO PRONTA`; testes de integridade, compatibilidade, escrita atômica e recuperação de arquivo corrompido.
+
+
 ## v0.0.45-dev — observed rival approach, race reactions and HUD feedback
 
 - New pure-domain reaction monitor tracks verified player/rival distance, following geometry, changes in separation, different road elevations, safe G challenge availability, result cooldown and active races; hysteresis prevents flickering and teleport-like sample jumps reset gap trends.
