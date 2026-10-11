@@ -2,7 +2,7 @@
 #include <cmath>
 namespace frr::domain {
 struct RivalLocatorPoint {float x=0,y=0,z=0;};
-enum class RivalBearing {Unknown,Nearby,Ahead,Behind,Left,Right,AheadLeft,AheadRight,BehindLeft,BehindRight};
+enum class RivalBearing {Unknown,Nearby,Above,Below,Ahead,Behind,Left,Right,AheadLeft,AheadRight,BehindLeft,BehindRight};
 struct RivalLocatorFix {bool valid=false;float distanceMeters=0;RivalBearing bearing=RivalBearing::Unknown;};
 inline bool finiteLocatorPoint(RivalLocatorPoint p) {
     return std::isfinite(p.x)&&std::isfinite(p.y)&&std::isfinite(p.z);
@@ -16,7 +16,12 @@ inline RivalLocatorFix locateRival(RivalLocatorPoint player,RivalLocatorPoint ri
     if(!std::isfinite(total)) return fix;
     fix.valid=true;fix.distanceMeters=total;
     if(!moving||!finiteLocatorPoint(direction)||std::hypot(direction.x,direction.z)<0.001f) return fix;
-    if(horizontal<3.0f) {fix.bearing=RivalBearing::Nearby;return fix;}
+    if(horizontal<3.0f) {
+        // Distinguish a nearby car from a car directly above/below on a bridge.
+        fix.bearing=std::abs(dy)<3.0f ? RivalBearing::Nearby :
+            (dy>0 ? RivalBearing::Above : RivalBearing::Below);
+        return fix;
+    }
     const float ahead=dx*direction.x+dz*direction.z;
     const float right=dx*direction.z-dz*direction.x;
     if(std::abs(ahead)>=1.5f*std::abs(right)) fix.bearing=ahead>=0?RivalBearing::Ahead:RivalBearing::Behind;
@@ -28,6 +33,8 @@ inline RivalLocatorFix locateRival(RivalLocatorPoint player,RivalLocatorPoint ri
 inline const char* rivalBearingName(RivalBearing b) {
     switch(b) {
         case RivalBearing::Nearby:return "PROXIMO";
+        case RivalBearing::Above:return "ACIMA";
+        case RivalBearing::Below:return "ABAIXO";
         case RivalBearing::Ahead:return "FRENTE";
         case RivalBearing::Behind:return "ATRAS";
         case RivalBearing::Left:return "ESQUERDA";
