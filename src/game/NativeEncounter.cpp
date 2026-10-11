@@ -6,6 +6,7 @@
 #include "NativeRivalHud.h"
 #include "../domain/LiveEncounter.h"
 #include "../domain/RivalLocator.h"
+#include "../domain/RivalReaction.h"
 #include "../persistence/LiveRivalStore.h"
 #include "../core/Log.h"
 #include <windows.h>
@@ -20,12 +21,14 @@ namespace frr::game {
 namespace {
 NativeEncounterConfig config{};
 domain::LiveEncounter encounter{};
+domain::RivalReactionMonitor reactionMonitor{};
 std::optional<persistence::LiveRivalStore> store;
 persistence::LiveRivalRecord history{};
 bool historyWritable=false;
-std::uint64_t loadedProfile=0,lastResultAt=0,lastRaceLog=0,lastRejectionAt=0;
+std::uint64_t loadedProfile=0,lastResultAt=0,lastRaceLog=0,lastRejectionAt=0,lastOvertakeAt=0;
 const char* lastRejection="none";
 domain::OutrunOutcome lastResult=domain::OutrunOutcome::InProgress;
+domain::OutrunLeader lastOvertakeLeader=domain::OutrunLeader::Rival;
 std::uintptr_t racePlayer=0,raceRoad=0,raceStatus=0;
 domain::EncounterPoint lastPlayerForward{0,0,1};
 template<typename... Args> void line(char (&target)[64],const char* format,Args... args) {
@@ -58,6 +61,10 @@ const char* rejectionText(const char* reason) {
     if(!std::strcmp(reason,"cooldown")) return "AGUARDE O INTERVALO ENTRE DESAFIOS";
     if(!std::strcmp(reason,"physics_not_advancing")) return "AGUARDANDO A FISICA VOLTAR A AVANCAR";
     if(!std::strcmp(reason,"disabled")) return "DESAFIOS DESATIVADOS";
+    if(!std::strcmp(reason,"pursuit_or_input_unverified")) return "ESPERE TERMINAR A PERSEGUICAO";
+    if(!std::strcmp(reason,"invalid_player_telemetry")) return "DIRIJA PARA CONFIRMAR MOVIMENTO";
+    if(!std::strcmp(reason,"invalid_rival_telemetry")) return "AGUARDANDO MOVIMENTO DO RIVAL";
+    if(!std::strcmp(reason,"none")) return "G: DESAFIAR RICO";
     return "DESAFIO BLOQUEADO POR ESTADO INCERTO";
 }
 const char* resultText(domain::OutrunOutcome r) {
@@ -71,13 +78,16 @@ const char* resultText(domain::OutrunOutcome r) {
 }
 void configureNativeEncounter(const NativeEncounterConfig& value) {
     config=value;encounter=domain::LiveEncounter(value.tuning,value.challengeDistanceMeters);
+    reactionMonitor.reset();lastOvertakeAt=0;
     configureNativeRivalHud(value.hudEnabled);
     wchar_t executable[32768]{};
     const auto size=GetModuleFileNameW(nullptr,executable,32768);
     if(size&&size<32768) store.emplace(std::filesystem::path(executable).parent_path()/L"scripts"/L"FreeRoamRivals"/L"saves");
 }
 bool nativeEncounterRunning() {return encounter.running();}
-void interruptNativeEncounter(const char* reason) {record(encounter.interrupt(reason));}
+void interruptNativeEncounter(const char* reason) {
+    record(encounter.interrupt(reason));reactionMonitor.reset();lastOvertakeAt=0;
+}
 void showNativeRivalStatus(const char* message,const char* detail) {
     auto view=panel();line(view.lines[1],"%s",message);line(view.lines[2],"%s",detail);
     line(view.lines[4],"%s",nativeRivalRetirementHint());
@@ -90,7 +100,7 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
     if(!world.career.profileKeyAvailable||!world.career.profileKey) {interruptNativeEncounter("profile_unavailable");showNativeRivalStatus("AGUARDANDO PERFIL");return;}
     if(loadedProfile!=world.career.profileKey) {
         interruptNativeEncounter("profile_changed");loadedProfile=world.career.profileKey;
-        lastResultAt=0;lastPlayerForward={0,0,1};
+        lastResultAt=0;lastOvertakeAt=0;lastPlayerForward={0,0,1};reactionMonitor.reset();
         history={loadedProfile};historyWritable=false;
         if(store) {
             const auto loaded=store->load(loadedProfile);
@@ -143,7 +153,18 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
         Log::instance().info(evidence.str());
     }
     record(result);
+    const auto reaction=reactionMonitor.update({input.player,input.rival,dt,valid,
+        result.running,config.enabled && result.available,result.remainingCooldown});
+    if(reaction.changed) {
+        Log::instance().info(std::string("RivalAwareness observedState=")+domain::rivalReactionLabel(reaction.state)+
+            " nativeAIWrites=0");
+    }
     const auto now=GetTickCount64();
+    if(result.leaderChanged) {
+        lastOvertakeAt=now;lastOvertakeLeader=result.leader;
+        Log::instance().info(std::string("LiveEncounter verified close overtake: newLeader=")+
+            domain::outrunLeaderName(result.leader)+" nativeAIWrites=0");
+    }
     if(result.running&&now-lastRaceLog>=1000) {
         lastRaceLog=now;std::ostringstream log;
         log<<"LiveEncounter race leadMeters="<<result.signedLeadMeters<<" routeMatched="<<result.routeMatched
@@ -154,19 +175,23 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
     line(view.lines[5],"VITORIAS %llu / DERROTAS %llu",static_cast<unsigned long long>(history.wins),
         static_cast<unsigned long long>(history.losses));
     if(result.running) {
-        line(view.lines[1],"OUTRUN - %s",result.leader==domain::OutrunLeader::Player?"VOCE LIDERA":"RICO LIDERA");
+        if(lastOvertakeAt && now-lastOvertakeAt<2500)
+            line(view.lines[1],"%s",lastOvertakeLeader==domain::OutrunLeader::Player?
+                "VOCE ULTRAPASSOU RICO":"RICO ULTRAPASSOU VOCE");
+        else line(view.lines[1],"OUTRUN - %s",result.leader==domain::OutrunLeader::Player?"VOCE LIDERA":"RICO LIDERA");
         line(view.lines[2],"VANTAGEM %.0f / %.0f METROS",std::abs(result.signedLeadMeters),config.tuning.winLeadMeters);
         line(view.lines[3],"%s",result.routeMatched?"MANTENHA A VANTAGEM PARA VENCER":"AGUARDANDO MESMA TRAJETORIA");
         line(view.lines[4],"TEMPO %.0f S - RIVAL CONTINUA APOS CORRIDA",result.elapsedSeconds);
         view.playerLeading=result.leader==domain::OutrunLeader::Player;view.holdProgress=result.holdProgress;
     } else {
         if(lastResultAt&&now-lastResultAt<8000) line(view.lines[1],"%s",resultText(lastResult));
-        else line(view.lines[1],"RICO EXPLORANDO ROCKPORT / %.0f KM/H",rival.speed*3.6f);
-        if(config.enabled&&result.available) line(view.lines[2],"[%c] DESAFIAR RICO",static_cast<char>(ChallengeInputProbe::fallbackVirtualKey()));
+        else line(view.lines[1],"%s / %.0f KM/H",domain::rivalReactionLabel(reaction.state),rival.speed*3.6f);
+        view.challengeReady=config.enabled&&result.available;
+        if(view.challengeReady) line(view.lines[2],"[%c] DESAFIAR RICO",static_cast<char>(ChallengeInputProbe::fallbackVirtualKey()));
         else if(!config.enabled) line(view.lines[2],"DESAFIOS DESATIVADOS");
         else if(result.remainingCooldown>0) line(view.lines[2],"NOVO DESAFIO EM %.0f S",result.remainingCooldown);
         else if(!input.challengeSafe) line(view.lines[2],"DESAFIO BLOQUEADO: POLICIA OU ESTADO INCERTO");
-        else line(view.lines[2],"SIGA ATRAS, ALINHADO, ATE %.0f METROS",config.challengeDistanceMeters);
+        else line(view.lines[2],"%s",rejectionText(result.reason));
         if(lastRejectionAt&&now-lastRejectionAt<3000) line(view.lines[2],"%s",rejectionText(lastRejection));
         // Straight-line location from current, valid world positions; no guessed route.
         const auto locator=domain::locateRival(
