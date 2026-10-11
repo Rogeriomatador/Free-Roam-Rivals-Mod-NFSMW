@@ -86,7 +86,9 @@ public:
             const auto deltaZ=in.player.position.z-in.rival.position.z;
             const float behind=deltaX*in.rival.forward.x+deltaZ*in.rival.forward.z;
             const float parallel=in.player.forward.x*in.rival.forward.x+in.player.forward.z*in.rival.forward.z;
-            if(behind< -1 && parallel>0.75f) next=RivalReaction::Following;
+            const float lateral=std::abs(deltaX*in.rival.forward.z-deltaZ*in.rival.forward.x);
+            // Do not claim following while the cars are on distant parallel streets.
+            if(behind< -1 && lateral<=7.0f && parallel>0.75f) next=RivalReaction::Following;
         }
         if(next==RivalReaction::Cruising&&d<=200&&haveTrend_) {
             if(trendSpeed_>=4) next=RivalReaction::Closing;
