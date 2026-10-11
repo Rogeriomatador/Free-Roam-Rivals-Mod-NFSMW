@@ -10,6 +10,10 @@ In the later v43 process, an approximately 23.1498-metre candidate was construct
 
 The existing 6-row HUD now displays the straight-line 3D distance between the verified current player and mod-owned rival. Directions are classified as ahead, behind, left, right and four diagonals against actual horizontal travel direction; there is no claim of player orientation while stopped. No game minimap symbols, traffic controller writes or additional game hooks are involved. If the world or native rival identity is invalid, there is no old-pointer read to keep a fake marker alive.
 
+## Ready-to-extract package
+
+The v44 release archive includes an active play configuration directly at `scripts/FreeRoamRivals/FreeRoamRivals.ini`, the Win32 ASI at `scripts/FreeRoamRivals.asi` and required supporting INIs in the correct folders. Back up an existing customized `scripts/FreeRoamRivals/FreeRoamRivals.ini`, then extract the archive into the directory containing `speed.exe`, replacing the mod files. **Do not put the files in another nested game directory.** There is no manual rename, copy of play preset or manual key setup. A conservative alternate `FreeRoamRivals-safe.ini` is included at the ZIP root, but is not the active config. The source-tree default remains conservative. Diagnostic F9 remains enabled but per-frame motion capture and post-race probes are disabled in the packaged play INI to keep logs manageable.
+
 ## Configured controls
 
 The play preset (config/FreeRoamRivals-play.ini) uses F8 to request one stock GTI spawn, G as the challenge fallback, and Ctrl+Shift+R held for 1.5 seconds to request retirement. The default INI leaves this retirement key disabled. The request is not instant: the car must be verified as mod-owned, hidden from current main camera with validated 8-ray occlusion, at least 300 metres distant, no active/uncertain pursuit, and the stable free-roam window must hold. Do not remove guards just for quicker testing.
