@@ -134,6 +134,31 @@ jobs:
           New-Item -ItemType Directory -Force "release" | Out-Null
           Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.44-dev.zip" -Force
 
+          # Minimal update for existing v43 installations: preserve Rivals.ini,
+          # VehiclePools.ini, UndergroundBlacklist.ini and all saved history.
+          $upgrade = "release/upgrade"
+          New-Item -ItemType Directory -Force "$upgrade/scripts/FreeRoamRivals" | Out-Null
+          Copy-Item "artifact/FreeRoamRivals.asi" "$upgrade/scripts/FreeRoamRivals.asi"
+          Copy-Item "config/FreeRoamRivals-play.ini" "$upgrade/scripts/FreeRoamRivals/FreeRoamRivals.ini"
+          Copy-Item "docs/RIVAL_LOCATOR_AND_RETRY_V44.md" "$upgrade/RIVAL_LOCATOR_AND_RETRY_V44.md"
+          @"
+          FREE ROAM RIVALS v0.0.44-dev - EXISTING INSTALLATION UPGRADE
+
+          BACK UP your customized scripts\FreeRoamRivals\FreeRoamRivals.ini.
+          Extract this ZIP to the existing NFSMW folder containing speed.exe,
+          replacing the two mod files. NO INI EDITS or renames are needed.
+          This UPGRADE only replaces:
+          - scripts\FreeRoamRivals.asi
+          - scripts\FreeRoamRivals\FreeRoamRivals.ini
+
+          Existing Rivals.ini, VehiclePools.ini, UndergroundBlacklist.ini and
+          scripts\FreeRoamRivals\saves are NOT included and remain untouched.
+          The main INI has F8 spawning, G challenge, and Ctrl+Shift+R 1.5s
+          guarded retirement, already configured. Actual gameplay unverified.
+          The game must be closed while replacing these files.
+          "@ | Set-Content "$upgrade/INSTALAR-ATUALIZACAO.txt" -Encoding UTF8
+          Compress-Archive -Path "$upgrade/*" -DestinationPath "release/FreeRoamRivals-v0.0.44-dev-upgrade.zip" -Force
+
       - name: Verify ready-to-install package
         shell: pwsh
         run: |
@@ -168,13 +193,32 @@ jobs:
             if (!$ini.Contains($setting)) { throw "Play INI missing $setting" }
           }
           if ($ini.Contains("RetireRivalKey=0" + [char]10)) { throw "Manual retirement was silently disabled" }
-          Write-Output "Ready-to-install ZIP verified: fully configured, correct layout and safe alternate."
+          $upgradePath = "release/FreeRoamRivals-v0.0.44-dev-upgrade.zip"
+          if (!(Test-Path $upgradePath)) { throw "Upgrade ZIP is missing" }
+          $upgradeZip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $upgradePath).Path)
+          try {
+            $upgradeNames = @($upgradeZip.Entries | ForEach-Object { $_.FullName.Replace("\\","/") })
+            foreach ($item in @("scripts/FreeRoamRivals.asi","scripts/FreeRoamRivals/FreeRoamRivals.ini","INSTALAR-ATUALIZACAO.txt")) {
+              if ($upgradeNames -cnotcontains $item) { throw "Upgrade missing: $item" }
+            }
+            foreach ($item in $upgradeNames) {
+              if ($item -match '(?i)(?:/saves/|/Rivals\.ini$|/VehiclePools\.ini$|/UndergroundBlacklist\.ini$)') {
+                throw "Upgrade must not overwrite customized data: $item"
+              }
+            }
+          } finally { $upgradeZip.Dispose() }
+          foreach ($item in $names) {
+            if ($item -match '(?i)/saves/') { throw "Main ZIP unexpectedly contains user saves" }
+          }
+          Write-Output "Both ZIPs verified: full install and existing-user upgrade with protected data."
 
       - name: Upload ready-to-install ZIP artifact
         uses: actions/upload-artifact@v4
         with:
           name: FreeRoamRivals-ReadyToInstall-v44
-          path: release/FreeRoamRivals-v0.0.44-dev.zip
+          path: |
+            release/FreeRoamRivals-v0.0.44-dev.zip
+            release/FreeRoamRivals-v0.0.44-dev-upgrade.zip
           if-no-files-found: error
 
       - name: Publish v0.0.44-dev GitHub Release
@@ -185,6 +229,10 @@ jobs:
         run: |
           $tag = "v0.0.44-dev"
 
+          $files = @(
+            "release/FreeRoamRivals-v0.0.44-dev.zip",
+            "release/FreeRoamRivals-v0.0.44-dev-upgrade.zip"
+          )
           $published = $false
           for ($attempt = 1; $attempt -le 3; $attempt++) {
             $existing = gh release view $tag --json targetCommitish,assets 2>$null
@@ -193,13 +241,17 @@ jobs:
               if ($info.targetCommitish -ne "${{ github.sha }}") {
                 throw "Existing release target does not match this source commit."
               }
-              if ($info.assets.name -contains "FreeRoamRivals-v0.0.44-dev.zip") {
-                $published = $true
-                break
+              foreach ($file in $files) {
+                $name = Split-Path $file -Leaf
+                if ($info.assets.name -notcontains $name) {
+                  gh release upload $tag $file
+                  if ($LASTEXITCODE -ne 0) { throw "Failed to publish $name" }
+                }
               }
-              gh release upload $tag "release/FreeRoamRivals-v0.0.44-dev.zip"
+              $published = $true
+              break
             } else {
-              gh release create $tag "release/FreeRoamRivals-v0.0.44-dev.zip" `
+              gh release create $tag $files `
                 --target "${{ github.sha }}" `
                 --title "Free Roam Rivals v0.0.44-dev" `
                 --prerelease `
