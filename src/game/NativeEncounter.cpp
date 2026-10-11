@@ -173,7 +173,9 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
             {input.player.position.x,input.player.position.y,input.player.position.z},
             {input.rival.position.x,input.rival.position.y,input.rival.position.z},
             {input.player.forward.x,input.player.forward.y,input.player.forward.z},
-            std::isfinite(input.player.speed)&&input.player.speed>=3.0f);
+            // Do not present stale lastPlayerForward when current velocity is absent.
+            velocity.finite && std::isfinite(horizontal) && horizontal>0.01f &&
+            std::isfinite(input.player.speed) && input.player.speed>=3.0f);
         if(locator.valid) {
             if(locator.bearing==domain::RivalBearing::Unknown)
                 line(view.lines[3],"RICO %.0f M / MOVA-SE PARA VER DIRECAO",locator.distanceMeters);
