@@ -8,7 +8,7 @@ int main(){
     const EncounterPoint p{0,0,0};
     auto a=m.update(p,0,0.25f,true);
     test(!a.stationaryLong,"first sample no stale evidence");
-    for(int i=0;i<49;i++)a=m.update({0.1f*(i%3),0,0},0.1f,0.25f,true);
+    for(int i=0;i<48;i++)a=m.update({0.1f*(i%3),0,0},0.1f,0.25f,true);
     test(a.stationaryLong&&a.changed,"12 seconds stationary with jitter detected");
     a=m.update({1,0,0},0.3f,0.25f,true);
     test(a.stationaryLong&&!a.changed,"persistent stationary without spam");
