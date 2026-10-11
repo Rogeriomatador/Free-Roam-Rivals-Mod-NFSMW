@@ -67,6 +67,7 @@ jobs:
           Copy-Item "docs/RIVAL_REACTIONS_V45.md" "$pkg/RIVAL_REACTIONS_V45.md"
           Copy-Item "docs/PERSISTENT_WORLD_METRIC_V46.md" "$pkg/PERSISTENT_WORLD_METRIC_V46.md"
           Copy-Item "docs/NATIVE_ASSET_INVENTORY_V47.md" "$pkg/NATIVE_ASSET_INVENTORY_V47.md"
+          Copy-Item "docs/GUARDED_REENCOUNTER_V48.md" "$pkg/GUARDED_REENCOUNTER_V48.md"
           Copy-Item "config/Rivals.ini" "$pkg/scripts/FreeRoamRivals/Rivals.ini"
           Copy-Item "config/VehiclePools.ini" "$pkg/scripts/FreeRoamRivals/VehiclePools.ini"
           Copy-Item "config/UndergroundBlacklist.ini" "$pkg/scripts/FreeRoamRivals/UndergroundBlacklist.ini"
@@ -96,7 +97,7 @@ jobs:
           Copy-Item "docs/NATIVE_ROAMING_STREAMING_RESEARCH.md" "$pkg/NATIVE_ROAMING_STREAMING_RESEARCH.md"
 
           @"
-          NFSMW Free Roam Rivals v0.0.47-dev
+          NFSMW Free Roam Rivals v0.0.48-dev
 
           INSTALL:
           1. BACK UP scripts\FreeRoamRivals\FreeRoamRivals.ini if it contains
@@ -127,6 +128,8 @@ jobs:
           F9 now audits on-disk CARS/GLOBAL/TRACKS and the registered
           attributes in safe Free Roam. Disk files do NOT prove native
           model residency and DO NOT bypass the Golf GTI prerequisite.
+          See GUARDED_REENCOUNTER_V48.md for the October 11 bug, streaming
+          limits, preventive hidden retirement and F8 queued reenounter.
           See NATIVE_ASSET_INVENTORY_V47.md for research and interpretation.
           See PERSISTENT_WORLD_METRIC_V46.md for automatic physical-unit caching.
           See RIVAL_REACTIONS_V45.md for interaction limits and controls.
@@ -145,7 +148,7 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.47-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.48-dev.zip" -Force
 
           # Minimal update for existing v45 installations: preserve Rivals.ini,
           # VehiclePools.ini, UndergroundBlacklist.ini and all saved history.
@@ -157,8 +160,9 @@ jobs:
           Copy-Item "docs/RIVAL_REACTIONS_V45.md" "$upgrade/RIVAL_REACTIONS_V45.md"
           Copy-Item "docs/PERSISTENT_WORLD_METRIC_V46.md" "$upgrade/PERSISTENT_WORLD_METRIC_V46.md"
           Copy-Item "docs/NATIVE_ASSET_INVENTORY_V47.md" "$upgrade/NATIVE_ASSET_INVENTORY_V47.md"
+          Copy-Item "docs/GUARDED_REENCOUNTER_V48.md" "$upgrade/GUARDED_REENCOUNTER_V48.md"
           @"
-          FREE ROAM RIVALS v0.0.47-dev - EXISTING INSTALLATION UPGRADE
+          FREE ROAM RIVALS v0.0.48-dev - EXISTING INSTALLATION UPGRADE
 
           BACK UP your customized scripts\FreeRoamRivals\FreeRoamRivals.ini.
           Extract this ZIP to the existing NFSMW folder containing speed.exe,
@@ -178,12 +182,12 @@ jobs:
           steering and acceleration remain unchanged. In-game test pending.
           The game must be closed while replacing these files.
           "@ | Set-Content "$upgrade/INSTALAR-ATUALIZACAO.txt" -Encoding UTF8
-          Compress-Archive -Path "$upgrade/*" -DestinationPath "release/FreeRoamRivals-v0.0.47-dev-upgrade.zip" -Force
+          Compress-Archive -Path "$upgrade/*" -DestinationPath "release/FreeRoamRivals-v0.0.48-dev-upgrade.zip" -Force
 
       - name: Verify ready-to-install package
         shell: pwsh
         run: |
-          $path = "release/FreeRoamRivals-v0.0.47-dev.zip"
+          $path = "release/FreeRoamRivals-v0.0.48-dev.zip"
           if (!(Test-Path $path)) { throw "Install ZIP is missing" }
           Add-Type -AssemblyName System.IO.Compression
           $zip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $path).Path)
@@ -200,7 +204,8 @@ jobs:
               "RIVAL_LOCATOR_AND_RETRY_V44.md",
               "RIVAL_REACTIONS_V45.md",
               "PERSISTENT_WORLD_METRIC_V46.md",
-              "NATIVE_ASSET_INVENTORY_V47.md"
+              "NATIVE_ASSET_INVENTORY_V47.md",
+              "GUARDED_REENCOUNTER_V48.md"
             )
             foreach ($item in $required) {
               if ($names -cnotcontains $item) { throw "Missing package entry: $item" }
@@ -217,12 +222,12 @@ jobs:
             if (!$ini.Contains($setting)) { throw "Play INI missing $setting" }
           }
           if ($ini.Contains("RetireRivalKey=0" + [char]10)) { throw "Manual retirement was silently disabled" }
-          $upgradePath = "release/FreeRoamRivals-v0.0.47-dev-upgrade.zip"
+          $upgradePath = "release/FreeRoamRivals-v0.0.48-dev-upgrade.zip"
           if (!(Test-Path $upgradePath)) { throw "Upgrade ZIP is missing" }
           $upgradeZip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $upgradePath).Path)
           try {
             $upgradeNames = @($upgradeZip.Entries | ForEach-Object { $_.FullName.Replace("\\","/") })
-            foreach ($item in @("scripts/FreeRoamRivals.asi","scripts/FreeRoamRivals/FreeRoamRivals.ini","INSTALAR-ATUALIZACAO.txt","RIVAL_REACTIONS_V45.md","PERSISTENT_WORLD_METRIC_V46.md","NATIVE_ASSET_INVENTORY_V47.md")) {
+            foreach ($item in @("scripts/FreeRoamRivals.asi","scripts/FreeRoamRivals/FreeRoamRivals.ini","INSTALAR-ATUALIZACAO.txt","RIVAL_REACTIONS_V45.md","PERSISTENT_WORLD_METRIC_V46.md","NATIVE_ASSET_INVENTORY_V47.md","GUARDED_REENCOUNTER_V48.md")) {
               if ($upgradeNames -cnotcontains $item) { throw "Upgrade missing: $item" }
             }
             foreach ($item in $upgradeNames) {
@@ -239,23 +244,23 @@ jobs:
       - name: Upload ready-to-install ZIP artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FreeRoamRivals-ReadyToInstall-v47
+          name: FreeRoamRivals-ReadyToInstall-v48
           path: |
-            release/FreeRoamRivals-v0.0.47-dev.zip
-            release/FreeRoamRivals-v0.0.47-dev-upgrade.zip
+            release/FreeRoamRivals-v0.0.48-dev.zip
+            release/FreeRoamRivals-v0.0.48-dev-upgrade.zip
           if-no-files-found: error
 
-      - name: Publish v0.0.47-dev GitHub Release
+      - name: Publish v0.0.48-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.47-dev"
+          $tag = "v0.0.48-dev"
 
           $files = @(
-            "release/FreeRoamRivals-v0.0.47-dev.zip",
-            "release/FreeRoamRivals-v0.0.47-dev-upgrade.zip"
+            "release/FreeRoamRivals-v0.0.48-dev.zip",
+            "release/FreeRoamRivals-v0.0.48-dev-upgrade.zip"
           )
           $published = $false
           for ($attempt = 1; $attempt -le 3; $attempt++) {
@@ -277,9 +282,9 @@ jobs:
             } else {
               gh release create $tag $files `
                 --target "${{ github.sha }}" `
-                --title "Free Roam Rivals v0.0.47-dev" `
+                --title "Free Roam Rivals v0.0.48-dev" `
                 --prerelease `
-                --notes "v0.0.47-dev: pesquisa e diagnostico de arquivos originais do MW05, usando layouts documentados de CARS, GLOBAL e TRACKS, integrada ao F9. Audita em modo somente leitura geometria/texturas de carros e atributos reconhecidos na memoria (em Free Roam seguro). Arquivos em disco NAO provam que recursos do carro estao carregados; nao altera F8, GTI, IA nativa, spawn ou calibração persistente da v46. ZIP completo e ZIP de atualizacao preconfigurados e sem sobrescrever saves ou cache. Requer teste real no PC."
+                --notes "v0.0.48-dev: baseado no log real de 11/10, Rico nasceu a 30 m mas dirigiu ate mais de 1,8 km, onde ficou indisponivel para retirada e F8 nao podia repetir por seguranca. Prototipo perto do jogador passa a tentar retirada antecipada entre 350-850 m, so com carro ativo, fora da camera, oclusao de mundo confirmada, sem corrida ou perseguicao e usando a mesma Kill nativa protegida. F8 durante retirada fica em fila, so executa nova criacao apos sumir das duas registries por dois frames. Se streaming ocorrer antes, nao forca remoçao nem duplica objetos; reinicie para reteste. Diagnosticos e persistencia intactos. Requer teste real no PC."
             }
             if ($LASTEXITCODE -eq 0) { $published = $true; break }
             if ($attempt -lt 3) { Start-Sleep -Seconds 5 }
