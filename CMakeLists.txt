@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.45
+    VERSION 0.0.46
     LANGUAGES C CXX
 )
 
@@ -122,6 +122,7 @@ nfsmw_add_plugin(FreeRoamRivals
         src/game/WorldCollisionProbe.cpp
         src/persistence/UndergroundBlacklistStore.cpp
         src/persistence/LiveRivalStore.cpp
+        src/persistence/WorldMetricCache.cpp
         ${FRR_DOMAIN_SOURCES}
 )
 
@@ -322,6 +323,11 @@ add_test(NAME FreeRoamRivalsPrototypeGroundTests COMMAND FreeRoamRivalsPrototype
 add_executable(FreeRoamRivalsLiveEncounterTests tests/live_encounter_tests.cpp src/domain/LiveEncounter.cpp src/domain/OutrunRace.cpp)
 target_include_directories(FreeRoamRivalsLiveEncounterTests PRIVATE src)
 add_test(NAME FreeRoamRivalsLiveEncounterTests COMMAND FreeRoamRivalsLiveEncounterTests)
+add_executable(FreeRoamRivalsWorldMetricCacheTests tests/world_metric_cache_tests.cpp src/persistence/WorldMetricCache.cpp src/domain/WorldMetricCalibration.cpp)
+target_include_directories(FreeRoamRivalsWorldMetricCacheTests PRIVATE src)
+target_compile_definitions(FreeRoamRivalsWorldMetricCacheTests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+add_test(NAME FreeRoamRivalsWorldMetricCacheTests COMMAND FreeRoamRivalsWorldMetricCacheTests)
+
 add_executable(FreeRoamRivalsLiveRivalStoreTests tests/live_rival_store_tests.cpp src/persistence/LiveRivalStore.cpp)
 target_include_directories(FreeRoamRivalsLiveRivalStoreTests PRIVATE src)
 target_compile_definitions(FreeRoamRivalsLiveRivalStoreTests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
