@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.0.54-dev — distribuição isolada do script Free Roam Rivals
+
+- Novo **pacote ASI-only** com apenas `scripts/FreeRoamRivals.asi` e `INSTALAR-ASI-SOMENTE.txt`, recomendado para quem já tem instalação com `FixHUD=1` funcionando; nenhum INI, mod terceiro, arquivo de carreira ou cache é substituído.
+- Três pacotes versionados: ASI-only, upgrade que substitui só os dois arquivos principais do nosso mod, e instalação completa FRR. Auditoria automática recusa WidescreenFix, X360Stuff, XtendedInput, dinput8.dll, speed.exe ou texturas nesses ZIPs; confirma exatamente dois arquivos no ASI-only.
+- Removida recomendação de interferir no WidescreenFix para testar o protótipo. A correção visual comprovada permanece no plugin do usuário; não há nenhuma chamada para editar essa configuração.
+- Sem mudanças nas proteções nativas, F8/G, IA/streaming ou largada incompleta da v53. [Guia v54](docs/FRR_ONLY_UPDATE_V54.md).
+
+
 ## v0.0.53-dev — layout responsivo, radar à direita e alinhamento de largada observável
 
 - Radar FRR movido por padrão ao meio direito, sem conflito com o minimapa original inferior esquerdo. Novo mostrador com graduações e metros, escala baseada em largura e altura do viewport, configurável pelo INI com posição 0–3 e tamanho 0.5–1.5.
