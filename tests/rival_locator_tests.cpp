@@ -15,6 +15,9 @@ int main() {
     if(locateRival(zero,{-50,0,-50},north,true).bearing!=RivalBearing::BehindLeft) return 7;
     if(locateRival(zero,{50,0,-50},north,true).bearing!=RivalBearing::BehindRight) return 8;
     if(locateRival(zero,{1,0,0},north,true).bearing!=RivalBearing::Nearby) return 9;
+    if(locateRival(zero,{0,20,0},north,true).bearing!=RivalBearing::Above) return 17;
+    if(locateRival(zero,{0,-20,0},north,true).bearing!=RivalBearing::Below) return 18;
+    if(locateRival(zero,{1,20,0},north,true).bearing==RivalBearing::Nearby) return 19;
     if(locateRival(zero,{25,0,0},north,false).bearing!=RivalBearing::Unknown) return 10;
     if(locateRival(zero,{25,0,0},{0,0,0},true).bearing!=RivalBearing::Unknown) return 11;
     const auto up=locateRival(zero,{0,12,5},north,true);
