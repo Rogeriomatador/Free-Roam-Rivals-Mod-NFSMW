@@ -50,6 +50,9 @@ Support for additional 1.3 executables will be added only after their addresses/
 
 ## Current status
 
+**v0.0.51-dev:** F8 no modo PLAY próximo agora aceita **apenas pistas à frente da orientação física do carro do jogador**, entre aproximadamente 20 e 115 m à frente e 10–30 m de corredor lateral. O modelo continua sendo GTI; colisão, terreno e criação nativa protegida permanecem iguais. Se não encontrar pista à frente, informa e não nasce atrás. Ordena as candidatas dianteiras pela possível visibilidade da câmera e direção/centralidade. [Procedimento de teste](docs/RICO_AHEAD_SPAWN_V51.md).
+
+
 **v0.0.50-dev:** os novos testes reais confirmaram um GTI ativado a 42,8 m e que acelerou até ~216 km/h antes de perder streaming, mas não provaram que apareceu na imagem; o segundo teste teve `constructor_null` sem carro criado. No modo de prova de criação próxima, F8 agora **prioriza ruas potencialmente dentro da câmera** quando esse dado é válido; quando o construtor retorna NULL, registra contagens reais de veículos/capacidade antes da chamada, sem inferir que o pool está cheio nem forçar re-spawn. [Leia os limites](docs/VISIBLE_PROTOTYPE_V50.md).
 
 **v0.0.49-dev:** novo log v48 de 11/10 mostrou que a criação a 118,889 m falhou no `ResetToRoad`: o carro não ficou no ponto esperado, provocando `road_reset_rejected` e bloqueio de F8 por **falha nativa irrecuperável até reiniciar**. A v49 registra deltas e seed exatas para encontrar a causa e **não aceita F8 em fila enquanto a factory estiver bloqueada**. O critério de posição e de remoção continua estrito. [Diagnóstico e teste](docs/ROAD_RESET_EVIDENCE_V49.md).

@@ -13,6 +13,7 @@
 #include "../domain/NativeSearchWindow.h"
 #include "../domain/AwayRetirement.h"
 #include "../domain/VisibleSpawnPreference.h"
+#include "../domain/AheadSpawn.h"
 #include "../domain/PrototypeGroundProbe.h"
 #include <windows.h>
 #include <algorithm>
@@ -73,7 +74,11 @@ void blocked(const std::string& reason) {
         else if(reason=="world_transition_no_old_pointer_reads")
             showNativeRivalStatus("RIVAL EM OUTRO MUNDO", "SEM ACESSO SEGURO - REINICIE PARA RETESTAR");
         else showNativeRivalStatus("RETIRADA NATIVA PENDENTE", "AGUARDANDO REGISTROS E CONTEXTO SEGUROS");
-    } else if(reason=="owned_vehicle_unavailable_wait_without_cleanup")
+    } else if(stage==Stage::Seeking && reason=="no_road_ahead_of_player")
+        showNativeRivalStatus("SEM PISTA LIVRE A FRENTE", "VIRE O CARRO PARA UMA RUA SEGURA");
+    else if(stage==Stage::Seeking && reason=="player_forward_body_unverified")
+        showNativeRivalStatus("DIRECAO DO CARRO INDISPONIVEL", "F8 AGUARDA FISICA SEGURA");
+    else if(reason=="owned_vehicle_unavailable_wait_without_cleanup")
         showNativeRivalStatus("RICO FORA DO ALCANCE", "MODELO DESCARREGADO - NAO DUPLICAR");
     else showNativeRivalStatus("AGUARDANDO CONDICOES SEGURAS",
         stage==Stage::Seeking ? "DIRIJA O GOLF GTI E TENTE NOVAMENTE" : "RIVAL PRESERVADO DURANTE A TRANSICAO");
@@ -427,8 +432,34 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
         std::size_t batchIndex = 0;
         NativeRoadCaptureReport capture{};
         const auto targets = NativeVehicleFactory::captureRoadTargets(batchIndex, capture);
+        // In the near-player test, use the player's actual rigid-body
+        // forward vector (works while stopped), not the motion direction or
+        // where the camera happens to be pointing. Never infer this from
+        // arbitrary headings or a previously cached frame.
+        VehicleOrientedBox playerBody{};
+        if(nearPlayerDebug) {
+            const auto fleet=VehicleSpatialProbe::sample();
+            if(!fleet.registryComplete || current.vehicles.playerIVehicle==0 ||
+                !current.playerMotion.position.finite) {
+                blocked("player_forward_body_unverified");return;
+            }
+            unsigned matches=0;
+            for(const auto& body:fleet.boxes) {
+                if(body.identity==current.vehicles.playerIVehicle && body.valid) {
+                    playerBody=body;++matches;
+                }
+            }
+            const auto& position=current.playerMotion.position;
+            const SpatialVector3 probePosition{position.x,position.y,position.z};
+            if(matches!=1 || distance(playerBody.center,probePosition)>
+                5.0f*metric.worldUnitsPerMeter) {
+                blocked("player_forward_body_unverified");return;
+            }
+        }
         std::vector<std::size_t> eligible;
         std::vector<float> candidateMeters(targets.size(),0.0f);
+        std::vector<AheadSpawnEvaluation> ahead(targets.size());
+        unsigned withinDistance=0,frontEligible=0;
         for (std::size_t i = 0; i < targets.size(); ++i) {
             const auto& target = targets[i];
             const auto box=conservativeBox(target,*key);
@@ -436,17 +467,21 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
             const auto d=worldUnitsToMeters(distance(box.center,{p.x,p.y,p.z}),metric);
             if (!d || !std::isfinite(*d) || *d<(nearPlayerDebug ? 20.0f : 350.0f) ||
                 *d>(nearPlayerDebug ? 120.0f : 850.0f)) continue;
+            ++withinDistance;
+            if(nearPlayerDebug) {
+                ahead[i]=evaluateAheadSpawn(playerBody.center,playerBody.forward,
+                    {target.position.x,target.position.y,target.position.z},
+                    {target.forward.x,target.forward.y,target.forward.z},
+                    metric.worldUnitsPerMeter);
+                if(!ahead[i].ahead) continue; // NEVER substitute a road behind.
+                ++frontEligible;
+            }
             eligible.push_back(i);
             candidateMeters[i]=*d;
         }
         unsigned cameraVerifiedTargets=0,potentiallyOnscreenTargets=0;
         std::vector<unsigned char> potentiallyOnscreen(targets.size(),0);
         if (nearPlayerDebug) {
-            // The first v49 reproduction constructed a native, active GTI 43m
-            // away which instantly raced out of sight. Distance alone can
-            // choose an off-camera road. Prefer camera-intersecting road
-            // candidates for the explicit PLAY visibility test, but do NOT
-            // claim the renderer actually drew them.
             const auto camera=CameraFrustumProbe::sample();
             for(const auto i:eligible) {
                 const auto report=classifyPrimaryCameraFootprint(camera,
@@ -459,8 +494,8 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
                 }
             }
             std::stable_sort(eligible.begin(),eligible.end(),[&](std::size_t a,std::size_t b) {
-                return preferDebugSpawnCandidate(potentiallyOnscreen[a]!=0,
-                    candidateMeters[a],potentiallyOnscreen[b]!=0,candidateMeters[b]);
+                return preferAheadSpawn(ahead[a],potentiallyOnscreen[a]!=0,
+                    ahead[b],potentiallyOnscreen[b]!=0);
             });
         }
         if (batchIndex >= candidateCursors.size()) { blocked("invalid_source_batch"); return; }
@@ -470,6 +505,9 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
             std::ostringstream line;
             line << "NativePrototype search: sourceBatch=" << batchIndex << " capturedTargets=" << targets.size()
                 << " distanceEligible=" << eligible.size()
+                << " distanceWindowCandidates=" << withinDistance
+                << " frontConeCandidates=" << frontEligible
+                << " playerHeadingFromLiveRigidBody=" << nearPlayerDebug
                 << " primaryCameraVerifiedCandidates=" << cameraVerifiedTargets
                 << " potentiallyOnscreenCandidates=" << potentiallyOnscreenTargets
                 << " preferredOnscreenCandidate=" << (!eligible.empty() && potentiallyOnscreen[eligible[0]]!=0)
@@ -496,6 +534,9 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
             creation << "NativePrototype native construction request: stock GTI, owned scalar road seed, inactive staging"
                 << " nearPlayerDebug=" << nearPlayerDebug
                 << " cameraFrustumPotentiallyVisible=" << (potentiallyOnscreen[eligible[window.index(i)]]!=0)
+                << " playerForwardMeters=" << ahead[eligible[window.index(i)]].forwardMeters
+                << " playerLateralMeters=" << ahead[eligible[window.index(i)]].lateralMeters
+                << " alignedWithPlayer=" << ahead[eligible[window.index(i)]].alignedWithPlayer
                 << " rendererVisibilityProven=0"
                 << " distanceMeters=" << candidate.distanceFromPlayerMeters
                 << " x=" << target.position.x << " y=" << target.position.y << " z=" << target.position.z;
@@ -505,7 +546,9 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
             mutationResult(result,NativeFactoryResult::ConstructionPending,Stage::Confirming);
             return;
         }
-        if (eligible.empty()) blocked("no_distance_eligible_target_in_current_batch");
+        if (eligible.empty())
+            blocked(nearPlayerDebug && withinDistance>0 ?
+                "no_road_ahead_of_player" : "no_distance_eligible_target_in_current_batch");
         return;
     }
     if (stage==Stage::Retiring) {
