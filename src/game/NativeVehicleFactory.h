@@ -60,6 +60,9 @@ public:
     static NativeFactoryResult requestRemoval();
     static NativeFactoryResult observeRemoval();
     static NativeFactoryResult observeExternalRemoval();
+    // Whether a prior native fault permanently disables new construction until restart.
+    // Does NOT prevent separately guarded retirement of an already owned vehicle.
+    static bool retryBlockedByFault();
     // Only after confirmed removal, with no native fault or owned/pending car.
     static bool safeToRetryAfterConfirmedRemoval();
 };
