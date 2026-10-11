@@ -83,7 +83,7 @@ const char* resultText(domain::OutrunOutcome r) {
 void configureNativeEncounter(const NativeEncounterConfig& value) {
     config=value;encounter=domain::LiveEncounter(value.tuning,value.challengeDistanceMeters);
     reactionMonitor.reset();stationaryMonitor.reset();lastOvertakeAt=0;
-    configureNativeRivalHud(value.hudEnabled);
+    configureNativeRivalHud(value.hudEnabled,value.radarPosition,value.radarScale);
     wchar_t executable[32768]{};
     const auto size=GetModuleFileNameW(nullptr,executable,32768);
     if(size&&size<32768) store.emplace(std::filesystem::path(executable).parent_path()/L"scripts"/L"FreeRoamRivals"/L"saves");
