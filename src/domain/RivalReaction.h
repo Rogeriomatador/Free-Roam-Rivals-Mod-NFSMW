@@ -81,7 +81,7 @@ public:
         else if(std::abs(in.player.position.y-in.rival.position.y)>4) next=RivalReaction::DifferentLevel;
         else if(in.cooldownSeconds>0) next=RivalReaction::Cooldown;
         else if(in.challengeAvailable) next=RivalReaction::Ready;
-        else if(d<=65&&in.player.valid&&in.rival.valid) {
+        else if(d<=65&&in.player.valid&&in.rival.valid&&in.player.speed>=3&&in.rival.speed>=3) {
             const auto deltaX=in.player.position.x-in.rival.position.x;
             const auto deltaZ=in.player.position.z-in.rival.position.z;
             const float behind=deltaX*in.rival.forward.x+deltaZ*in.rival.forward.z;
