@@ -521,12 +521,20 @@ bool ownedRead(NativeOwnedSnapshot& out) {
     __try {
 #endif
         auto* v = reinterpret_cast<IVehicle*>(owned.iv);
+        out.availabilityReason = "physical_read_started";
         out.loading = v->IsLoading(); out.active = v->IsActive(); out.destroyed = v->IsDestroyed();
         out.racerPrepared = owned.racerPrepared; out.roadPrepared = owned.roadPrepared;
-        if (out.loading || out.destroyed) { out.available = true; return true; }
+        out.nativeDriverClass = static_cast<int>(v->GetDriverClass());
+        out.driverClassObserved = true;
+        out.nativeSpooled = v->IsSpooled();
+        out.spooledObserved = true;
+        if (out.loading || out.destroyed) {
+            out.availabilityReason = out.loading ? "native_loading" : "native_destroyed";
+            out.available = true; return true;
+        }
         auto* sim = v->GetSimable();
         auto* body = sim ? sim->GetRigidBody() : nullptr;
-        if (!body) return false;
+        if (!body) { out.availabilityReason="rigid_body_missing"; return false; }
         UMath::Vector3 right{}, up{}, forward{}, dimensions{};
         body->GetRightVector(right); body->GetUpVector(up); body->GetForwardVector(forward); body->GetDimension(dimensions);
         const auto position = canonicalMwVector(body->GetPosition());
@@ -535,9 +543,13 @@ bool ownedRead(NativeOwnedSnapshot& out) {
             {position.x,position.y,position.z}, {r.x,r.y,r.z}, {u.x,u.y,u.z}, {f.x,f.y,f.z}, {d.x,d.y,d.z});
         out.speed = v->GetAbsoluteSpeed();
         out.available = out.box.valid && std::isfinite(out.speed);
+        out.availabilityReason = !out.box.valid ? "oriented_box_invalid" :
+            !std::isfinite(out.speed) ? "speed_not_finite" : "physical_snapshot_valid";
         return out.available;
 #if defined(_MSC_VER)
-    } __except (captureNativeException(GetExceptionInformation())) { return false; }
+    } __except (captureNativeException(GetExceptionInformation())) {
+        out.availabilityReason="physical_read_exception";return false;
+    }
 #endif
 }
 bool vehiclePursuitClear(std::uintptr_t iv) {
@@ -706,12 +718,15 @@ std::vector<NativeRoadTarget> NativeVehicleFactory::captureRoadTargets(std::size
 }
 NativeOwnedSnapshot NativeVehicleFactory::snapshot() {
     NativeOwnedSnapshot out{};
-    if (!gameplayThread() || !owned.p) return out;
+    if (!gameplayThread()) {out.availabilityReason="outside_verified_gameplay_loop"; return out;}
+    if (!owned.p) {out.availabilityReason="no_owned_vehicle"; return out;}
     out.owned = true;
     Context context{}; Registry list{};
-    if (!freshWorld(context) || !same(context, owned.context) || !registry(list)) return out;
+    if (!freshWorld(context)) {out.availabilityReason="world_not_safe_for_owner_read"; return out;}
+    if (!same(context,owned.context)) {out.availabilityReason="world_identity_changed"; return out;}
+    if (!registry(list)) {out.availabilityReason="native_registries_unavailable"; return out;}
     out.contextMatches = true;
-    if (!identity(list, owned, true)) return out;
+    if (!identity(list,owned,true)) {out.availabilityReason=identityReason; return out;}
     out.pursuit = readPursuit(context, list);
     out.ownedPursuitClear = vehiclePursuitClear(owned.iv);
     ownedRead(out);
