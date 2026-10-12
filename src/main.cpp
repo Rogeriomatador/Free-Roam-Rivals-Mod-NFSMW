@@ -14,7 +14,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.55-dev";
+constexpr const char* kVersion = "0.0.56-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -164,7 +164,7 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.43-dev",
+    "0.0.56-dev",
     "Rogeriomatador"
 )
 
