@@ -20,6 +20,7 @@ struct RuntimeProbeConfig {
 
     bool outrunEnabled=false, rivalHudEnabled=true, rivalHistoryEnabled=true;
     bool nativeStreetDuelPilotEnabled=false;
+    float streetSprintLengthMeters=120.0f;
     int rivalRadarPosition=2;
     float rivalRadarScale=1.0f;
     float rivalChallengeDistanceMeters=60, outrunWinLeadMeters=300, outrunLeadHoldSeconds=3, outrunMaxDurationSeconds=300;
