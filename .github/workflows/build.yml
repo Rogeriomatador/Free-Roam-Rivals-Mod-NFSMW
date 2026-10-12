@@ -371,7 +371,7 @@ jobs:
                 --target "${{ github.sha }}" `
                 --title "Free Roam Rivals v0.0.58-dev" `
                 --prerelease `
-                --notes "v0.0.58-dev: analise do log real revela que G iniciou Outrun antigo pois NativeDuelPilotEnabled estava AUSENTE no INI. Rico perdeu o corpo fisico utilizavel na aproximacao a 7.04 metros, com as duas registries contendo o veiculo; a causa real continua desconhecida. Adicionamos diagnostico somente leitura de driver class, spooling, corpo fisico, identidade e dados invalidos no momento da perda; HUD mostra explicitamente que G e Outrun sem largada. Ainda NAO corrigimos desaparecimento nem criamos Sprint com alinhamento automatico. Instale o ASI-only para preservar INI, WidescreenFix/FixHUD, saves e cache; piloto nativo continua opt-in."
+                --notes "v0.0.58-dev: modo Sprint reto curto de 120m com chegada fisica compartilhada, indicador de meta, tempo, ganhador e resultado salvo por perfil. Ctrl+Shift+G alterna Sprint/Outrun sem editar INI; G em Sprint usa teste nativo ForceStop somente se os DOIS carros ja estiverem lado a lado e devagar, e GO apenas apos liberacao validada. Nao e evento Sprint nativo nem possui auto-alinhamento, AI control ou buzina mapeada. Problema de Rico sumir ainda nao resolvido. Use copia de teste; ASI-only preserva WidescreenFix/FixHUD=1, INIs, saves e cache."
             }
             if ($LASTEXITCODE -eq 0) { $published = $true; break }
             if ($attempt -lt 3) { Start-Sleep -Seconds 5 }
