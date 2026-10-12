@@ -77,6 +77,7 @@ jobs:
           Copy-Item "docs/STREET_DUEL_NO_CUTSCENE_V56_FOUNDATION.md" "$pkg/STREET_DUEL_NO_CUTSCENE_V56_FOUNDATION.md"
           Copy-Item "docs/NEAR_PASS_LOSS_V57.md" "$pkg/NEAR_PASS_LOSS_V57.md"
           Copy-Item "docs/PHYSICAL_STREET_SPRINT_V58.md" "$pkg/PHYSICAL_STREET_SPRINT_V58.md"
+          Copy-Item "docs/NATIVE_ROAD_PLACEMENT_V59.md" "$pkg/NATIVE_ROAD_PLACEMENT_V59.md"
           Copy-Item "config/Rivals.ini" "$pkg/scripts/FreeRoamRivals/Rivals.ini"
           Copy-Item "config/VehiclePools.ini" "$pkg/scripts/FreeRoamRivals/VehiclePools.ini"
           Copy-Item "config/UndergroundBlacklist.ini" "$pkg/scripts/FreeRoamRivals/UndergroundBlacklist.ini"
@@ -202,6 +203,7 @@ jobs:
           Copy-Item "docs/STREET_DUEL_NO_CUTSCENE_V56_FOUNDATION.md" "$upgrade/STREET_DUEL_NO_CUTSCENE_V56_FOUNDATION.md"
           Copy-Item "docs/NEAR_PASS_LOSS_V57.md" "$upgrade/NEAR_PASS_LOSS_V57.md"
           Copy-Item "docs/PHYSICAL_STREET_SPRINT_V58.md" "$upgrade/PHYSICAL_STREET_SPRINT_V58.md"
+          Copy-Item "docs/NATIVE_ROAD_PLACEMENT_V59.md" "$upgrade/NATIVE_ROAD_PLACEMENT_V59.md"
           @"
           FREE ROAM RIVALS v0.0.59-dev - EXISTING INSTALLATION UPGRADE
 
@@ -270,7 +272,8 @@ jobs:
               "FRR_ONLY_UPDATE_V54.md",
               "STREET_DUEL_NO_CUTSCENE_V56_FOUNDATION.md",
               "NEAR_PASS_LOSS_V57.md",
-              "PHYSICAL_STREET_SPRINT_V58.md"
+              "PHYSICAL_STREET_SPRINT_V58.md",
+              "NATIVE_ROAD_PLACEMENT_V59.md"
             )
             foreach ($item in $required) {
               if ($names -cnotcontains $item) { throw "Missing package entry: $item" }
@@ -292,7 +295,7 @@ jobs:
           $upgradeZip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $upgradePath).Path)
           try {
             $upgradeNames = @($upgradeZip.Entries | ForEach-Object { $_.FullName.Replace("\\","/") })
-            foreach ($item in @("scripts/FreeRoamRivals.asi","scripts/FreeRoamRivals/FreeRoamRivals.ini","INSTALAR-ATUALIZACAO.txt","RIVAL_REACTIONS_V45.md","PERSISTENT_WORLD_METRIC_V46.md","NATIVE_ASSET_INVENTORY_V47.md","GUARDED_REENCOUNTER_V48.md","ROAD_RESET_EVIDENCE_V49.md","VISIBLE_PROTOTYPE_V50.md","RICO_AHEAD_SPAWN_V51.md","RICO_HUD_AND_STUCK_V52.md","HUD_X360_RACE_STAGING_V53.md","FRR_ONLY_UPDATE_V54.md","STREET_DUEL_NO_CUTSCENE_V56_FOUNDATION.md","NEAR_PASS_LOSS_V57.md","PHYSICAL_STREET_SPRINT_V58.md")) {
+            foreach ($item in @("scripts/FreeRoamRivals.asi","scripts/FreeRoamRivals/FreeRoamRivals.ini","INSTALAR-ATUALIZACAO.txt","RIVAL_REACTIONS_V45.md","PERSISTENT_WORLD_METRIC_V46.md","NATIVE_ASSET_INVENTORY_V47.md","GUARDED_REENCOUNTER_V48.md","ROAD_RESET_EVIDENCE_V49.md","VISIBLE_PROTOTYPE_V50.md","RICO_AHEAD_SPAWN_V51.md","RICO_HUD_AND_STUCK_V52.md","HUD_X360_RACE_STAGING_V53.md","FRR_ONLY_UPDATE_V54.md","STREET_DUEL_NO_CUTSCENE_V56_FOUNDATION.md","NEAR_PASS_LOSS_V57.md","PHYSICAL_STREET_SPRINT_V58.md","NATIVE_ROAD_PLACEMENT_V59.md")) {
               if ($upgradeNames -cnotcontains $item) { throw "Upgrade missing: $item" }
             }
             foreach ($item in $upgradeNames) {
@@ -371,7 +374,7 @@ jobs:
                 --target "${{ github.sha }}" `
                 --title "Free Roam Rivals v0.0.59-dev" `
                 --prerelease `
-                --notes "v0.0.59-dev: modo Sprint reto curto de 120m com chegada fisica compartilhada, indicador de meta, tempo, ganhador e resultado salvo por perfil. Ctrl+Shift+G alterna Sprint/Outrun sem editar INI; G em Sprint usa teste nativo ForceStop somente se os DOIS carros ja estiverem lado a lado e devagar, e GO apenas apos liberacao validada. Nao e evento Sprint nativo nem possui auto-alinhamento, AI control ou buzina mapeada. Problema de Rico sumir ainda nao resolvido. Use copia de teste; ASI-only preserva WidescreenFix/FixHUD=1, INIs, saves e cache."
+                --notes "v0.0.59-dev: CORRECAO DE CRIACAO DO RICO. ResetToRoad pode devolver centro fisico diferente do ponto WRoadNav; v59 valida diferenca na direcao/largura/comprimento do carro e so autoriza ativacao apos reinspecao real de solo (footprint inteiro), trafego/colisao, distancia e mundo. Rejeita saltos grandes e orientacao incoerente. Apos falha pequena de posicao e retirada NATIVA confirmada nas duas listas em dois frames, F8 pode ser pedido de novo (ate duas recuperacoes por processo); falhas de construtor/ABI/identidade/SEH continuam bloqueadas. Sprint/Outrun v58 preservados. Ainda precisa de teste no jogo; o sumico ao ultrapassar segue sem correcao garantida. ASI-only preserva INIs, saves, FixHUD/WidescreenFix."
             }
             if ($LASTEXITCODE -eq 0) { $published = $true; break }
             if ($attempt -lt 3) { Start-Sleep -Seconds 5 }
