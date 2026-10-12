@@ -365,7 +365,7 @@ jobs:
                 --target "${{ github.sha }}" `
                 --title "Free Roam Rivals v0.0.56-dev" `
                 --prerelease `
-                --notes "v0.0.56-dev: log real demonstrou Rico sumindo com apenas 151m de distancia em Free Roam, antes da transicao de mundo. A ASI agora guarda a ultima amostra de distancia/velocidade e faz auditoria SOMENTE NUMERICA das listas IVehicle/PVehicle ao detectar perda, sem ler objeto apagado; o HUD distingue RICO SUMIU PERTO DE VOCE e o Outrun e identificado como Outrun livre sem largada conjunta. NAO corrige streaming do motor nem implementa Sprint/cutscene/buzina. Atualizacao ASI-only continua disponivel para preservar o WidescreenFix FixHUD=1, INIs, metric e saves; auditoria de 3 ZIPs continua."
+                --notes "v0.0.56-dev: fundacao de largada sem cutscene e um ensaio fisico opt-in com ForceStop: dois carros ja alinhados e devagar recebem parada nativa, a ASI espera telemetria parada, conta 3-2-1 e tenta liberar os dois. Esta versao AINDA NAO tem alinhamento automatico, controle bloqueado, buzina mapeada, Sprint com chegada ou escore. Sem comprovacao no jogo do usuario; o piloto vem desligado por padrao. Pacote ASI-only nao modifica INIs, WidescreenFix FixHUD, saves ou cache."
             }
             if ($LASTEXITCODE -eq 0) { $published = $true; break }
             if ($attempt -lt 3) { Start-Sleep -Seconds 5 }
