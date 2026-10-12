@@ -12,6 +12,7 @@
 #include "../domain/NativeRegistrySafety.h"
 #include "../domain/NativeCodeCompatibility.h"
 #include "../domain/NativeSearchWindow.h"
+#include "../domain/NativeRoadPlacement.h"
 #include <windows.h>
 #include <MinHook.h>
 #include <mwsdk/game/mw05.hpp>
@@ -65,6 +66,12 @@ const char* roadResetReason="not_attempted";
 const char* identityReason="not_checked";
 std::size_t sourceBatchCursor = 0;
 bool disabled = false, prepared = false, compatibilityRejected = false;
+// Only a bounded, physically verified road projection mismatch may be
+// retried, and ONLY after native retirement in BOTH registries. No retry of
+// constructor / ABI / identity / SEH / goal / activation failures.
+bool recoverableRoadPlacementFault=false;
+unsigned recoveredRoadPlacementFaults=0;
+constexpr unsigned kMaxRecoverableRoadPlacementFailures=2;
 // Only the verified gameplay thread may access adapter state. During the
 // synchronous native constructor, suppress the capacity routine's eviction
 // path. Outside that narrow scope the original behavior remains in place.
@@ -524,14 +531,17 @@ bool ownedRead(NativeOwnedSnapshot& out) {
         out.availabilityReason = "physical_read_started";
         out.loading = v->IsLoading(); out.active = v->IsActive(); out.destroyed = v->IsDestroyed();
         out.racerPrepared = owned.racerPrepared; out.roadPrepared = owned.roadPrepared;
+        if (out.loading || out.destroyed) {
+            // Avoid extra SDK virtual probes on a vehicle undergoing native
+            // model loading/destruction: nothing about these reads can make
+            // that object safe to sample or control.
+            out.availabilityReason = out.loading ? "native_loading" : "native_destroyed";
+            out.available = true; return true;
+        }
         out.nativeDriverClass = static_cast<int>(v->GetDriverClass());
         out.driverClassObserved = true;
         out.nativeSpooled = v->IsSpooled();
         out.spooledObserved = true;
-        if (out.loading || out.destroyed) {
-            out.availabilityReason = out.loading ? "native_loading" : "native_destroyed";
-            out.available = true; return true;
-        }
         auto* sim = v->GetSimable();
         auto* body = sim ? sim->GetRigidBody() : nullptr;
         if (!body) { out.availabilityReason="rigid_body_missing"; return false; }
@@ -589,6 +599,15 @@ void logRoadResetMismatch(const NativeOwnedSnapshot& current,float dx,float dz) 
         << " safetyGate=reject_no_activation";
     Log::instance().warn(difference.str());
 }
+void logRoadResetProjection(const domain::NativeRoadPlacement& placement) {
+    std::ostringstream accepted;
+    accepted<<"NativeFactory road projection bounded: deltaHorizontal="
+        <<placement.horizontalDelta<<" deltaVertical="<<placement.verticalDelta
+        <<" deltaAlongRoad="<<placement.forwardDelta
+        <<" deltaAcrossRoad="<<placement.lateralDelta
+        <<" projectionAcceptedForRevalidationOnly=1 nativeActivated=0";
+    Log::instance().info(accepted.str());
+}
 bool roadResetCall() {
     roadResetReason="begin";
 #if defined(_MSC_VER)
@@ -607,15 +626,27 @@ bool roadResetCall() {
         if (!ownedRead(current) || !current.box.valid || current.active) { roadResetReason="post_reset_snapshot_invalid"; return false; }
         const float dx = current.box.center.x - owned.roadTarget.position.x;
         const float dz = current.box.center.z - owned.roadTarget.position.z;
-        if (dx*dx + dz*dz > 1.0f) {
-            // A successful return from ResetToRoad does NOT guarantee that
-            // the car reached the expected native position. Document the
-            // actual discrepancy without weakening the strict 1-unit gate.
+        const auto placement=domain::inspectNativeRoadPlacement(
+            {owned.roadTarget.position.x,owned.roadTarget.position.y,owned.roadTarget.position.z},
+            {owned.roadTarget.forward.x,owned.roadTarget.forward.y,owned.roadTarget.forward.z},current.box);
+        if (!placement.valid) {
+            // No activation without physical geometry verification. A small
+            // native projection mismatch is not automatically an ABI fault;
+            // permit an explicit new F8 only AFTER native two-frame retirement.
             logRoadResetMismatch(current,dx,dz);
-            roadResetReason="post_reset_position_mismatch";
+            recoverableRoadPlacementFault=
+                placement.horizontalDelta>1.0f && placement.horizontalDelta<=9.0f &&
+                placement.verticalDelta<=2.5f &&
+                recoveredRoadPlacementFaults<kMaxRecoverableRoadPlacementFailures;
+            roadResetReason=placement.reason;
             return false;
         }
-        roadResetReason="ok"; return true;
+        // Even after a successful native reset, relocated placement is NOT
+        // certified safe here: NativeRivalPrototype::candidateSafe() checks
+        // ACTUAL physical box, all footprint-ground probes, fresh full fleet
+        // overlap and pursuit/world once more before Activate().
+        if (placement.relocated) logRoadResetProjection(placement);
+        roadResetReason=placement.reason; return true;
 #if defined(_MSC_VER)
     } __except (captureNativeException(GetExceptionInformation())) { roadResetReason="native_seh_exception"; return false; }
 #endif
@@ -1052,6 +1083,12 @@ NativeFactoryResult NativeVehicleFactory::observeRemoval() {
     }
     if (owned.absentSamples < 2) return NativeFactoryResult::RemovalPending;
     owned = Owned{};
+    if (recoverableRoadPlacementFault) {
+        recoverableRoadPlacementFault=false;
+        ++recoveredRoadPlacementFaults;
+        disabled=false; // Cleared only after BOTH native registries prove retirement.
+        Log::instance().warn("NativeFactory recoverable road placement fault retired: F8 explicitly permitted again; nativeOwner=0");
+    }
     return NativeFactoryResult::Removed;
 }
 
