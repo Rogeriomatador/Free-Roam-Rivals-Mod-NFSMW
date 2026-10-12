@@ -333,7 +333,7 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
             line(view.lines[1],"RICO QUASE PARADO HA %.0f S",stationary.secondsNearAnchor);
         else line(view.lines[1],"%s / %.0f KM/H",domain::rivalReactionLabel(reaction.state),rival.speed*3.6f);
         view.challengeReady=config.enabled&&result.available;
-        if(view.challengeReady) line(view.lines[2],"[%c] DESAFIAR RICO",static_cast<char>(ChallengeInputProbe::fallbackVirtualKey()));
+        if(view.challengeReady) line(view.lines[2],"[%c] OUTRUN: SEGUIR RICO (SEM LARGADA)",static_cast<char>(ChallengeInputProbe::fallbackVirtualKey()));
         else if(!config.enabled) line(view.lines[2],"DESAFIOS DESATIVADOS");
         else if(result.remainingCooldown>0) line(view.lines[2],"NOVO DESAFIO EM %.0f S",result.remainingCooldown);
         else if(!input.challengeSafe) line(view.lines[2],"DESAFIO BLOQUEADO: POLICIA OU ESTADO INCERTO");
