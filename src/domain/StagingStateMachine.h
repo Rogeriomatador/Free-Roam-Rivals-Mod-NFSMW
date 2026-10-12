@@ -27,6 +27,11 @@ struct StagingTuning {
     float countdownTimeoutSeconds = 8.0f;
     float releaseTimeoutSeconds = 3.0f;
     bool allowHiddenAlignmentFallback = true;
+    // Opt-in for the real street duel: never seize the cinematic camera,
+    // silently teleport a car or skip authority/restore evidence.
+    bool cinematicIntroEnabled = true;
+    bool negotiationEnabled = true;
+    bool requireNativeStartAuthority = false;
 };
 
 struct StagingInput {
@@ -47,6 +52,14 @@ struct StagingInput {
     bool enginesReady = false;
     bool countdownComplete = false;
     bool releaseComplete = false;
+
+    // STRICT street-duel evidence, supplied by a future verified Win32 adapter.
+    // These must NEVER be inferred from mere side-by-side geometry or an INI flag.
+    bool playerControlCustodyVerified = false;
+    bool rivalBrakeCustodyVerified = false;
+    bool restorationVerified = false;
+    bool bothStoppedVerified = false;
+    bool nativeReleaseRestoredVerified = false;
 };
 
 struct StagingUpdate {
@@ -83,6 +96,16 @@ private:
     StagingState state_ = StagingState::Search;
     float stateTimeSeconds_ = 0.0f;
 };
+
+// Domain-only policy. Does not hook MW05 player inputs, AI brakes or horn.
+inline StagingTuning streetDuelStagingTuning() {
+    StagingTuning tuning{};
+    tuning.allowHiddenAlignmentFallback = false;
+    tuning.cinematicIntroEnabled = false;
+    tuning.negotiationEnabled = false;
+    tuning.requireNativeStartAuthority = true;
+    return tuning;
+}
 
 const char* stagingStateName(StagingState state);
 

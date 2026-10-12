@@ -43,6 +43,15 @@ struct Owned {
     std::uint64_t lastAbsenceFrame = 0;
 };
 Owned owned, pending;
+struct DuelStopLease {
+    bool held=false;
+    bool playerReleased=false, rivalReleased=false;
+    Context world{};
+    std::uintptr_t player=0, rival=0;
+};
+DuelStopLease duelStop{};
+bool duelStopFaulted=false;
+
 Registry pendingBaseline{};
 std::uint64_t pendingSince=0, pendingLastFrame=0;
 unsigned pendingConfirmations=0;
@@ -879,6 +888,106 @@ NativeFactoryResult NativeVehicleFactory::requestRemoval() {
     owned.removing = true;
     return NativeFactoryResult::RemovalRequested;
 }
+// This opt-in test uses the game's own vehicle ForceStop API, rather than
+// writing physics velocity or applying a fake D3D countdown. It is NOT
+// automatic side-by-side alignment, input custody or a native race event.
+// Keep MSVC SEH in POD-only leaf functions. The factory entry points use
+// Log/std::string (unwinding) and C2712 rejects __try in those functions.
+bool invokeNativeDuelHold(std::uintptr_t playerIV,std::uintptr_t rivalIV) {
+    bool ok=false;
+#if defined(_MSC_VER)
+    __try {
+#endif
+        auto* player=reinterpret_cast<IVehicle*>(playerIV);
+        auto* rival=reinterpret_cast<IVehicle*>(rivalIV);
+        if(playerIV!=rivalIV && player->IsActive() && rival->IsActive() &&
+           !player->IsLoading() && !rival->IsLoading() &&
+           !player->IsDestroyed() && !rival->IsDestroyed() &&
+           static_cast<unsigned>(player->GetForceStop())==0u &&
+           static_cast<unsigned>(rival->GetForceStop())==0u) {
+            // Claim lease before the first potentially mutating call.
+            duelStop.held=true;
+            player->ForceStopOn(IVehicle::ForceStopType::ForceStop);
+            rival->ForceStopOn(IVehicle::ForceStopType::ForceStop);
+            ok=(static_cast<unsigned>(player->GetForceStop())&1u)!=0u &&
+               (static_cast<unsigned>(rival->GetForceStop())&1u)!=0u;
+        }
+#if defined(_MSC_VER)
+    } __except (captureNativeException(GetExceptionInformation())) {
+        duelStopFaulted=true;
+        ok=false;
+    }
+#endif
+    return ok;
+}
+bool invokeNativeDuelReleaseOne(std::uintptr_t vehicleIV) {
+    bool done=false;
+#if defined(_MSC_VER)
+    __try {
+#endif
+        auto* car=reinterpret_cast<IVehicle*>(vehicleIV);
+        car->ForceStopOff(IVehicle::ForceStopType::ForceStop);
+        done=(static_cast<unsigned>(car->GetForceStop())&1u)==0u;
+#if defined(_MSC_VER)
+    } __except (captureNativeException(GetExceptionInformation())) {
+        duelStopFaulted=true;
+        done=false;
+    }
+#endif
+    return done;
+}
+
+bool NativeVehicleFactory::duelStopHeld() {return duelStop.held;}
+
+bool NativeVehicleFactory::tryAcquireDuelStop() {
+    if (!gameplayThread() || duelStopFaulted || duelStop.held || disabled ||
+        compatibilityRejected || !owned.p || !owned.racerPrepared || !owned.roadPrepared) return false;
+    Context context{}; Registry list{};
+    if (!freshWorld(context) || !same(context,owned.context) ||
+        !registry(list) || !pursuitClear(context,list) ||
+        !identity(list,owned,true) || !ownedPursuitClear() ||
+        !contains(list.live,list.liveCount,context.player) ||
+        !contains(list.physical,list.physicalCount,context.playerP)) return false;
+    std::uintptr_t playerVtable=0;
+    if (!copy(context.player,&playerVtable,sizeof(playerVtable)) ||
+        playerVtable!=0x8AA828) return false;
+    duelStop={false,false,false,context,context.player,owned.iv};
+    const bool ok=invokeNativeDuelHold(context.player,owned.iv);
+    if (!ok && duelStop.held) releaseDuelStop();
+    if (ok) Log::instance().warn(
+        "DuelPilot native ForceStop acquired on both cars; NO input block, native Sprint, waypoint or scored winner.");
+    return ok;
+}
+
+bool NativeVehicleFactory::releaseDuelStop() {
+    if (!duelStop.held) return true;
+    if (!gameplayThread()) return false;
+    Context context{}; Registry list{};
+    if (!freshWorld(context) || !same(context,duelStop.world) || !registry(list))
+        return false;
+    // The player's release is independent of Rico: a stream-out must not
+    // strand the player's car while waiting on a stale rival pointer.
+    if (!duelStop.playerReleased &&
+        contains(list.live,list.liveCount,duelStop.player) &&
+        contains(list.physical,list.physicalCount,context.playerP)) {
+        std::uintptr_t vt=0;
+        if(copy(duelStop.player,&vt,sizeof(vt)) && vt==0x8AA828)
+            duelStop.playerReleased=invokeNativeDuelReleaseOne(duelStop.player);
+    }
+    if (!duelStop.rivalReleased &&
+        contains(list.live,list.liveCount,duelStop.rival) &&
+        contains(list.physical,list.physicalCount,owned.p) &&
+        identity(list,owned,true))
+        duelStop.rivalReleased=invokeNativeDuelReleaseOne(duelStop.rival);
+
+    const bool both=duelStop.playerReleased && duelStop.rivalReleased;
+    if (both) {
+        duelStop={};
+        Log::instance().info("DuelPilot release confirmed on BOTH vehicles; player input bindings unchanged.");
+    }
+    return both;
+}
+
 NativeOwnedPresenceAudit NativeVehicleFactory::auditOwnedPresenceReadOnly() {
     NativeOwnedPresenceAudit result{};
     result.ownerRecorded=owned.p!=0 && owned.iv!=0;

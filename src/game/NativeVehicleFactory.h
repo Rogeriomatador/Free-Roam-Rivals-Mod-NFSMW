@@ -59,6 +59,12 @@ public:
         NativeRoadCaptureReport& report);
     static NativeOwnedSnapshot snapshot();
     static NativeOwnedPresenceAudit auditOwnedPresenceReadOnly();
+    // Experimental, manual opt-in only: native ForceStop on BOTH proven
+    // live cars, never teleport, never change camera/input bindings.
+    // A confirmed release is required; not a finished Sprint implementation.
+    static bool tryAcquireDuelStop();
+    static bool releaseDuelStop();
+    static bool duelStopHeld();
     static NativeFactoryResult constructInactive(const NativeFactoryRequest& request);
     static NativeFactoryResult confirmConstructionInactive();
     static NativeFactoryResult prepareRacerInactive();

@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.0.56-dev — largada lado a lado, ensaio nativo opt-in
+
+- Novo preset de dominio de **largada sem cutscene**, que exige posse comprovada de controles, restauracao, alinhamento real e liberacao. A contagem so avancara em um adaptador completo depois de provas nativas.
+- **Ensaio experimental jogavel**, mas ainda incompleto: somente com `[Staging] NativeDuelPilotEnabled=1`, o G testa `IVehicle::ForceStopOn/Off` em dois carros fisicamente validos, a menos de 8m e com velocidades de ate 8m/s. Aguarda ambos parados, conta 3–2–1 e tenta liberacao no motor. A configuracao padrao permanece zero.
+- Protecao de lease de identidade por duas registries. Se o rival sumir, a ASI tenta soltar o jogador independentemente e nao inventa liberacao dupla. A posse do input/IA, freio gradual, alinhamento automatico, checkpoints e vencedor de Sprint **NAO** existem nessa versao.
+- Novos testes de dominio, ainda **sem validação de comportamento real no jogo**, e pacote ASI-only que preserva WidescreenFix FixHUD=1, saves, cache, INIs e mods terceiros. Use modo experimental exclusivamente numa copia de teste; vejas `docs/STREET_DUEL_NO_CUTSCENE_V56_FOUNDATION.md`.
+
+
 ## v0.0.55-dev — perda física de Rico a 151m e modo Outrun explicitado
 
 - O teste real após v54 comprovou Rico ativo às 20:13:50.430 a **151,178m**, física inacessível às 20:13:51.199 ainda em Free Roam, muito antes da troca de mundo às 20:14:05.

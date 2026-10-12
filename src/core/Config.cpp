@@ -360,6 +360,8 @@ Config Config::load() {
 
     cfg.stagingEnabled =
         iniInt(ini, "Staging", "Enabled", 0) != 0;
+    // Opt-in native ForceStop trial; NEVER enabled by the generic Staging flag.
+    cfg.nativeStreetDuelPilotEnabled = iniInt(ini,"Staging","NativeDuelPilotEnabled",0)!=0;
 
     cfg.stagingSearchAheadMeters = std::clamp(
         iniFloat(
