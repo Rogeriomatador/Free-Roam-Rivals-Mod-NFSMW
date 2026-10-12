@@ -31,6 +31,11 @@ struct NativeOwnedPresenceAudit {
 struct NativeOwnedSnapshot {
     bool owned = false, available = false, contextMatches = false;
     bool loading = false, active = false, destroyed = false, racerPrepared = false, roadPrepared = false;
+    // Purely read-only diagnostics; these do NOT prove why the game retired
+    // or unspooled the car. Only queried after fresh registry + identity gates.
+    const char* availabilityReason = "not_sampled";
+    bool driverClassObserved = false, spooledObserved = false, nativeSpooled = false;
+    int nativeDriverClass = -1;
     domain::PursuitSafetyState pursuit = domain::PursuitSafetyState::Unknown;
     domain::VehicleOrientedBox box{};
     float speed = 0.0f;
