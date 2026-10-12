@@ -75,6 +75,7 @@ jobs:
           Copy-Item "docs/HUD_X360_RACE_STAGING_V53.md" "$pkg/HUD_X360_RACE_STAGING_V53.md"
           Copy-Item "docs/FRR_ONLY_UPDATE_V54.md" "$pkg/FRR_ONLY_UPDATE_V54.md"
           Copy-Item "docs/STREET_DUEL_NO_CUTSCENE_V56_FOUNDATION.md" "$pkg/STREET_DUEL_NO_CUTSCENE_V56_FOUNDATION.md"
+          Copy-Item "docs/NEAR_PASS_LOSS_V57.md" "$pkg/NEAR_PASS_LOSS_V57.md"
           Copy-Item "config/Rivals.ini" "$pkg/scripts/FreeRoamRivals/Rivals.ini"
           Copy-Item "config/VehiclePools.ini" "$pkg/scripts/FreeRoamRivals/VehiclePools.ini"
           Copy-Item "config/UndergroundBlacklist.ini" "$pkg/scripts/FreeRoamRivals/UndergroundBlacklist.ini"
@@ -149,7 +150,7 @@ jobs:
           Native nearby sudden loss (<250m) now logs a numeric presence
           audit of IVehicle and PVehicle registries, never unsafe respawn.
           Outrun remains chase-only; no side-by-side start or countdown.
-          See STREET_DUEL_NO_CUTSCENE_V56_FOUNDATION.md for the actual 151m log.
+          See NEAR_PASS_LOSS_V57.md for the new 7m incident analysis and limitations.
           See FRR_ONLY_UPDATE_V54.md for three installation variants.
           See HUD_X360_RACE_STAGING_V53.md for compatibility and limits.
           See RICO_HUD_AND_STUCK_V52.md for earlier features.
@@ -198,6 +199,7 @@ jobs:
           Copy-Item "docs/HUD_X360_RACE_STAGING_V53.md" "$upgrade/HUD_X360_RACE_STAGING_V53.md"
           Copy-Item "docs/FRR_ONLY_UPDATE_V54.md" "$upgrade/FRR_ONLY_UPDATE_V54.md"
           Copy-Item "docs/STREET_DUEL_NO_CUTSCENE_V56_FOUNDATION.md" "$upgrade/STREET_DUEL_NO_CUTSCENE_V56_FOUNDATION.md"
+          Copy-Item "docs/NEAR_PASS_LOSS_V57.md" "$upgrade/NEAR_PASS_LOSS_V57.md"
           @"
           FREE ROAM RIVALS v0.0.57-dev - EXISTING INSTALLATION UPGRADE
 
@@ -264,7 +266,8 @@ jobs:
               "RICO_HUD_AND_STUCK_V52.md",
               "HUD_X360_RACE_STAGING_V53.md",
               "FRR_ONLY_UPDATE_V54.md",
-              "STREET_DUEL_NO_CUTSCENE_V56_FOUNDATION.md"
+              "STREET_DUEL_NO_CUTSCENE_V56_FOUNDATION.md",
+              "NEAR_PASS_LOSS_V57.md"
             )
             foreach ($item in $required) {
               if ($names -cnotcontains $item) { throw "Missing package entry: $item" }
@@ -286,7 +289,7 @@ jobs:
           $upgradeZip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $upgradePath).Path)
           try {
             $upgradeNames = @($upgradeZip.Entries | ForEach-Object { $_.FullName.Replace("\\","/") })
-            foreach ($item in @("scripts/FreeRoamRivals.asi","scripts/FreeRoamRivals/FreeRoamRivals.ini","INSTALAR-ATUALIZACAO.txt","RIVAL_REACTIONS_V45.md","PERSISTENT_WORLD_METRIC_V46.md","NATIVE_ASSET_INVENTORY_V47.md","GUARDED_REENCOUNTER_V48.md","ROAD_RESET_EVIDENCE_V49.md","VISIBLE_PROTOTYPE_V50.md","RICO_AHEAD_SPAWN_V51.md","RICO_HUD_AND_STUCK_V52.md","HUD_X360_RACE_STAGING_V53.md","FRR_ONLY_UPDATE_V54.md","STREET_DUEL_NO_CUTSCENE_V56_FOUNDATION.md")) {
+            foreach ($item in @("scripts/FreeRoamRivals.asi","scripts/FreeRoamRivals/FreeRoamRivals.ini","INSTALAR-ATUALIZACAO.txt","RIVAL_REACTIONS_V45.md","PERSISTENT_WORLD_METRIC_V46.md","NATIVE_ASSET_INVENTORY_V47.md","GUARDED_REENCOUNTER_V48.md","ROAD_RESET_EVIDENCE_V49.md","VISIBLE_PROTOTYPE_V50.md","RICO_AHEAD_SPAWN_V51.md","RICO_HUD_AND_STUCK_V52.md","HUD_X360_RACE_STAGING_V53.md","FRR_ONLY_UPDATE_V54.md","STREET_DUEL_NO_CUTSCENE_V56_FOUNDATION.md","NEAR_PASS_LOSS_V57.md")) {
               if ($upgradeNames -cnotcontains $item) { throw "Upgrade missing: $item" }
             }
             foreach ($item in $upgradeNames) {
@@ -365,7 +368,7 @@ jobs:
                 --target "${{ github.sha }}" `
                 --title "Free Roam Rivals v0.0.57-dev" `
                 --prerelease `
-                --notes "v0.0.57-dev: fundacao de largada sem cutscene e um ensaio fisico opt-in com ForceStop: dois carros ja alinhados e devagar recebem parada nativa, a ASI espera telemetria parada, conta 3-2-1 e tenta liberar os dois. Esta versao AINDA NAO tem alinhamento automatico, controle bloqueado, buzina mapeada, Sprint com chegada ou escore. Sem comprovacao no jogo do usuario; o piloto vem desligado por padrao. Pacote ASI-only nao modifica INIs, WidescreenFix FixHUD, saves ou cache."
+                --notes "v0.0.57-dev: analise do log real revela que G iniciou Outrun antigo pois NativeDuelPilotEnabled estava AUSENTE no INI. Rico perdeu o corpo fisico utilizavel na aproximacao a 7.04 metros, com as duas registries contendo o veiculo; a causa real continua desconhecida. Adicionamos diagnostico somente leitura de driver class, spooling, corpo fisico, identidade e dados invalidos no momento da perda; HUD mostra explicitamente que G e Outrun sem largada. Ainda NAO corrigimos desaparecimento nem criamos Sprint com alinhamento automatico. Instale o ASI-only para preservar INI, WidescreenFix/FixHUD, saves e cache; piloto nativo continua opt-in."
             }
             if ($LASTEXITCODE -eq 0) { $published = $true; break }
             if ($attempt -lt 3) { Start-Sleep -Seconds 5 }
