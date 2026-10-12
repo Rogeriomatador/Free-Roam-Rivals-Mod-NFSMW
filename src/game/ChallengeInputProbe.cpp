@@ -16,6 +16,7 @@ unsigned g_fallbackVirtualKey = 0x47u;
 constexpr std::uint32_t kMaxPendingPresses = 16u;
 
 std::atomic<std::uint32_t> g_pendingPresses{0};
+std::atomic<std::uint32_t> g_pendingModeToggles{0};
 std::atomic<std::uint64_t> g_totalPresses{0};
 
 bool validVirtualKey(unsigned key) {
@@ -37,6 +38,7 @@ void ChallengeInputProbe::configure(
         0,
         std::memory_order_relaxed
     );
+    g_pendingModeToggles.store(0,std::memory_order_relaxed);
     g_totalPresses.store(
         0,
         std::memory_order_relaxed
@@ -59,6 +61,12 @@ void ChallengeInputProbe::onPoll() {
         return;
     }
 
+    if ((GetAsyncKeyState(VK_CONTROL)&0x8000)!=0 &&
+        (GetAsyncKeyState(VK_SHIFT)&0x8000)!=0) {
+        const auto current=g_pendingModeToggles.load(std::memory_order_relaxed);
+        if(current<kMaxPendingPresses) g_pendingModeToggles.fetch_add(1,std::memory_order_release);
+        return;
+    }
     g_totalPresses.fetch_add(
         1,
         std::memory_order_relaxed
@@ -78,6 +86,15 @@ void ChallengeInputProbe::onPoll() {
             break;
         }
     }
+}
+
+bool ChallengeInputProbe::consumeModeToggle() {
+    auto count=g_pendingModeToggles.load(std::memory_order_acquire);
+    while(count>0) {
+        if(g_pendingModeToggles.compare_exchange_weak(count,count-1,
+            std::memory_order_acq_rel,std::memory_order_acquire)) return true;
+    }
+    return false;
 }
 
 bool ChallengeInputProbe::consumePress() {
