@@ -531,14 +531,17 @@ bool ownedRead(NativeOwnedSnapshot& out) {
         out.availabilityReason = "physical_read_started";
         out.loading = v->IsLoading(); out.active = v->IsActive(); out.destroyed = v->IsDestroyed();
         out.racerPrepared = owned.racerPrepared; out.roadPrepared = owned.roadPrepared;
+        if (out.loading || out.destroyed) {
+            // Avoid extra SDK virtual probes on a vehicle undergoing native
+            // model loading/destruction: nothing about these reads can make
+            // that object safe to sample or control.
+            out.availabilityReason = out.loading ? "native_loading" : "native_destroyed";
+            out.available = true; return true;
+        }
         out.nativeDriverClass = static_cast<int>(v->GetDriverClass());
         out.driverClassObserved = true;
         out.nativeSpooled = v->IsSpooled();
         out.spooledObserved = true;
-        if (out.loading || out.destroyed) {
-            out.availabilityReason = out.loading ? "native_loading" : "native_destroyed";
-            out.available = true; return true;
-        }
         auto* sim = v->GetSimable();
         auto* body = sim ? sim->GetRigidBody() : nullptr;
         if (!body) { out.availabilityReason="rigid_body_missing"; return false; }
