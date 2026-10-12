@@ -1693,6 +1693,7 @@ RuntimeProbeInstallResult RuntimeProbe::install(
     NativeEncounterConfig encounterConfig{};
     encounterConfig.enabled=config.outrunEnabled;
     encounterConfig.nativeStreetDuelPilotEnabled=config.nativeStreetDuelPilotEnabled;
+    encounterConfig.streetSprintLengthMeters=config.streetSprintLengthMeters;
     encounterConfig.hudEnabled=config.rivalHudEnabled && config.nativeRivalPrototypeEnabled;
     encounterConfig.persistHistory=config.rivalHistoryEnabled;
     encounterConfig.radarPosition=config.rivalRadarPosition;

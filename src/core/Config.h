@@ -48,6 +48,7 @@ struct Config {
 
     bool stagingEnabled = false;
     bool nativeStreetDuelPilotEnabled = false;
+    float streetSprintLengthMeters = 120.0f;
     float stagingSearchAheadMeters = 160.0f;
     float stagingApproachTimeoutSeconds = 10.0f;
     float stagingAlignmentTimeoutSeconds = 5.0f;

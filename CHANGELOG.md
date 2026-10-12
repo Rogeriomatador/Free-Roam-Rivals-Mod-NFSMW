@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.0.58-dev — primeira corrida física curta com chegada e resultado
+
+- Implementado `StreetSprint`: após parada/liberação nativa opt-in e largada alinhada, os dois carros cruzam **a mesma linha física** em uma reta de 120 m (configurável 60–500 m). O primeiro a cruzar ganha; empate do mesmo frame é decidido por interpolação. Resultados utilizam o histórico de perfil já existente.
+- Interface com progresso dos dois, cronômetro e meta amarela no radar. Fora do corredor da pista, carro sumido, teleporte impossível, transição ou tempo excedido interrompem sem fabricar vencedor.
+- **Ctrl+Shift+G alterna** o modo Sprint e o Outrun tradicional dentro do jogo, sem modificar o INI ou saves. G lança o desafio conforme o modo ativo; G novamente cancela a preparação/corrida. Por segurança, não troca de modo quando ainda houver um lease nativo de parada pendente.
+- A formação ainda precisa ser física e manual, ambos os carros devagar (<29km/h) e aproximadamente lado a lado; a ASI não controla steering/AI para buscar o local automaticamente nem bloqueia o input do jogador. Ainda não é o evento Sprint nativo de MW05, tampouco corrige o desaparecimento de Rico a 7 m em condições observadas pela v56.
+- Testes de corrida em domínio e novo pacote ASI-only não sobrescrevem WidescreenFix/FixHUD, métricas, configurações e histórico. Veja `docs/PHYSICAL_STREET_SPRINT_V58.md`. Largada nativa é experimental; execute em cópia de jogo e faça backup.
+
+
 ## v0.0.57-dev — near-pass disappearance diagnostics
 
 - Real v56 log: G ran **Outrun_only**; `NativeDuelPilotEnabled` absent, so no native two-car stopping was requested. Rico disappeared with the last valid reading **7.04 m at 56.08 m/s**, **both** native registries still containing its numeric identity and no verified fatal exception.

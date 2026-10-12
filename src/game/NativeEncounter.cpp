@@ -6,6 +6,7 @@
 #include "NativeRivalHud.h"
 #include "VehicleSpatialProbe.h"
 #include "../domain/LiveEncounter.h"
+#include "../domain/StreetSprint.h"
 #include "../domain/RivalLocator.h"
 #include "../domain/RivalReaction.h"
 #include "../domain/RivalMotionMonitor.h"
@@ -26,6 +27,7 @@ namespace frr::game {
 namespace {
 NativeEncounterConfig config{};
 domain::LiveEncounter encounter{};
+domain::StreetSprint streetSprint{};
 domain::RivalReactionMonitor reactionMonitor{};
 domain::RivalMotionMonitor stationaryMonitor{};
 std::optional<persistence::LiveRivalStore> store;
@@ -42,6 +44,9 @@ DuelPilotPhase duelPilotPhase=DuelPilotPhase::Idle;
 float duelPilotElapsed=0,duelPilotCountdown=0;
 std::uint64_t duelPilotCueUntil=0;
 const char* duelPilotCue="none";
+domain::EncounterCar duelStartPlayer{},duelStartRival{};
+std::uint64_t lastSprintResultAt=0, modeToggleAt=0;
+domain::OutrunOutcome lastSprintOutcome=domain::OutrunOutcome::InProgress;
 void clearDuelPilot(const char* reason) {
     if(NativeVehicleFactory::duelStopHeld()) NativeVehicleFactory::releaseDuelStop();
     duelPilotPhase=DuelPilotPhase::Idle;
@@ -67,6 +72,21 @@ void record(const domain::LiveEncounterView& view) {
         <<" wins="<<history.wins<<" losses="<<history.losses<<" cashWrite=0 garageWrite=0";
     Log::instance().info(log.str());
     if(!error.empty()) Log::instance().warn("Live rival history save failed; original retained: "+error);
+}
+void recordSprint(const domain::StreetSprintView& result) {
+    if(!result.justFinished) return;
+    domain::LiveEncounterView recorded{};
+    recorded.justFinished=true;
+    recorded.outcome=result.outcome;
+    recorded.reason=result.reason;
+    record(recorded); // Reuses the existing per-profile persistent W/L/D/A store.
+    lastSprintResultAt=GetTickCount64();
+    lastSprintOutcome=result.outcome;
+    Log::instance().info(std::string("StreetSprint finish scoredFromPhysicalSharedPlane=1 result=")+
+        domain::outrunOutcomeName(result.outcome)+" reason="+result.reason+
+        " playerMeters="+std::to_string(result.playerMeters)+
+        " rivalMeters="+std::to_string(result.rivalMeters)+
+        " timeSeconds="+std::to_string(result.elapsed));
 }
 const char* rejectionText(const char* reason) {
     if(!std::strcmp(reason,"too_far")) return "APROXIME-SE DO RIVAL";
@@ -95,6 +115,8 @@ const char* resultText(domain::OutrunOutcome r) {
 }
 void configureNativeEncounter(const NativeEncounterConfig& value) {
     config=value;encounter=domain::LiveEncounter(value.tuning,value.challengeDistanceMeters);
+    streetSprint=domain::StreetSprint({value.streetSprintLengthMeters,16.0f,45.0f});
+    lastSprintResultAt=0;
     reactionMonitor.reset();stationaryMonitor.reset();lastOvertakeAt=0;
     duelPilotPhase=DuelPilotPhase::Idle;duelPilotElapsed=0;duelPilotCountdown=0;
     configureNativeRivalHud(value.hudEnabled,value.radarPosition,value.radarScale);
@@ -105,8 +127,12 @@ void configureNativeEncounter(const NativeEncounterConfig& value) {
     const auto size=GetModuleFileNameW(nullptr,executable,32768);
     if(size&&size<32768) store.emplace(std::filesystem::path(executable).parent_path()/L"scripts"/L"FreeRoamRivals"/L"saves");
 }
-bool nativeEncounterRunning() {return encounter.running() || duelPilotPhase!=DuelPilotPhase::Idle || NativeVehicleFactory::duelStopHeld();}
+bool nativeEncounterRunning() {
+    return encounter.running() || streetSprint.running() ||
+        duelPilotPhase!=DuelPilotPhase::Idle || NativeVehicleFactory::duelStopHeld();
+}
 void interruptNativeEncounter(const char* reason) {
+    if(streetSprint.running()) recordSprint(streetSprint.abort(reason));
     if(duelPilotPhase!=DuelPilotPhase::Idle || NativeVehicleFactory::duelStopHeld())
         clearDuelPilot("INTERROMPIDO - RESTAURANDO CONTROLE");
     record(encounter.interrupt(reason));reactionMonitor.reset();stationaryMonitor.reset();lastOvertakeAt=0;
@@ -123,12 +149,34 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
     if(!world.career.profileKeyAvailable||!world.career.profileKey) {interruptNativeEncounter("profile_unavailable");showNativeRivalStatus("AGUARDANDO PERFIL");return;}
     if(loadedProfile!=world.career.profileKey) {
         interruptNativeEncounter("profile_changed");loadedProfile=world.career.profileKey;
-        lastResultAt=0;lastOvertakeAt=0;lastPlayerForward={0,0,1};reactionMonitor.reset();stationaryMonitor.reset();
+        lastResultAt=0;lastSprintResultAt=0;lastOvertakeAt=0;lastPlayerForward={0,0,1};reactionMonitor.reset();stationaryMonitor.reset();
         history={loadedProfile};historyWritable=false;
         if(store) {
             const auto loaded=store->load(loadedProfile);
             if(loaded.ok) {history=loaded.record;historyWritable=config.persistHistory;}
             else Log::instance().warn("Live rival history load failed; original preserved: "+loaded.error);
+        }
+    }
+    if(ChallengeInputProbe::consumeModeToggle()) {
+        // Do not switch into legacy Outrun while native ForceStop is still
+        // owned: retry releasing the player first, without losing the lease.
+        if(duelPilotPhase!=DuelPilotPhase::Idle || NativeVehicleFactory::duelStopHeld())
+            clearDuelPilot("MODO PENDENTE - LIBERANDO VEICULOS");
+        if(NativeVehicleFactory::duelStopHeld()) {
+            Log::instance().warn("Challenge mode toggle postponed: native ForceStop lease still held");
+        } else {
+        if(streetSprint.running()) recordSprint(streetSprint.abort("mode_changed"));
+        if(encounter.running()) record(encounter.interrupt("mode_changed"));
+        config.nativeStreetDuelPilotEnabled=!config.nativeStreetDuelPilotEnabled;
+        modeToggleAt=GetTickCount64();
+        duelPilotCue=config.nativeStreetDuelPilotEnabled?
+            "MODO SPRINT RETO - CORRIDA COM CHEGADA":
+            "MODO OUTRUN - PERSEGUICAO ANTIGA";
+        duelPilotCueUntil=modeToggleAt+5000;
+        Log::instance().info(std::string("Challenge mode changed via Ctrl+Shift+G: ")+
+            (config.nativeStreetDuelPilotEnabled?
+             "short_physical_sprint_opt_in=1":"legacy_outrun=1")+
+            " INI_and_saves_unchanged=1");
         }
     }
     if(encounter.running()&&(racePlayer!=world.vehicles.playerIVehicle||raceRoad!=world.roadNetwork||raceStatus!=world.raceStatus))
@@ -177,7 +225,13 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
         Log::instance().info(evidence.str());
     }
     record(result);
-    // Real, opt-in ForceStop pilot. This is ONLY a two-car stop/start trial:
+    // Opt-in native two-car hold+release followed by a REAL shared physical
+    // straight-line finish. Not the vanilla stock Sprint event or AI route.
+    const bool pilotPressed=pressed && !streetSprint.running();
+    if(pressed && streetSprint.running()) {
+        recordSprint(streetSprint.abort("player_cancelled"));
+    }
+    // Real, opt-in ForceStop pilot. Starts only after verified native release:
     // no auto-steering, player input lock, native horn, finish or scoring.
     if(config.nativeStreetDuelPilotEnabled) {
         if(NativeVehicleFactory::duelStopHeld() && duelPilotPhase==DuelPilotPhase::Idle)
@@ -194,13 +248,17 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
                 physicalPlayer.valid=true;
                 const auto formation=domain::checkRaceFormation(physicalPlayer,input.rival,valid&&input.challengeSafe);
                 geometry=formation.geometryAligned;
+                if(geometry) {
+                    duelStartPlayer=physicalPlayer;
+                    duelStartRival=input.rival;
+                }
                 break;
             }
         }
-        if(pressed && duelPilotPhase!=DuelPilotPhase::Idle) {
+        if(pilotPressed && duelPilotPhase!=DuelPilotPhase::Idle) {
             clearDuelPilot("PREPARACAO CANCELADA PELO JOGADOR");
-        } else if(pressed && duelPilotPhase==DuelPilotPhase::Idle &&
-            !NativeVehicleFactory::duelStopHeld() && !result.running) {
+        } else if(pilotPressed && duelPilotPhase==DuelPilotPhase::Idle &&
+            !NativeVehicleFactory::duelStopHeld() && !result.running && !streetSprint.running()) {
             if(!input.challengeSafe || !geometry || input.player.speed>8.0f ||
                input.rival.speed>8.0f) {
                 duelPilotCue="ALINHE OS CARROS LADO A LADO DEVAGAR";
@@ -239,12 +297,25 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
             if(duelPilotPhase==DuelPilotPhase::Releasing) {
                 if(NativeVehicleFactory::releaseDuelStop()) {
                     duelPilotPhase=DuelPilotPhase::Idle;
-                    duelPilotCue="GO! TESTE DE LARGADA - SEM CHEGADA";
+                    // These readings come from the last aligned, physically
+                    // stopped frame before releasing the native brake lease.
+                    const bool started=geometry &&
+                        duelStartPlayer.speed<1.0f && duelStartRival.speed<1.0f &&
+                        streetSprint.begin(duelStartPlayer,duelStartRival);
+                    duelPilotCue=started ? "GO! SPRINT RETO COM META REAL" :
+                        "LARGADA LIBERADA - META NAO CONFIRMADA";
                     duelPilotCueUntil=GetTickCount64()+4000;
-                    Log::instance().info("DuelPilot GO: native ForceStop cleared on BOTH vehicles; no Sprint event created.");
+                    Log::instance().info(started ?
+                        "StreetSprint GO: two ForceStop flags restored; REAL shared 120m finish armed; vanilla race event=0." :
+                        "StreetSprint GO: both ForceStop flags restored but shared finish rejected; no false scoring.");
                 }
             }
         }
+    }
+    if(streetSprint.running()) {
+        const auto finished=streetSprint.tick({input.player,input.rival,dt,
+            valid&&input.challengeSafe,false});
+        recordSprint(finished);
     }
     // Native Racer may stop for traffic or because its goal cannot recover.
     // Do not declare a cause or mutate native controls from this observation.
@@ -303,6 +374,15 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
             view.rivalFront=rivalBeacon.front;view.rivalRight=rivalBeacon.right;
             view.rivalMeters=rivalBeacon.distanceMeters;
         }
+        if(streetSprint.running()) {
+            const auto finish=domain::directionBeacon(playerMetres,beaconForward,
+                streetSprint.view().finishPoint);
+            if(finish.valid) {
+                view.routeCueValid=true;
+                view.routeFront=finish.front;view.routeRight=finish.right;
+                view.routeMeters=finish.distanceMeters;
+            }
+        }
         if(result.running&&result.observedTrailCueValid) {
             const auto cue=domain::directionBeacon(playerMetres,beaconForward,
                 result.observedTrailCue);
@@ -328,7 +408,9 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
         line(view.lines[4],"TEMPO %.0f S - RIVAL CONTINUA APOS CORRIDA",result.elapsedSeconds);
         view.playerLeading=result.leader==domain::OutrunLeader::Player;view.holdProgress=result.holdProgress;
     } else {
-        if(lastResultAt&&now-lastResultAt<8000) line(view.lines[1],"%s",resultText(lastResult));
+        if(modeToggleAt&&now-modeToggleAt<4000&&!config.nativeStreetDuelPilotEnabled)
+            line(view.lines[1],"MODO OUTRUN ATIVADO - SEGUIR RICO");
+        else if(lastResultAt&&now-lastResultAt<8000) line(view.lines[1],"%s",resultText(lastResult));
         else if(stationary.stationaryLong)
             line(view.lines[1],"RICO QUASE PARADO HA %.0f S",stationary.secondsNearAnchor);
         else line(view.lines[1],"%s / %.0f KM/H",domain::rivalReactionLabel(reaction.state),rival.speed*3.6f);
@@ -372,7 +454,25 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
     }
     if(config.nativeStreetDuelPilotEnabled) {
         view.challengeReady=false;
-        if(duelPilotPhase==DuelPilotPhase::Slowing) {
+        if(streetSprint.running()) {
+            const auto& sprint=streetSprint.view();
+            const bool playerAhead=sprint.playerMeters>=sprint.rivalMeters;
+            view.playerLeading=playerAhead;
+            view.holdProgress=std::clamp(
+                std::max(sprint.playerMeters,sprint.rivalMeters)/
+                    std::max(sprint.distanceMeters,1.0f),0.0f,1.0f);
+            line(view.lines[1],"SPRINT CURTO - %s",playerAhead?"VOCE LIDERA":"RICO LIDERA");
+            line(view.lines[2],"PROGRESSO %.0f M / %.0f M",sprint.playerMeters,sprint.distanceMeters);
+            line(view.lines[3],"RICO %.0f M - META AMARELA NA DIRECAO",sprint.rivalMeters);
+            line(view.lines[4],"TEMPO %.1f S - G CANCELA",sprint.elapsed);
+        } else if(lastSprintResultAt&&GetTickCount64()-lastSprintResultAt<8000) {
+            const char* outcome=lastSprintOutcome==domain::OutrunOutcome::PlayerWon?
+                "SPRINT: VOCE VENCEU":lastSprintOutcome==domain::OutrunOutcome::RivalWon?
+                "SPRINT: RICO VENCEU":lastSprintOutcome==domain::OutrunOutcome::Draw?
+                "SPRINT: EMPATE":"SPRINT: INTERROMPIDO";
+            line(view.lines[1],"%s",outcome);
+            line(view.lines[2],"RESULTADO REGISTRADO NO PERFIL");
+        } else if(duelPilotPhase==DuelPilotPhase::Slowing) {
             line(view.lines[1],"DUEL PILOTO - PARANDO OS CARROS");
             line(view.lines[2],"AGUARDANDO PARADA FISICA DOS DOIS");
             line(view.lines[3],"G NOVAMENTE CANCELA");
@@ -386,11 +486,13 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
             line(view.lines[2],"AGUARDANDO CONFIRMACAO NATIVA");
         } else if(GetTickCount64()<duelPilotCueUntil) {
             line(view.lines[1],"%s",duelPilotCue);
-            line(view.lines[2],"PILOTO - AINDA SEM CORRIDA SPRINT");
+            line(view.lines[2],"DUELO COM META FISICA DE %.0f M",config.streetSprintLengthMeters);
         } else if(!result.running) {
-            line(view.lines[2],"G: TESTAR PARADA LADO A LADO (DEVAGAR)");
+            line(view.lines[2],"G: INICIAR SPRINT RETO (LADO A LADO)");
         }
     }
+    if(!config.nativeStreetDuelPilotEnabled&&!result.running)
+        line(view.lines[4],"CTRL+SHIFT+G ALTERNA SPRINT / OUTRUN");
     publishNativeRivalHud(view);
 }
 }

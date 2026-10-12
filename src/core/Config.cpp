@@ -362,6 +362,7 @@ Config Config::load() {
         iniInt(ini, "Staging", "Enabled", 0) != 0;
     // Opt-in native ForceStop trial; NEVER enabled by the generic Staging flag.
     cfg.nativeStreetDuelPilotEnabled = iniInt(ini,"Staging","NativeDuelPilotEnabled",0)!=0;
+    cfg.streetSprintLengthMeters = std::clamp(iniFloat(ini,"Staging","SprintLengthMeters",120.0f),60.0f,500.0f);
 
     cfg.stagingSearchAheadMeters = std::clamp(
         iniFloat(

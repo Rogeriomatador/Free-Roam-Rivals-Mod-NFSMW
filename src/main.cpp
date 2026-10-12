@@ -14,7 +14,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.57-dev";
+constexpr const char* kVersion = "0.0.58-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -98,6 +98,7 @@ int bootstrap() {
     probeConfig.retireHoldSeconds=config.retireHoldSeconds;
     probeConfig.outrunEnabled=config.outrunEnabled;
     probeConfig.nativeStreetDuelPilotEnabled=config.nativeStreetDuelPilotEnabled;
+    probeConfig.streetSprintLengthMeters=config.streetSprintLengthMeters;
     probeConfig.rivalHudEnabled=config.rivalHudEnabled;
     probeConfig.rivalRadarPosition=config.rivalRadarPosition;
     probeConfig.rivalRadarScale=config.rivalRadarScale;
@@ -164,7 +165,7 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.57-dev",
+    "0.0.58-dev",
     "Rogeriomatador"
 )
 

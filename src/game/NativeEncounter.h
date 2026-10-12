@@ -7,6 +7,7 @@ struct NativeOwnedSnapshot;
 struct NativeEncounterConfig {
     bool enabled=false,hudEnabled=true,persistHistory=true;
     bool nativeStreetDuelPilotEnabled=false;
+    float streetSprintLengthMeters=120.0f;
     float challengeDistanceMeters=60;
     int radarPosition=2;
     float radarScale=1.0f;
