@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(FreeRoamRivals
-    VERSION 0.0.57
+    VERSION 0.0.58
     LANGUAGES C CXX
 )
 
@@ -72,6 +72,7 @@ set(FRR_DOMAIN_SOURCES
     src/domain/RenderObservation.cpp
     src/domain/OutrunRace.cpp
     src/domain/LiveEncounter.cpp
+    src/domain/StreetSprint.cpp
     src/domain/PostRaceObservation.cpp
     src/domain/Progression.cpp
     src/domain/RoadCandidatePlanner.cpp
@@ -324,6 +325,10 @@ add_test(NAME FreeRoamRivalsPrototypeGroundTests COMMAND FreeRoamRivalsPrototype
 add_executable(FreeRoamRivalsLiveEncounterTests tests/live_encounter_tests.cpp src/domain/LiveEncounter.cpp src/domain/OutrunRace.cpp)
 target_include_directories(FreeRoamRivalsLiveEncounterTests PRIVATE src)
 add_test(NAME FreeRoamRivalsLiveEncounterTests COMMAND FreeRoamRivalsLiveEncounterTests)
+add_executable(FreeRoamRivalsStreetSprintTests tests/street_sprint_tests.cpp src/domain/StreetSprint.cpp)
+target_include_directories(FreeRoamRivalsStreetSprintTests PRIVATE src)
+add_test(NAME FreeRoamRivalsStreetSprintTests COMMAND FreeRoamRivalsStreetSprintTests)
+
 add_executable(FreeRoamRivalsRivalMotionMonitorTests tests/rival_motion_monitor_tests.cpp)
 target_include_directories(FreeRoamRivalsRivalMotionMonitorTests PRIVATE src)
 add_test(NAME FreeRoamRivalsRivalMotionMonitorTests COMMAND FreeRoamRivalsRivalMotionMonitorTests)
