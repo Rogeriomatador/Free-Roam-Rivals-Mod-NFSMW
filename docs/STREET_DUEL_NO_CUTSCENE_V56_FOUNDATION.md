@@ -40,3 +40,13 @@ Quando o jogador desafiar Rico (G enquanto a buzina nativa não estiver mapeada)
 - `src/domain/RaceFormationReadiness.h`
 - `src/game/NativeEncounter.cpp` (integração futura)
 - `src/game/NativeVehicleFactory.cpp` (identidade/owner)
+
+## Protótipo nativo de parada v0.0.56 (somente opt-in)
+
+O G pode acionar um ensaio **físico** de parada de dois carros se `[Staging] NativeDuelPilotEnabled=1` (separado de `Staging.Enabled`). O padrão é zero. É obrigatório que Rico e o jogador estejam **lado a lado e a menos de ~29 km/h**, na mesma pista, em Free Roam sem perseguição, com as duas listas de veículos, identity/owner, goal do rival e estado de ForceStop compatíveis. Nessa condição a ASI chama `IVehicle::ForceStopOn(ForceStop)` nos dois carros, aguarda telemetria real abaixo de 1m/s, exibe 3–2–1 e só apresenta GO depois de obter `ForceStopOff` confirmado em ambos. Não executa alinhamento automático, `BlockInput`, `SetSpeed(0)`, teleporte, cutscene, checkpoint ou pódio.
+
+O mesmo G durante a contagem cancela; world/identity/pursuit/timeout cancelam. A liberação do jogador é independente da liberação do rival para lidar com stream-out e ponteiros potencialmente inválidos; nenhuma desreferência ocorre sem presença nas duas registries. Uma liberação parcial não vira confirmação falsa e bloqueia um segundo pedido de parada até o estado se resolver. No caso de transição total de mundo, não há permissão para tocar o veículo sem confirmação — logs registram lease pendente. Reinicie o jogo se a integridade do dono for perdida durante ensaio; nunca force repetidos F8.
+
+**Aviso técnico:** as chamadas `ForceStopOn/Off` vêm de headers do NFSPluginSDK e **não foram exercitadas no executável do usuário nesta versão**. Mesmo com validação de vtable 0x8AA828, controles reversíveis precisam de prova in-game. O modo é um teste de controle nativo, **não uma corrida Sprint completa nem uma largada com input bloqueado**. Ative exclusivamente em cópia de testes, faça backup dos saves, mantenha G como fallback e não substitua WidescreenFix/FixHUD. Para recuperar o modo anterior, mantenha `NativeDuelPilotEnabled=0`.
+
+**Protocolo de ensaio:** escolha Golf GTI, F8, encontre Rico na mesma via; reduza ambos para menos de 29 km/h e tente G ao lado. Veja no log `DuelPilot`, sobretudo confirmação do ForceStop/ForceStopOff em ambos. Se não aparecer, isso não significa que corrida nativa foi criada. Documente qualquer divergência do HUD, bloqueio persistente de controle, colisão, stream-out ou exceção e **não habilite no save principal**.
