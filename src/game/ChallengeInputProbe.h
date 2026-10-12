@@ -21,6 +21,8 @@ public:
 
     // Future EncounterDirector integration consumes exactly one queued edge.
     static bool consumePress();
+    // Ctrl+Shift+G explicitly switches challenge mode; it is NOT a race key.
+    static bool consumeModeToggle();
 
     static std::uint64_t totalPresses();
     static unsigned fallbackVirtualKey();
