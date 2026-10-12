@@ -104,7 +104,7 @@ jobs:
           Copy-Item "docs/NATIVE_ROAMING_STREAMING_RESEARCH.md" "$pkg/NATIVE_ROAMING_STREAMING_RESEARCH.md"
 
           @"
-          NFSMW Free Roam Rivals v0.0.56-dev
+          NFSMW Free Roam Rivals v0.0.57-dev
 
           INSTALL:
           1. BACK UP scripts\FreeRoamRivals\FreeRoamRivals.ini if it contains
@@ -178,7 +178,7 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.56-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.57-dev.zip" -Force
 
           # Minimal update for existing v45 installations: preserve Rivals.ini,
           # VehiclePools.ini, UndergroundBlacklist.ini and all saved history.
@@ -199,7 +199,7 @@ jobs:
           Copy-Item "docs/FRR_ONLY_UPDATE_V54.md" "$upgrade/FRR_ONLY_UPDATE_V54.md"
           Copy-Item "docs/STREET_DUEL_NO_CUTSCENE_V56_FOUNDATION.md" "$upgrade/STREET_DUEL_NO_CUTSCENE_V56_FOUNDATION.md"
           @"
-          FREE ROAM RIVALS v0.0.56-dev - EXISTING INSTALLATION UPGRADE
+          FREE ROAM RIVALS v0.0.57-dev - EXISTING INSTALLATION UPGRADE
 
           BACK UP your customized scripts\FreeRoamRivals\FreeRoamRivals.ini.
           Extract this ZIP to the existing NFSMW folder containing speed.exe,
@@ -219,7 +219,7 @@ jobs:
           steering and acceleration remain unchanged. In-game test pending.
           The game must be closed while replacing these files.
           "@ | Set-Content "$upgrade/INSTALAR-ATUALIZACAO.txt" -Encoding UTF8
-          Compress-Archive -Path "$upgrade/*" -DestinationPath "release/FreeRoamRivals-v0.0.56-dev-upgrade.zip" -Force
+          Compress-Archive -Path "$upgrade/*" -DestinationPath "release/FreeRoamRivals-v0.0.57-dev-upgrade.zip" -Force
 
           # This separate update contains ONLY our binary and one text guide.
           # It cannot overwrite the user's custom INI or WidescreenFix FixHUD.
@@ -227,19 +227,19 @@ jobs:
           New-Item -ItemType Directory -Force "$asiOnly/scripts" | Out-Null
           Copy-Item "artifact/FreeRoamRivals.asi" "$asiOnly/scripts/FreeRoamRivals.asi"
           @"
-          Free Roam Rivals v0.0.56-dev - ASI ONLY
+          Free Roam Rivals v0.0.57-dev - ASI ONLY
           Close the game and back up scripts\FreeRoamRivals.asi.
           Extract to the game root beside speed.exe.
           Replace ONLY scripts\FreeRoamRivals.asi.
           Nothing else is changed. WidescreenFix FixHUD=1 is preserved.
           Your existing FRR INI, save history and metric are untouched.
           "@ | Set-Content "$asiOnly/INSTALAR-ASI-SOMENTE.txt" -Encoding UTF8
-          Compress-Archive -Path "$asiOnly/*" -DestinationPath "release/FreeRoamRivals-v0.0.56-dev-asi-only.zip" -Force
+          Compress-Archive -Path "$asiOnly/*" -DestinationPath "release/FreeRoamRivals-v0.0.57-dev-asi-only.zip" -Force
 
       - name: Verify ready-to-install package
         shell: pwsh
         run: |
-          $path = "release/FreeRoamRivals-v0.0.56-dev.zip"
+          $path = "release/FreeRoamRivals-v0.0.57-dev.zip"
           if (!(Test-Path $path)) { throw "Install ZIP is missing" }
           Add-Type -AssemblyName System.IO.Compression
           $zip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $path).Path)
@@ -281,7 +281,7 @@ jobs:
             if (!$ini.Contains($setting)) { throw "Play INI missing $setting" }
           }
           if ($ini.Contains("RetireRivalKey=0" + [char]10)) { throw "Manual retirement was silently disabled" }
-          $upgradePath = "release/FreeRoamRivals-v0.0.56-dev-upgrade.zip"
+          $upgradePath = "release/FreeRoamRivals-v0.0.57-dev-upgrade.zip"
           if (!(Test-Path $upgradePath)) { throw "Upgrade ZIP is missing" }
           $upgradeZip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $upgradePath).Path)
           try {
@@ -301,7 +301,7 @@ jobs:
           # Explicitly block bundled third-party fixes, the base executable
           # and non-FRR textures/shaders in all archive variants.
           $deny = '(?i)(^|/)(speed\.exe|dinput8\.dll|[^/]*widescreenfix[^/]*|[^/]*x360stuff[^/]*|[^/]*xtendedinput[^/]*|[^/]*\.tpk|[^/]*\.dds|[^/]*\.hlsl)$'
-          foreach ($candidate in @("release/FreeRoamRivals-v0.0.56-dev.zip","release/FreeRoamRivals-v0.0.56-dev-upgrade.zip","release/FreeRoamRivals-v0.0.56-dev-asi-only.zip")) {
+          foreach ($candidate in @("release/FreeRoamRivals-v0.0.57-dev.zip","release/FreeRoamRivals-v0.0.57-dev-upgrade.zip","release/FreeRoamRivals-v0.0.57-dev-asi-only.zip")) {
             $z = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $candidate).Path)
             try {
               foreach ($entry in $z.Entries) {
@@ -310,7 +310,7 @@ jobs:
               }
             } finally { $z.Dispose() }
           }
-          $only = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path "release/FreeRoamRivals-v0.0.56-dev-asi-only.zip").Path)
+          $only = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path "release/FreeRoamRivals-v0.0.57-dev-asi-only.zip").Path)
           try {
             $items = @($only.Entries | ForEach-Object { $_.FullName.Replace([char]92,"/") } | Where-Object { -not $_.EndsWith("/") })
             $expected = @("scripts/FreeRoamRivals.asi","INSTALAR-ASI-SOMENTE.txt")
@@ -323,25 +323,25 @@ jobs:
       - name: Upload ready-to-install ZIP artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FreeRoamRivals-ReadyToInstall-v56
+          name: FreeRoamRivals-ReadyToInstall-v57
           path: |
-            release/FreeRoamRivals-v0.0.56-dev.zip
-            release/FreeRoamRivals-v0.0.56-dev-upgrade.zip
-            release/FreeRoamRivals-v0.0.56-dev-asi-only.zip
+            release/FreeRoamRivals-v0.0.57-dev.zip
+            release/FreeRoamRivals-v0.0.57-dev-upgrade.zip
+            release/FreeRoamRivals-v0.0.57-dev-asi-only.zip
           if-no-files-found: error
 
-      - name: Publish v0.0.56-dev GitHub Release
+      - name: Publish v0.0.57-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.56-dev"
+          $tag = "v0.0.57-dev"
 
           $files = @(
-            "release/FreeRoamRivals-v0.0.56-dev.zip",
-            "release/FreeRoamRivals-v0.0.56-dev-upgrade.zip",
-            "release/FreeRoamRivals-v0.0.56-dev-asi-only.zip"
+            "release/FreeRoamRivals-v0.0.57-dev.zip",
+            "release/FreeRoamRivals-v0.0.57-dev-upgrade.zip",
+            "release/FreeRoamRivals-v0.0.57-dev-asi-only.zip"
           )
           $published = $false
           for ($attempt = 1; $attempt -le 3; $attempt++) {
@@ -363,9 +363,9 @@ jobs:
             } else {
               gh release create $tag $files `
                 --target "${{ github.sha }}" `
-                --title "Free Roam Rivals v0.0.56-dev" `
+                --title "Free Roam Rivals v0.0.57-dev" `
                 --prerelease `
-                --notes "v0.0.56-dev: fundacao de largada sem cutscene e um ensaio fisico opt-in com ForceStop: dois carros ja alinhados e devagar recebem parada nativa, a ASI espera telemetria parada, conta 3-2-1 e tenta liberar os dois. Esta versao AINDA NAO tem alinhamento automatico, controle bloqueado, buzina mapeada, Sprint com chegada ou escore. Sem comprovacao no jogo do usuario; o piloto vem desligado por padrao. Pacote ASI-only nao modifica INIs, WidescreenFix FixHUD, saves ou cache."
+                --notes "v0.0.57-dev: fundacao de largada sem cutscene e um ensaio fisico opt-in com ForceStop: dois carros ja alinhados e devagar recebem parada nativa, a ASI espera telemetria parada, conta 3-2-1 e tenta liberar os dois. Esta versao AINDA NAO tem alinhamento automatico, controle bloqueado, buzina mapeada, Sprint com chegada ou escore. Sem comprovacao no jogo do usuario; o piloto vem desligado por padrao. Pacote ASI-only nao modifica INIs, WidescreenFix FixHUD, saves ou cache."
             }
             if ($LASTEXITCODE -eq 0) { $published = $true; break }
             if ($attempt -lt 3) { Start-Sleep -Seconds 5 }
