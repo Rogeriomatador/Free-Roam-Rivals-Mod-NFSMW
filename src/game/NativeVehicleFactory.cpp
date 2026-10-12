@@ -596,6 +596,15 @@ void logRoadResetMismatch(const NativeOwnedSnapshot& current,float dx,float dz) 
         << " safetyGate=reject_no_activation";
     Log::instance().warn(difference.str());
 }
+void logRoadResetProjection(const domain::NativeRoadPlacement& placement) {
+    std::ostringstream accepted;
+    accepted<<"NativeFactory road projection bounded: deltaHorizontal="
+        <<placement.horizontalDelta<<" deltaVertical="<<placement.verticalDelta
+        <<" deltaAlongRoad="<<placement.forwardDelta
+        <<" deltaAcrossRoad="<<placement.lateralDelta
+        <<" projectionAcceptedForRevalidationOnly=1 nativeActivated=0";
+    Log::instance().info(accepted.str());
+}
 bool roadResetCall() {
     roadResetReason="begin";
 #if defined(_MSC_VER)
@@ -633,15 +642,7 @@ bool roadResetCall() {
         // certified safe here: NativeRivalPrototype::candidateSafe() checks
         // ACTUAL physical box, all footprint-ground probes, fresh full fleet
         // overlap and pursuit/world once more before Activate().
-        if (placement.relocated) {
-            std::ostringstream accepted;
-            accepted<<"NativeFactory road projection bounded: deltaHorizontal="
-                <<placement.horizontalDelta<<" deltaVertical="<<placement.verticalDelta
-                <<" deltaAlongRoad="<<placement.forwardDelta
-                <<" deltaAcrossRoad="<<placement.lateralDelta
-                <<" projectionAcceptedForRevalidationOnly=1 nativeActivated=0";
-            Log::instance().info(accepted.str());
-        }
+        if (placement.relocated) logRoadResetProjection(placement);
         roadResetReason=placement.reason; return true;
 #if defined(_MSC_VER)
     } __except (captureNativeException(GetExceptionInformation())) { roadResetReason="native_seh_exception"; return false; }
