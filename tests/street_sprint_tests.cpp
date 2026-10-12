@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <limits>
+#include <string>
 using namespace frr::domain;
 void require(bool yes,const char* why) {
     if(!yes){std::cerr<<"StreetSprint FAILED: "<<why<<"\n";std::exit(1);}
@@ -47,8 +48,10 @@ int main(){
     }
     {
         StreetSprint sprint;require(sprint.begin(car(-3,0),car(3,0)),"shortcut start");
-        auto v=sprint.tick({car(30,15,100),car(3,15,100),.15f,true,false});
-        require(v.outcome==OutrunOutcome::Aborted,"off-axis lateral corridor rejected");
+        auto v=sprint.tick({car(20,20,100),car(3,20,100),.25f,true,false});
+        require(v.outcome==OutrunOutcome::Aborted &&
+            std::string(v.reason)=="left_shared_corridor",
+            "off-axis lateral corridor rejected independently of teleport");
     }
     {
         StreetSprint sprint;require(sprint.begin(car(-3,0),car(3,0)),"cancel start");
