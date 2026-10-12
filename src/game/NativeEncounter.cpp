@@ -158,7 +158,15 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
         }
     }
     if(ChallengeInputProbe::consumeModeToggle()) {
-        if(nativeEncounterRunning()) interruptNativeEncounter("mode_changed");
+        // Do not switch into legacy Outrun while native ForceStop is still
+        // owned: retry releasing the player first, without losing the lease.
+        if(duelPilotPhase!=DuelPilotPhase::Idle || NativeVehicleFactory::duelStopHeld())
+            clearDuelPilot("MODO PENDENTE - LIBERANDO VEICULOS");
+        if(NativeVehicleFactory::duelStopHeld()) {
+            Log::instance().warn("Challenge mode toggle postponed: native ForceStop lease still held");
+        } else {
+        if(streetSprint.running()) recordSprint(streetSprint.abort("mode_changed"));
+        if(encounter.running()) record(encounter.interrupt("mode_changed"));
         config.nativeStreetDuelPilotEnabled=!config.nativeStreetDuelPilotEnabled;
         modeToggleAt=GetTickCount64();
         duelPilotCue=config.nativeStreetDuelPilotEnabled?
@@ -169,6 +177,7 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
             (config.nativeStreetDuelPilotEnabled?
              "short_physical_sprint_opt_in=1":"legacy_outrun=1")+
             " INI_and_saves_unchanged=1");
+        }
     }
     if(encounter.running()&&(racePlayer!=world.vehicles.playerIVehicle||raceRoad!=world.roadNetwork||raceStatus!=world.raceStatus))
         interruptNativeEncounter("world_identity_changed");
