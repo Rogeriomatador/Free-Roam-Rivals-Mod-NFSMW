@@ -97,6 +97,7 @@ int bootstrap() {
     probeConfig.retireRequireControlShift=config.retireRequireControlShift;
     probeConfig.retireHoldSeconds=config.retireHoldSeconds;
     probeConfig.outrunEnabled=config.outrunEnabled;
+    probeConfig.nativeStreetDuelPilotEnabled=config.nativeStreetDuelPilotEnabled;
     probeConfig.rivalHudEnabled=config.rivalHudEnabled;
     probeConfig.rivalRadarPosition=config.rivalRadarPosition;
     probeConfig.rivalRadarScale=config.rivalRadarScale;
