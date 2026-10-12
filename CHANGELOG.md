@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.0.59-dev — criação do Rico: projeção nativa e recuperação segura
+
+- Corrige bloqueio reproduzido duas vezes no jogo do usuário: `ResetToRoad` teve sucesso, mas deslocamento entre `WRoadNav::fPosition` e centro rígido (3.91031 / 1.87706 unidades do mundo) foi tratado incorretamente como falha fatal por uma comparação de 1 unidade.
+- Nova `NativeRoadPlacement` separa coordenada de navegação e posição rígida final, validando direção, dimensões de carro, componente lateral e longitudinal, diferença vertical e finitude; offsets pequenos são apenas **elegíveis** para a próxima fase, e não autorizam ativação imediata.
+- A etapa `candidateSafe` continua verificando solo sob cinco pontos do footprint REAL, ausência de sobreposição à frota, distância, perseguição, mundo e visibilidade aplicável, antes de liberar `Activate()`. Saltos, sentido contrário e geometrias inválidas são rejeitados.
+- Falhas de posicionamento limitadas podem receber novo F8 **apenas** após remoção confirmada do objeto físico nos dois registros por dois frames, até 2 recuperações/processo. Outros erros nativos continuam bloqueando o processo para prevenir ponteiros inválidos ou dupla criação.
+- Testes unitários de regressão para os dois casos exatos dos logs, direção inversa, deslocamento extremo, altitude e NaN; Win32 CI com CTest. Sem mudança na HUD original, saves, INI, WidescreenFix, ou sistema de desafios v58.
+- **Limite:** não implica que Rico sempre aparecerá ou que desaparecimento/streaming e AI auto-alignment foram corrigidos. Prova final requer execução real do jogo. Veja `docs/NATIVE_ROAD_PLACEMENT_V59.md`.
+
+
 ## v0.0.58-dev — primeira corrida física curta com chegada e resultado
 
 - Implementado `StreetSprint`: após parada/liberação nativa opt-in e largada alinhada, os dois carros cruzam **a mesma linha física** em uma reta de 120 m (configurável 60–500 m). O primeiro a cruzar ganha; empate do mesmo frame é decidido por interpolação. Resultados utilizam o histórico de perfil já existente.
