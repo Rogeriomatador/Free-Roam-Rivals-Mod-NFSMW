@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.0.57-dev — near-pass disappearance diagnostics
+
+- Real v56 log: G ran **Outrun_only**; `NativeDuelPilotEnabled` absent, so no native two-car stopping was requested. Rico disappeared with the last valid reading **7.04 m at 56.08 m/s**, **both** native registries still containing its numeric identity and no verified fatal exception.
+- New *read-only* `NativeOwnedSnapshot` reason codes separate identity failure, missing rigid body, invalid oriented-box geometry, nonfinite speed and other unsafe snapshot states. Captures loaded/spooled flag, observed driver class and activity only after safety checks; adds these facts to the one-time incident log.
+- Corrects the speculative 'stream-unavailable' warning to indicate that the **cause is unproven**; does not spawn a duplicate or mutate an invalid pointer.
+- HUD labels G's original mode **OUTRUN: SEGUIR RICO (SEM LARGADA)**. Opt-in v56 physical stop experiment stays **off by default**. No auto-alignment, scoreable Sprint, or resolved disappearance yet.
+- See `docs/NEAR_PASS_LOSS_V57.md`. ASI-only ZIP preserves WidescreenFix/FixHUD, configs, histories, saved metric and other mods.
+
+
 ## v0.0.56-dev — largada lado a lado, ensaio nativo opt-in
 
 - Novo preset de dominio de **largada sem cutscene**, que exige posse comprovada de controles, restauracao, alinhamento real e liberacao. A contagem so avancara em um adaptador completo depois de provas nativas.

@@ -363,6 +363,13 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
                     << " sameWorldContext=" << owned.contextMatches
                     << " nativeAvailable=" << owned.available
                     << " nativeDestroyed=" << owned.destroyed
+                    << " ownerReadReason=" << (owned.availabilityReason ? owned.availabilityReason : "unavailable")
+                    << " driverClassObserved=" << owned.driverClassObserved
+                    << " nativeDriverClass=" << owned.nativeDriverClass
+                    << " spooledObserved=" << owned.spooledObserved
+                    << " nativeSpooled=" << owned.nativeSpooled
+                    << " nativeActive=" << owned.active
+                    << " nativeLoading=" << owned.loading
                     << " lastReliableDistanceMeters=" << lastDistance
                     << " lastReliableSpeedMps=" << (freshPosition?lastReliableRivalSpeedMps:-1.0f)
                     << " lastSampleAgeMs=" << (lastReliableRivalAt ? now-lastReliableRivalAt : 0)
@@ -390,7 +397,7 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
                 // it or invoke a second constructor with unknown lifetime.
                 if(now-lastAwayWarn>=5000){
                     lastAwayWarn=now;
-                    Log::instance().warn("NativePrototype owner is stream-unavailable: F8 cannot create another car until BOTH registries prove retirement. Auto-cleanup was too late; do not force-clear native ownership.");
+                    Log::instance().warn("NativePrototype physical snapshot unavailable; lifetime/streaming cause NOT established. F8 cannot create another car until BOTH registries prove native owner retirement; never force-clear ownership.");
                 }
             }
             interruptNativeEncounter("rival_native_presence_lost"); encounterDelta=0; challengePending=false;
