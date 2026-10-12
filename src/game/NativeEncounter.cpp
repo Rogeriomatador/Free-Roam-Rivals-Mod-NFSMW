@@ -45,7 +45,7 @@ float duelPilotElapsed=0,duelPilotCountdown=0;
 std::uint64_t duelPilotCueUntil=0;
 const char* duelPilotCue="none";
 domain::EncounterCar duelStartPlayer{},duelStartRival{};
-std::uint64_t lastSprintResultAt=0;
+std::uint64_t lastSprintResultAt=0, modeToggleAt=0;
 domain::OutrunOutcome lastSprintOutcome=domain::OutrunOutcome::InProgress;
 void clearDuelPilot(const char* reason) {
     if(NativeVehicleFactory::duelStopHeld()) NativeVehicleFactory::releaseDuelStop();
@@ -156,6 +156,19 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
             if(loaded.ok) {history=loaded.record;historyWritable=config.persistHistory;}
             else Log::instance().warn("Live rival history load failed; original preserved: "+loaded.error);
         }
+    }
+    if(ChallengeInputProbe::consumeModeToggle()) {
+        if(nativeEncounterRunning()) interruptNativeEncounter("mode_changed");
+        config.nativeStreetDuelPilotEnabled=!config.nativeStreetDuelPilotEnabled;
+        modeToggleAt=GetTickCount64();
+        duelPilotCue=config.nativeStreetDuelPilotEnabled?
+            "MODO SPRINT RETO - CORRIDA COM CHEGADA":
+            "MODO OUTRUN - PERSEGUICAO ANTIGA";
+        duelPilotCueUntil=modeToggleAt+5000;
+        Log::instance().info(std::string("Challenge mode changed via Ctrl+Shift+G: ")+
+            (config.nativeStreetDuelPilotEnabled?
+             "short_physical_sprint_opt_in=1":"legacy_outrun=1")+
+            " INI_and_saves_unchanged=1");
     }
     if(encounter.running()&&(racePlayer!=world.vehicles.playerIVehicle||raceRoad!=world.roadNetwork||raceStatus!=world.raceStatus))
         interruptNativeEncounter("world_identity_changed");
@@ -386,7 +399,9 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
         line(view.lines[4],"TEMPO %.0f S - RIVAL CONTINUA APOS CORRIDA",result.elapsedSeconds);
         view.playerLeading=result.leader==domain::OutrunLeader::Player;view.holdProgress=result.holdProgress;
     } else {
-        if(lastResultAt&&now-lastResultAt<8000) line(view.lines[1],"%s",resultText(lastResult));
+        if(modeToggleAt&&now-modeToggleAt<4000&&!config.nativeStreetDuelPilotEnabled)
+            line(view.lines[1],"MODO OUTRUN ATIVADO - SEGUIR RICO");
+        else if(lastResultAt&&now-lastResultAt<8000) line(view.lines[1],"%s",resultText(lastResult));
         else if(stationary.stationaryLong)
             line(view.lines[1],"RICO QUASE PARADO HA %.0f S",stationary.secondsNearAnchor);
         else line(view.lines[1],"%s / %.0f KM/H",domain::rivalReactionLabel(reaction.state),rival.speed*3.6f);
@@ -467,6 +482,8 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
             line(view.lines[2],"G: INICIAR SPRINT RETO (LADO A LADO)");
         }
     }
+    if(!config.nativeStreetDuelPilotEnabled&&!result.running)
+        line(view.lines[4],"CTRL+SHIFT+G ALTERNA SPRINT / OUTRUN");
     publishNativeRivalHud(view);
 }
 }
