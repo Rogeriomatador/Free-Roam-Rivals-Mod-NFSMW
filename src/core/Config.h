@@ -47,6 +47,7 @@ struct Config {
     float outrunMaxDurationSeconds = 300.0f;
 
     bool stagingEnabled = false;
+    bool nativeStreetDuelPilotEnabled = false;
     float stagingSearchAheadMeters = 160.0f;
     float stagingApproachTimeoutSeconds = 10.0f;
     float stagingAlignmentTimeoutSeconds = 5.0f;
