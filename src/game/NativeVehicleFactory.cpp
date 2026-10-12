@@ -43,6 +43,14 @@ struct Owned {
     std::uint64_t lastAbsenceFrame = 0;
 };
 Owned owned, pending;
+struct DuelStopLease {
+    bool held=false;
+    Context world{};
+    std::uintptr_t player=0, rival=0;
+};
+DuelStopLease duelStop{};
+bool duelStopFaulted=false;
+
 Registry pendingBaseline{};
 std::uint64_t pendingSince=0, pendingLastFrame=0;
 unsigned pendingConfirmations=0;
@@ -879,6 +887,99 @@ NativeFactoryResult NativeVehicleFactory::requestRemoval() {
     owned.removing = true;
     return NativeFactoryResult::RemovalRequested;
 }
+// This opt-in test uses the game's own vehicle ForceStop API, rather than
+// writing physics velocity or applying a fake D3D countdown. It is NOT
+// automatic side-by-side alignment, input custody or a native race event.
+bool NativeVehicleFactory::duelStopHeld() { return duelStop.held; }
+
+bool NativeVehicleFactory::tryAcquireDuelStop() {
+    if (!gameplayThread() || duelStopFaulted || duelStop.held || disabled ||
+        compatibilityRejected || !owned.p || !owned.active) return false;
+    Context context{}; Registry list{};
+    if (!freshWorld(context) || !same(context,owned.context) ||
+        !registry(list) || !pursuitClear(context,list) ||
+        !identity(list,owned,true) || !ownedPursuitClear() ||
+        !contains(list.live,list.liveCount,context.player) ||
+        !contains(list.physical,list.physicalCount,context.playerP)) return false;
+    std::uintptr_t playerVtable=0;
+    if (!copy(context.player,&playerVtable,sizeof(playerVtable)) ||
+        playerVtable!=0x8AA828) return false;
+
+    // The two IVehicle pointers must be distinct, both active, and not under
+    // a previous game's ForceStop. Never clear an unrelated stop lease.
+    bool ok=false;
+#if defined(_MSC_VER)
+    __try {
+#endif
+        auto* player=reinterpret_cast<IVehicle*>(context.player);
+        auto* rival=reinterpret_cast<IVehicle*>(owned.iv);
+        if (context.player!=owned.iv && player->IsActive() && rival->IsActive() &&
+            !player->IsLoading() && !rival->IsLoading() &&
+            !player->IsDestroyed() && !rival->IsDestroyed() &&
+            static_cast<unsigned>(player->GetForceStop())==0u &&
+            static_cast<unsigned>(rival->GetForceStop())==0u) {
+            // Mark ownership BEFORE the first native call so even a partial
+            // failure has a recoverable lease and no duplicate acquisition.
+            duelStop={true,context,context.player,owned.iv};
+            player->ForceStopOn(IVehicle::ForceStopType::ForceStop);
+            rival->ForceStopOn(IVehicle::ForceStopType::ForceStop);
+            ok=(static_cast<unsigned>(player->GetForceStop())&1u)!=0u &&
+               (static_cast<unsigned>(rival->GetForceStop())&1u)!=0u;
+        }
+#if defined(_MSC_VER)
+    } __except (captureNativeException(GetExceptionInformation())) {
+        duelStopFaulted=true;
+        ok=false;
+    }
+#endif
+    if (!ok && duelStop.held) {
+        // Retry the same checked owner, but never construct/kill a replacement.
+        releaseDuelStop();
+    }
+    if (ok) Log::instance().warn(
+        "DuelPilot native ForceStop held both verified cars: experimental; NO native input block, route or win scoring.");
+    return ok;
+}
+
+bool NativeVehicleFactory::releaseDuelStop() {
+    if (!duelStop.held) return true;
+    if (!gameplayThread()) return false;
+    Context context{}; Registry list{};
+    if (!freshWorld(context) || !same(context,duelStop.world) ||
+        !registry(list) ||
+        !contains(list.live,list.liveCount,duelStop.player) ||
+        !contains(list.live,list.liveCount,duelStop.rival) ||
+        !contains(list.physical,list.physicalCount,context.playerP) ||
+        !contains(list.physical,list.physicalCount,owned.p) ||
+        !identity(list,owned,true)) return false;
+    std::uintptr_t playerVtable=0;
+    if (!copy(duelStop.player,&playerVtable,sizeof(playerVtable)) ||
+        playerVtable!=0x8AA828) return false;
+    bool ok=false;
+#if defined(_MSC_VER)
+    __try {
+#endif
+        auto* player=reinterpret_cast<IVehicle*>(duelStop.player);
+        auto* rival=reinterpret_cast<IVehicle*>(duelStop.rival);
+        player->ForceStopOff(IVehicle::ForceStopType::ForceStop);
+        rival->ForceStopOff(IVehicle::ForceStopType::ForceStop);
+        ok=(static_cast<unsigned>(player->GetForceStop())&1u)==0u &&
+           (static_cast<unsigned>(rival->GetForceStop())&1u)==0u;
+#if defined(_MSC_VER)
+    } __except (captureNativeException(GetExceptionInformation())) {
+        duelStopFaulted=true;
+        ok=false;
+    }
+#endif
+    if (ok) {
+        duelStop={};
+        Log::instance().info("DuelPilot release confirmed on BOTH vehicles; default player input never modified.");
+    } else {
+        Log::instance().warn("DuelPilot release not yet confirmed: retaining owner lease, never inventing successful restoration.");
+    }
+    return ok;
+}
+
 NativeOwnedPresenceAudit NativeVehicleFactory::auditOwnedPresenceReadOnly() {
     NativeOwnedPresenceAudit result{};
     result.ownerRecorded=owned.p!=0 && owned.iv!=0;
