@@ -6,6 +6,7 @@ struct RuntimeSnapshot;
 struct NativeOwnedSnapshot;
 struct NativeEncounterConfig {
     bool enabled=false,hudEnabled=true,persistHistory=true;
+    bool nativeStreetDuelPilotEnabled=false;
     float challengeDistanceMeters=60;
     int radarPosition=2;
     float radarScale=1.0f;
