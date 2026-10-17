@@ -14,6 +14,9 @@ struct NativeEncounterConfig {
     domain::OutrunTuning tuning{};
 };
 void configureNativeEncounter(const NativeEncounterConfig& config);
+// Called once per verified post-update callback, even before Rico exists.
+// Consumes explicit Ctrl+Shift+G only; never mutates world objects.
+void pollNativeEncounterModeToggle();
 void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot& rival,
     const domain::WorldMetricCalibration& metric,float deltaSeconds,bool challengePressed);
 void interruptNativeEncounter(const char* reason="world_unsafe");
