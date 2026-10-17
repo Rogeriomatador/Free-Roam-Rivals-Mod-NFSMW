@@ -262,6 +262,10 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
     keyWasDown=down;
     bool challengeEdge=false;
     while (ChallengeInputProbe::consumePress()) challengeEdge=true;
+    // The original v58 toggle only worked while Rico was active.
+    // Allow explicit session mode selection in normal Free Roam BEFORE F8;
+    // this neither constructs vehicles nor changes INI/saves.
+    pollNativeEncounterModeToggle();
     if (!std::isfinite(updateDelta) || updateDelta<=0) { challengePending=false; cleanupHold=0; cleanupLatched=false; return; }
     const bool focused=foregroundProcess==GetCurrentProcessId();
     if(challengeEdge&&stage!=Stage::Active) Log::instance().info(std::string("LiveEncounter challenge rejected reason=rival_not_active stage=")+stageName(stage));
