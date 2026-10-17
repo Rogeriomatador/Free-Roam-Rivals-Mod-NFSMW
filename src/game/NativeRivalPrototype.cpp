@@ -249,7 +249,7 @@ void configureNativeRivalPrototype(bool requested, bool nearPlayer, unsigned ret
     }
     if (enabled && nearPlayerDebug) Log::instance().warn("NativePrototype near-player debug enabled: visible creation allowed at 20-120m; road, ground, clearance and pursuit checks retained; cleanup still hidden/300m.");
     if (requested) Log::instance().info(enabled ?
-        "NativePrototype armed: F8 requests one stock Golf GTI; manual retirement disabled by default; optional configured key/modifiers/hold request safe cleanup. Native roaming driving observed in v41; challenge integration requires in-game validation." :
+        "NativePrototype armed: F8 requests one guarded stock Golf GTI in Free Roam. Optional configured key/modifiers/hold request safe cleanup. Native driving has been observed; persistent vehicle lifetime and Sprint remain in-game experimental." :
         "NativePrototype blocked: exact supported executable and unchanged world-collision entry required.");
 }
 void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float updateDelta) {
