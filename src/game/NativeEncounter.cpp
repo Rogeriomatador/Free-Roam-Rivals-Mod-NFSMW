@@ -400,12 +400,12 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
             line(view.lines[1],"%s",lastOvertakeLeader==domain::OutrunLeader::Player?
                 "VOCE ULTRAPASSOU RICO":"RICO ULTRAPASSOU VOCE");
         else line(view.lines[1],"OUTRUN LIVRE - %s",result.leader==domain::OutrunLeader::Player?"VOCE LIDERA":"RICO LIDERA");
-        line(view.lines[2],"VANTAGEM %.0f / %.0f METROS",std::abs(result.signedLeadMeters),config.tuning.winLeadMeters);
+        line(view.lines[2],"DISTANCIA %.0f / %.0f METROS",std::abs(result.signedLeadMeters),config.tuning.winLeadMeters);
         line(view.lines[3],"%s",
-            !result.routeMatched?"TRILHA DIFERENTE - REENCONTRE A ROTA":
+            !result.routeMatched?"TRILHA PERDIDA - VALE DISTANCIA FISICA":
             result.observedTrailCueValid?"SETA AMARELA = TRILHA REAL DO RICO":
             "MESMA TRAJETORIA - MANTENHA A VANTAGEM");
-        line(view.lines[4],"TEMPO %.0f S - RIVAL CONTINUA APOS CORRIDA",result.elapsedSeconds);
+        line(view.lines[4],"TEMPO %.0f S - GANHA AO ABRIR %.0f M",result.elapsedSeconds,config.tuning.winLeadMeters);
         view.playerLeading=result.leader==domain::OutrunLeader::Player;view.holdProgress=result.holdProgress;
     } else {
         if(modeToggleAt&&now-modeToggleAt<4000&&!config.nativeStreetDuelPilotEnabled)
