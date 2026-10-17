@@ -112,6 +112,7 @@ jobs:
           Copy-Item "docs/PHYSICAL_STREET_SPRINT_V58.md" "$pkg/PHYSICAL_STREET_SPRINT_V58.md"
           Copy-Item "docs/NATIVE_ROAD_PLACEMENT_V59.md" "$pkg/NATIVE_ROAD_PLACEMENT_V59.md"
           Copy-Item "docs/PLAYABLE_OUTRUN_RECOVERY_V60.md" "$pkg/PLAYABLE_OUTRUN_RECOVERY_V60.md"
+          Copy-Item "docs/ASI_RELEASE_AUDIT_V61.md" "$pkg/ASI_RELEASE_AUDIT_V61.md"
           Copy-Item "config/Rivals.ini" "$pkg/scripts/FreeRoamRivals/Rivals.ini"
           Copy-Item "config/VehiclePools.ini" "$pkg/scripts/FreeRoamRivals/VehiclePools.ini"
           Copy-Item "config/UndergroundBlacklist.ini" "$pkg/scripts/FreeRoamRivals/UndergroundBlacklist.ini"
@@ -239,6 +240,7 @@ jobs:
           Copy-Item "docs/PHYSICAL_STREET_SPRINT_V58.md" "$upgrade/PHYSICAL_STREET_SPRINT_V58.md"
           Copy-Item "docs/NATIVE_ROAD_PLACEMENT_V59.md" "$upgrade/NATIVE_ROAD_PLACEMENT_V59.md"
           Copy-Item "docs/PLAYABLE_OUTRUN_RECOVERY_V60.md" "$upgrade/PLAYABLE_OUTRUN_RECOVERY_V60.md"
+          Copy-Item "docs/ASI_RELEASE_AUDIT_V61.md" "$upgrade/ASI_RELEASE_AUDIT_V61.md"
           @"
           FREE ROAM RIVALS v0.0.61-dev - EXISTING INSTALLATION UPGRADE
 
@@ -320,7 +322,8 @@ jobs:
               "NEAR_PASS_LOSS_V57.md",
               "PHYSICAL_STREET_SPRINT_V58.md",
               "NATIVE_ROAD_PLACEMENT_V59.md",
-              "PLAYABLE_OUTRUN_RECOVERY_V60.md"
+              "PLAYABLE_OUTRUN_RECOVERY_V60.md",
+              "ASI_RELEASE_AUDIT_V61.md"
             )
             foreach ($item in $required) {
               if ($names -cnotcontains $item) { throw "Missing package entry: $item" }
@@ -342,7 +345,7 @@ jobs:
           $upgradeZip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $upgradePath).Path)
           try {
             $upgradeNames = @($upgradeZip.Entries | ForEach-Object { $_.FullName.Replace("\\","/") })
-            foreach ($item in @("scripts/FreeRoamRivals.asi","scripts/FreeRoamRivals/FreeRoamRivals.ini","INSTALAR-ATUALIZACAO.txt","RIVAL_REACTIONS_V45.md","PERSISTENT_WORLD_METRIC_V46.md","NATIVE_ASSET_INVENTORY_V47.md","GUARDED_REENCOUNTER_V48.md","ROAD_RESET_EVIDENCE_V49.md","VISIBLE_PROTOTYPE_V50.md","RICO_AHEAD_SPAWN_V51.md","RICO_HUD_AND_STUCK_V52.md","HUD_X360_RACE_STAGING_V53.md","FRR_ONLY_UPDATE_V54.md","STREET_DUEL_NO_CUTSCENE_V56_FOUNDATION.md","NEAR_PASS_LOSS_V57.md","PHYSICAL_STREET_SPRINT_V58.md","NATIVE_ROAD_PLACEMENT_V59.md","PLAYABLE_OUTRUN_RECOVERY_V60.md")) {
+            foreach ($item in @("scripts/FreeRoamRivals.asi","scripts/FreeRoamRivals/FreeRoamRivals.ini","INSTALAR-ATUALIZACAO.txt","RIVAL_REACTIONS_V45.md","PERSISTENT_WORLD_METRIC_V46.md","NATIVE_ASSET_INVENTORY_V47.md","GUARDED_REENCOUNTER_V48.md","ROAD_RESET_EVIDENCE_V49.md","VISIBLE_PROTOTYPE_V50.md","RICO_AHEAD_SPAWN_V51.md","RICO_HUD_AND_STUCK_V52.md","HUD_X360_RACE_STAGING_V53.md","FRR_ONLY_UPDATE_V54.md","STREET_DUEL_NO_CUTSCENE_V56_FOUNDATION.md","NEAR_PASS_LOSS_V57.md","PHYSICAL_STREET_SPRINT_V58.md","NATIVE_ROAD_PLACEMENT_V59.md","PLAYABLE_OUTRUN_RECOVERY_V60.md","ASI_RELEASE_AUDIT_V61.md")) {
               if ($upgradeNames -cnotcontains $item) { throw "Upgrade missing: $item" }
             }
             foreach ($item in $upgradeNames) {
