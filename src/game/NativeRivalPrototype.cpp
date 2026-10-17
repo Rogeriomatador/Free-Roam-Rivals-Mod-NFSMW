@@ -50,6 +50,7 @@ float lastReliableRivalDistanceMeters=-1.0f;
 float lastReliableRivalSpeedMps=-1.0f;
 std::uint64_t lastReliableRivalAt=0;
 bool suddenLossReported=false;
+std::uint64_t transientHandleGapSince=0;
 
 const char* stageName(Stage s) {
     switch (s) {
@@ -65,7 +66,7 @@ void transition(Stage next) {
     if (next!=Stage::Active) { interruptNativeEncounter(); encounterDelta=0; challengePending=false; }
     stage = next; stageStarted = GetTickCount64(); lastBlock.clear();
     if(next==Stage::Active) {
-        suddenLossReported=false;lastReliableRivalAt=0;
+        suddenLossReported=false;transientHandleGapSince=0;lastReliableRivalAt=0;
         lastReliableRivalDistanceMeters=-1.0f;lastReliableRivalSpeedMps=-1.0f;
     }
     Log::instance().info(std::string("NativePrototype stage=") + stageName(next) + " maxOwned=1 gameplayCallback=1");
@@ -389,6 +390,30 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
                     << " unsafeToForceRespawn=1";
                 Log::instance().warn(incident.str());
             }
+            // The game can momentarily publish a new simable handle while
+            // both proven registries still own the old physical pointers.
+            // Allow a BRIEF Outrun-only grace, never an owner token rewrite or
+            // duplicate spawn. If original identity returns, rebase the
+            // observed trail with NO elapsed-gap scoring; otherwise abort.
+            if (owned.owned && owned.contextMatches && !owned.destroyed &&
+                owned.availabilityReason &&
+                !std::strcmp(owned.availabilityReason,"simable_handle") &&
+                lastReliableRivalAt && now>=lastReliableRivalAt &&
+                now-lastReliableRivalAt<=2000) {
+                const auto registry=NativeVehicleFactory::auditOwnedPresenceReadOnly();
+                if(registry.contextVerified && registry.registryVerified &&
+                   registry.livePresent && registry.physicalPresent &&
+                   suspendNativeOutrunForTransientIdentityLoss()) {
+                    if(!transientHandleGapSince) transientHandleGapSince=now;
+                    if(now-transientHandleGapSince<=1250) {
+                        encounterDelta=0; challengePending=false;
+                        showNativeRivalStatus("RICO: IDENTIDADE EM TRANSICAO",
+                            "OUTRUN PAUSADO - SEM PONTUACAO");
+                        return;
+                    }
+                }
+            }
+            transientHandleGapSince=0;
             const auto external=NativeVehicleFactory::observeExternalRemoval();
             if (external==NativeFactoryResult::RemovedByEngine) {
                 Log::instance().warn("NativePrototype native engine retired the vehicle; mod cleanup was not executed; lifetimeProven=0");
@@ -411,6 +436,7 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
             Log::instance().info("NativePrototype physical snapshot became available again without construction; nativeOwnerReused=1");
             suddenLossReported=false;
         }
+        transientHandleGapSince=0;
         if(current.playerMotion.position.finite && owned.box.valid &&
             validWorldMetricCalibration(metric)) {
             const auto m=worldUnitsToMeters(distance(owned.box.center,
