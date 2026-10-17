@@ -34,6 +34,36 @@ jobs:
       - name: Diagnostic bundle collector tests
         run: python -m unittest discover -s tests -p test_diagnostic_bundle.py
 
+      - name: Verify ASI imports and embedded Win32 version
+        shell: pwsh
+        run: |
+          $asi = Get-ChildItem -Path build -Recurse -Filter FreeRoamRivals.asi | Select-Object -First 1
+          if (-not $asi) { throw "Win32 ASI missing" }
+          python tools/audit_asi_pe.py $asi.FullName
+          if ($LASTEXITCODE -ne 0) { throw "PE/CRT audit failed" }
+          $version = (Get-Item $asi.FullName).VersionInfo
+          if ($version.FileVersion -notlike "*0.0.61*") { throw "VERSIONINFO FileVersion missing or mismatched: $($version.FileVersion)" }
+          if ($version.ProductVersion -notlike "*0.0.61*") { throw "VERSIONINFO ProductVersion missing or mismatched: $($version.ProductVersion)" }
+          Write-Output "Confirmed PE32, static runtime imports and Explorer VERSIONINFO."
+          
+      - name: Collect debug symbols without mixing into ASI-only
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force debugging | Out-Null
+          foreach ($filename in @("FreeRoamRivals.pdb","FreeRoamRivals.map")) {
+            $source = "build/$filename"
+            if (!(Test-Path $source)) { throw "Missing linker output: $filename" }
+            Copy-Item $source "debugging/$filename"
+          }
+          Get-ChildItem debugging
+
+      - name: Upload debug symbols artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FreeRoamRivals-Win32-DebugSymbols-v61
+          path: debugging/*
+          if-no-files-found: error
+
       - name: Collect ASI
         shell: pwsh
         run: |
@@ -55,6 +85,9 @@ jobs:
         run: |
           $pkg = "release/package"
           New-Item -ItemType Directory -Force "$pkg/scripts/FreeRoamRivals" | Out-Null
+          # Symbols are a SEPARATE opt-in download. Never put them in any
+          # installation archive, especially the strictly two-file ASI-only.
+          Compress-Archive -Path "debugging/*" -DestinationPath "release/FreeRoamRivals-v0.0.61-dev-symbols.zip" -Force
 
           Copy-Item "artifact/FreeRoamRivals.asi" "$pkg/scripts/FreeRoamRivals.asi"
           # The main ZIP is plug-and-play: the PLAY preset is already the active INI.
@@ -79,6 +112,7 @@ jobs:
           Copy-Item "docs/PHYSICAL_STREET_SPRINT_V58.md" "$pkg/PHYSICAL_STREET_SPRINT_V58.md"
           Copy-Item "docs/NATIVE_ROAD_PLACEMENT_V59.md" "$pkg/NATIVE_ROAD_PLACEMENT_V59.md"
           Copy-Item "docs/PLAYABLE_OUTRUN_RECOVERY_V60.md" "$pkg/PLAYABLE_OUTRUN_RECOVERY_V60.md"
+          Copy-Item "docs/ASI_RELEASE_AUDIT_V61.md" "$pkg/ASI_RELEASE_AUDIT_V61.md"
           Copy-Item "config/Rivals.ini" "$pkg/scripts/FreeRoamRivals/Rivals.ini"
           Copy-Item "config/VehiclePools.ini" "$pkg/scripts/FreeRoamRivals/VehiclePools.ini"
           Copy-Item "config/UndergroundBlacklist.ini" "$pkg/scripts/FreeRoamRivals/UndergroundBlacklist.ini"
@@ -108,7 +142,7 @@ jobs:
           Copy-Item "docs/NATIVE_ROAMING_STREAMING_RESEARCH.md" "$pkg/NATIVE_ROAMING_STREAMING_RESEARCH.md"
 
           @"
-          NFSMW Free Roam Rivals v0.0.60-dev
+          NFSMW Free Roam Rivals v0.0.61-dev
 
           INSTALL:
           1. BACK UP scripts\FreeRoamRivals\FreeRoamRivals.ini if it contains
@@ -182,7 +216,7 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.60-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.61-dev.zip" -Force
 
           # Minimal update for existing v45 installations: preserve Rivals.ini,
           # VehiclePools.ini, UndergroundBlacklist.ini and all saved history.
@@ -206,8 +240,9 @@ jobs:
           Copy-Item "docs/PHYSICAL_STREET_SPRINT_V58.md" "$upgrade/PHYSICAL_STREET_SPRINT_V58.md"
           Copy-Item "docs/NATIVE_ROAD_PLACEMENT_V59.md" "$upgrade/NATIVE_ROAD_PLACEMENT_V59.md"
           Copy-Item "docs/PLAYABLE_OUTRUN_RECOVERY_V60.md" "$upgrade/PLAYABLE_OUTRUN_RECOVERY_V60.md"
+          Copy-Item "docs/ASI_RELEASE_AUDIT_V61.md" "$upgrade/ASI_RELEASE_AUDIT_V61.md"
           @"
-          FREE ROAM RIVALS v0.0.60-dev - EXISTING INSTALLATION UPGRADE
+          FREE ROAM RIVALS v0.0.61-dev - EXISTING INSTALLATION UPGRADE
 
           BACK UP your customized scripts\FreeRoamRivals\FreeRoamRivals.ini.
           Extract this ZIP to the existing NFSMW folder containing speed.exe,
@@ -227,27 +262,38 @@ jobs:
           steering and acceleration remain unchanged. In-game test pending.
           The game must be closed while replacing these files.
           "@ | Set-Content "$upgrade/INSTALAR-ATUALIZACAO.txt" -Encoding UTF8
-          Compress-Archive -Path "$upgrade/*" -DestinationPath "release/FreeRoamRivals-v0.0.60-dev-upgrade.zip" -Force
+          Compress-Archive -Path "$upgrade/*" -DestinationPath "release/FreeRoamRivals-v0.0.61-dev-upgrade.zip" -Force
 
           # This separate update contains ONLY our binary and one text guide.
           # It cannot overwrite the user's custom INI or WidescreenFix FixHUD.
           $asiOnly = "release/asi-only"
           New-Item -ItemType Directory -Force "$asiOnly/scripts" | Out-Null
           Copy-Item "artifact/FreeRoamRivals.asi" "$asiOnly/scripts/FreeRoamRivals.asi"
+          $asiSha256 = (Get-FileHash -Path "artifact/FreeRoamRivals.asi" -Algorithm SHA256).Hash.ToLowerInvariant()
           @"
-          Free Roam Rivals v0.0.60-dev - ASI ONLY
-          Close the game and back up scripts\FreeRoamRivals.asi.
-          Extract to the game root beside speed.exe.
-          Replace ONLY scripts\FreeRoamRivals.asi.
-          Nothing else is changed. WidescreenFix FixHUD=1 is preserved.
-          Your existing FRR INI, save history and metric are untouched.
+          Free Roam Rivals v0.0.61-dev — SOMENTE ASI
+
+          INSTALACAO (Windows, Need for Speed Most Wanted 2005):
+          1. Feche o jogo e faca backup de scripts\FreeRoamRivals.asi e dos saves.
+          2. Extraia na pasta do jogo, ao lado de speed.exe.
+          3. Substitua APENAS scripts\FreeRoamRivals.asi.
+          4. Nao altere seu WidescreenFix FixHUD=1 nem INIs personalizados.
+
+          Versao de arquivo (Propriedades do Windows): 0.0.61-dev
+          SHA-256 do FreeRoamRivals.asi: $asiSha256
+          Dependencias: esta ASI usa MSVC CRT estatico (/MT), com imports
+          verificados no CI. Outros ASIs/mods podem exigir VC++ x86 proprio.
+          PDB e MAP ficam SOMENTE no pacote separado de simbolos e no CI.
+          Os arquivos FRR INI, historico e metrica existentes NAO sao tocados.
+          Limite: Rico ainda pode perder a identidade nativa; Sprint e
+          alinhamento automatico nao estao comprovados no jogo.
           "@ | Set-Content "$asiOnly/INSTALAR-ASI-SOMENTE.txt" -Encoding UTF8
-          Compress-Archive -Path "$asiOnly/*" -DestinationPath "release/FreeRoamRivals-v0.0.60-dev-asi-only.zip" -Force
+          Compress-Archive -Path "$asiOnly/*" -DestinationPath "release/FreeRoamRivals-v0.0.61-dev-asi-only.zip" -Force
 
       - name: Verify ready-to-install package
         shell: pwsh
         run: |
-          $path = "release/FreeRoamRivals-v0.0.60-dev.zip"
+          $path = "release/FreeRoamRivals-v0.0.61-dev.zip"
           if (!(Test-Path $path)) { throw "Install ZIP is missing" }
           Add-Type -AssemblyName System.IO.Compression
           $zip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $path).Path)
@@ -276,7 +322,8 @@ jobs:
               "NEAR_PASS_LOSS_V57.md",
               "PHYSICAL_STREET_SPRINT_V58.md",
               "NATIVE_ROAD_PLACEMENT_V59.md",
-              "PLAYABLE_OUTRUN_RECOVERY_V60.md"
+              "PLAYABLE_OUTRUN_RECOVERY_V60.md",
+              "ASI_RELEASE_AUDIT_V61.md"
             )
             foreach ($item in $required) {
               if ($names -cnotcontains $item) { throw "Missing package entry: $item" }
@@ -293,12 +340,12 @@ jobs:
             if (!$ini.Contains($setting)) { throw "Play INI missing $setting" }
           }
           if ($ini.Contains("RetireRivalKey=0" + [char]10)) { throw "Manual retirement was silently disabled" }
-          $upgradePath = "release/FreeRoamRivals-v0.0.60-dev-upgrade.zip"
+          $upgradePath = "release/FreeRoamRivals-v0.0.61-dev-upgrade.zip"
           if (!(Test-Path $upgradePath)) { throw "Upgrade ZIP is missing" }
           $upgradeZip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $upgradePath).Path)
           try {
             $upgradeNames = @($upgradeZip.Entries | ForEach-Object { $_.FullName.Replace("\\","/") })
-            foreach ($item in @("scripts/FreeRoamRivals.asi","scripts/FreeRoamRivals/FreeRoamRivals.ini","INSTALAR-ATUALIZACAO.txt","RIVAL_REACTIONS_V45.md","PERSISTENT_WORLD_METRIC_V46.md","NATIVE_ASSET_INVENTORY_V47.md","GUARDED_REENCOUNTER_V48.md","ROAD_RESET_EVIDENCE_V49.md","VISIBLE_PROTOTYPE_V50.md","RICO_AHEAD_SPAWN_V51.md","RICO_HUD_AND_STUCK_V52.md","HUD_X360_RACE_STAGING_V53.md","FRR_ONLY_UPDATE_V54.md","STREET_DUEL_NO_CUTSCENE_V56_FOUNDATION.md","NEAR_PASS_LOSS_V57.md","PHYSICAL_STREET_SPRINT_V58.md","NATIVE_ROAD_PLACEMENT_V59.md","PLAYABLE_OUTRUN_RECOVERY_V60.md")) {
+            foreach ($item in @("scripts/FreeRoamRivals.asi","scripts/FreeRoamRivals/FreeRoamRivals.ini","INSTALAR-ATUALIZACAO.txt","RIVAL_REACTIONS_V45.md","PERSISTENT_WORLD_METRIC_V46.md","NATIVE_ASSET_INVENTORY_V47.md","GUARDED_REENCOUNTER_V48.md","ROAD_RESET_EVIDENCE_V49.md","VISIBLE_PROTOTYPE_V50.md","RICO_AHEAD_SPAWN_V51.md","RICO_HUD_AND_STUCK_V52.md","HUD_X360_RACE_STAGING_V53.md","FRR_ONLY_UPDATE_V54.md","STREET_DUEL_NO_CUTSCENE_V56_FOUNDATION.md","NEAR_PASS_LOSS_V57.md","PHYSICAL_STREET_SPRINT_V58.md","NATIVE_ROAD_PLACEMENT_V59.md","PLAYABLE_OUTRUN_RECOVERY_V60.md","ASI_RELEASE_AUDIT_V61.md")) {
               if ($upgradeNames -cnotcontains $item) { throw "Upgrade missing: $item" }
             }
             foreach ($item in $upgradeNames) {
@@ -313,7 +360,7 @@ jobs:
           # Explicitly block bundled third-party fixes, the base executable
           # and non-FRR textures/shaders in all archive variants.
           $deny = '(?i)(^|/)(speed\.exe|dinput8\.dll|[^/]*widescreenfix[^/]*|[^/]*x360stuff[^/]*|[^/]*xtendedinput[^/]*|[^/]*\.tpk|[^/]*\.dds|[^/]*\.hlsl)$'
-          foreach ($candidate in @("release/FreeRoamRivals-v0.0.60-dev.zip","release/FreeRoamRivals-v0.0.60-dev-upgrade.zip","release/FreeRoamRivals-v0.0.60-dev-asi-only.zip")) {
+          foreach ($candidate in @("release/FreeRoamRivals-v0.0.61-dev.zip","release/FreeRoamRivals-v0.0.61-dev-upgrade.zip","release/FreeRoamRivals-v0.0.61-dev-asi-only.zip")) {
             $z = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $candidate).Path)
             try {
               foreach ($entry in $z.Entries) {
@@ -322,7 +369,18 @@ jobs:
               }
             } finally { $z.Dispose() }
           }
-          $only = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path "release/FreeRoamRivals-v0.0.60-dev-asi-only.zip").Path)
+          $expectedAsiHash = (Get-FileHash -Path "artifact/FreeRoamRivals.asi" -Algorithm SHA256).Hash.ToLowerInvariant()
+          if (-not (Get-Content "release/asi-only/INSTALAR-ASI-SOMENTE.txt" -Raw).Contains($expectedAsiHash)) {
+            throw "ASI-only README must include the real SHA-256 of the binary"
+          }
+          $symbols = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path "release/FreeRoamRivals-v0.0.61-dev-symbols.zip").Path)
+          try {
+            $symbolNames = @($symbols.Entries | ForEach-Object { $_.FullName })
+            foreach ($name in @("FreeRoamRivals.pdb","FreeRoamRivals.map")) {
+              if ($symbolNames -cnotcontains $name) { throw "Symbols ZIP missing $name" }
+            }
+          } finally { $symbols.Dispose() }
+          $only = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path "release/FreeRoamRivals-v0.0.61-dev-asi-only.zip").Path)
           try {
             $items = @($only.Entries | ForEach-Object { $_.FullName.Replace([char]92,"/") } | Where-Object { -not $_.EndsWith("/") })
             $expected = @("scripts/FreeRoamRivals.asi","INSTALAR-ASI-SOMENTE.txt")
@@ -335,25 +393,27 @@ jobs:
       - name: Upload ready-to-install ZIP artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FreeRoamRivals-ReadyToInstall-v60
+          name: FreeRoamRivals-ReadyToInstall-v61
           path: |
-            release/FreeRoamRivals-v0.0.60-dev.zip
-            release/FreeRoamRivals-v0.0.60-dev-upgrade.zip
-            release/FreeRoamRivals-v0.0.60-dev-asi-only.zip
+            release/FreeRoamRivals-v0.0.61-dev.zip
+            release/FreeRoamRivals-v0.0.61-dev-upgrade.zip
+            release/FreeRoamRivals-v0.0.61-dev-asi-only.zip
+            release/FreeRoamRivals-v0.0.61-dev-symbols.zip
           if-no-files-found: error
 
-      - name: Publish v0.0.60-dev GitHub Release
+      - name: Publish v0.0.61-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.60-dev"
+          $tag = "v0.0.61-dev"
 
           $files = @(
-            "release/FreeRoamRivals-v0.0.60-dev.zip",
-            "release/FreeRoamRivals-v0.0.60-dev-upgrade.zip",
-            "release/FreeRoamRivals-v0.0.60-dev-asi-only.zip"
+            "release/FreeRoamRivals-v0.0.61-dev.zip",
+            "release/FreeRoamRivals-v0.0.61-dev-upgrade.zip",
+            "release/FreeRoamRivals-v0.0.61-dev-asi-only.zip",
+            "release/FreeRoamRivals-v0.0.61-dev-symbols.zip"
           )
           $published = $false
           for ($attempt = 1; $attempt -le 3; $attempt++) {
@@ -375,9 +435,9 @@ jobs:
             } else {
               gh release create $tag $files `
                 --target "${{ github.sha }}" `
-                --title "Free Roam Rivals v0.0.60-dev" `
+                --title "Free Roam Rivals v0.0.61-dev" `
                 --prerelease `
-                --notes "v0.0.60-dev: Jogabilidade de Outrun aprimorada. Carros reais vencem somente ao abrir distancia FISICA de 300m confirmada, e desvio de trajetoria de Rockport nao cancela disputa em 3s nem cria vitoria por atalhos virtuais. Guia amarelo apenas da rota realmente observada. Curta falha simable_handle em AMBAS as listas nativas pode suspender a contagem ate 1.25s; se mesmo owner voltar, reinicia trilha/hold sem teleporte ou premio durante gap, caso contrario interrompe sem duplicar. Ctrl+Shift+G agora alterna Sprint/Outrun mesmo antes de F8; HUD distingue V,D,AB. Preserva v59 road projection, sem mudar saves/INI/WidescreenFix. Nao cura definitivamente desaparecimento fisico e nao e Sprint nativo. Testar com backup; ASI-only recomendado."
+                --notes "v0.0.61-dev: correcoes de distribuicao auditaveis. O ASI Win32 agora usa MSVC CRT estatico /MT com auditoria dos imports reais, VERSIONINFO visivel no Explorer, versao atualizada nos logs, e TXT de instalacao em portugues com hash SHA-256 real. Linker gera simbolos completos PDB e mapa MAP para analisar enderecos de excecoes; simbolos sao oferecidos somente em download opcional SEPARADO e artefato CI. O ASI-only preserva exatamente dois arquivos, nao sobrescreve INI/saves/WidescreenFix e nao contem simbolos. O handler vetorizado existente e preso ao processo por pin intencional. Esta atualizacao NAO promete curar o desaparecimento de Rico nem Sprint nativo; teste in-game e backup permanecem necessarios."
             }
             if ($LASTEXITCODE -eq 0) { $published = $true; break }
             if ($attempt -lt 3) { Start-Sleep -Seconds 5 }

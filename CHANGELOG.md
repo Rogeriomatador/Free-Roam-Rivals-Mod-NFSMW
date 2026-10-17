@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.0.61-dev — correções da auditoria do binário e distribuição
+
+- ASI Release Win32 compilado com MSVC CRT estático **/MT**; CI examina os imports PE32 reais e rejeita `MSVCP140[_2].dll`, `VCRUNTIME140[_1].dll` e UCRT importado diretamente. Dependências de terceiros permanecem responsabilidade de cada mod.
+- Geração de `FreeRoamRivals.pdb` com símbolos Release completos e `FreeRoamRivals.map` (/Zi /DEBUG:FULL /MAP) para traduzir offsets capturados em `NativeExceptions.log`. Disponíveis no artefato Actions e como pacote de símbolos **separado**; não entram no ASI-only.
+- Recurso Windows VERSIONINFO com `FileVersion`/`ProductVersion` derivado do CMake; CI lê as propriedades do arquivo no Windows.
+- `INSTALAR-ASI-SOMENTE.txt` em português com SHA-256 calculado a partir do ASI real, instruções de instalação e limites honestos; CI garante exatamente dois arquivos dentro do ASI-only e que SHA corresponde ao binário.
+- Mensagens antigas sobre `v0.0.43-dev` e `v41` removidas dos textos emitidos em execução: startup descreve o comportamento atual.
+- Auditoria de imports: o handler vetorizado foi intencionalmente fixado pelo módulo com `GetModuleHandleExW(...PIN)`, e `MinHook` contém a sequência de suspensão/liberação de threads para aplicar hooks. Sem evidência de deadlock nos logs compartilhados; não se alterou o funcionamento desses hooks.
+- Nenhuma mudança funcional intencional na IA, no `simable_handle`, na permanência de Rico ou na prova Sprint experimental. Consulte `docs/ASI_RELEASE_AUDIT_V61.md`.
+
+
 ## v0.0.60-dev — corridas Outrun mais jogáveis e tolerância curta a perda de leitura
 
 - Logs reais v59 em 17/10: Rico foi ativado e dirigiu por mais de três minutos; três Outruns terminaram em `route_unmatched`, `world_identity_changed` e `simable_handle`. Corrige-se o primeiro sintoma, mantendo proteção para os outros.

@@ -14,7 +14,7 @@
 namespace frr {
 
 constexpr const char* kName = "NFSMW Free Roam Rivals";
-constexpr const char* kVersion = "0.0.60-dev";
+constexpr const char* kVersion = "0.0.61-dev";
 
 int bootstrap() {
     auto& log = Log::instance();
@@ -155,7 +155,7 @@ int bootstrap() {
     }
 
     log.info(
-        "v0.0.43-dev converts native fixed-millisecond frame ticks to callback seconds; keeps original stack word unchanged. Manual retirement defaults off; G refusals and race interruption reasons are recorded."
+        "Game loop uses verified fixed-millisecond-to-second conversion without modifying the original stack argument; optional native features remain guarded by world and vehicle identity."
     );
 
     return NFSMW_OK;
@@ -165,7 +165,7 @@ int bootstrap() {
 
 NFSMW_PLUGIN_DECLARE(
     "Free Roam Rivals",
-    "0.0.60-dev",
+    "0.0.61-dev",
     "Rogeriomatador"
 )
 
