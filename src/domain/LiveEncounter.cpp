@@ -35,7 +35,8 @@ bool continuous(const EncounterCar& old,const EncounterCar& next,float dt) {
 }
 }
 LiveEncounter::LiveEncounter(OutrunTuning tuning,float challengeDistance):
-    challengeDistance_(std::isfinite(challengeDistance)?std::clamp(challengeDistance,10.0f,60.0f):60),race_(tuning) {}
+    challengeDistance_(std::isfinite(challengeDistance)?std::clamp(challengeDistance,10.0f,60.0f):60),
+    tuning_(tuning),race_(tuning) {}
 const LiveEncounter::TrailPoint& LiveEncounter::point(std::size_t index) const {return trail_[(head_+index)%capacity];}
 void LiveEncounter::append(EncounterPoint p,float progress) {
     if(count_==capacity) {head_=(head_+1)%capacity;--count_;}
@@ -180,7 +181,13 @@ LiveEncounterView LiveEncounter::tick(const LiveEncounterInput& in) {
     if(result!=OutrunOutcome::InProgress) {
         // A timeout while the cars cannot be matched to one observed route
         // must not manufacture a draw or award a result from uncertain data.
-        if(!view_.routeMatched) {view_.reason="timeout_route_unverified";race_.abort();return finish(OutrunOutcome::Aborted);}
+        // Actual 300m physical separation with a previously verified close
+        // leader is a genuine Outrun win even without breadcrumb matching.
+        // Only a TIMEOUT with an unmatched route is too ambiguous to score.
+        const bool timeoutUnverified=!view_.routeMatched &&
+            tuning_.maxDurationSeconds>0 &&
+            race_.elapsedSeconds()>=tuning_.maxDurationSeconds;
+        if(timeoutUnverified) {view_.reason="timeout_route_unverified";race_.abort();return finish(OutrunOutcome::Aborted);}
         return finish(result);
     }
     return view_;
