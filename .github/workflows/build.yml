@@ -107,7 +107,7 @@ jobs:
           Copy-Item "docs/NATIVE_ROAMING_STREAMING_RESEARCH.md" "$pkg/NATIVE_ROAMING_STREAMING_RESEARCH.md"
 
           @"
-          NFSMW Free Roam Rivals v0.0.59-dev
+          NFSMW Free Roam Rivals v0.0.60-dev
 
           INSTALL:
           1. BACK UP scripts\FreeRoamRivals\FreeRoamRivals.ini if it contains
@@ -181,7 +181,7 @@ jobs:
           "@ | Set-Content "$pkg/INSTALL.txt" -Encoding UTF8
 
           New-Item -ItemType Directory -Force "release" | Out-Null
-          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.59-dev.zip" -Force
+          Compress-Archive -Path "$pkg/*" -DestinationPath "release/FreeRoamRivals-v0.0.60-dev.zip" -Force
 
           # Minimal update for existing v45 installations: preserve Rivals.ini,
           # VehiclePools.ini, UndergroundBlacklist.ini and all saved history.
@@ -205,7 +205,7 @@ jobs:
           Copy-Item "docs/PHYSICAL_STREET_SPRINT_V58.md" "$upgrade/PHYSICAL_STREET_SPRINT_V58.md"
           Copy-Item "docs/NATIVE_ROAD_PLACEMENT_V59.md" "$upgrade/NATIVE_ROAD_PLACEMENT_V59.md"
           @"
-          FREE ROAM RIVALS v0.0.59-dev - EXISTING INSTALLATION UPGRADE
+          FREE ROAM RIVALS v0.0.60-dev - EXISTING INSTALLATION UPGRADE
 
           BACK UP your customized scripts\FreeRoamRivals\FreeRoamRivals.ini.
           Extract this ZIP to the existing NFSMW folder containing speed.exe,
@@ -225,7 +225,7 @@ jobs:
           steering and acceleration remain unchanged. In-game test pending.
           The game must be closed while replacing these files.
           "@ | Set-Content "$upgrade/INSTALAR-ATUALIZACAO.txt" -Encoding UTF8
-          Compress-Archive -Path "$upgrade/*" -DestinationPath "release/FreeRoamRivals-v0.0.59-dev-upgrade.zip" -Force
+          Compress-Archive -Path "$upgrade/*" -DestinationPath "release/FreeRoamRivals-v0.0.60-dev-upgrade.zip" -Force
 
           # This separate update contains ONLY our binary and one text guide.
           # It cannot overwrite the user's custom INI or WidescreenFix FixHUD.
@@ -233,19 +233,19 @@ jobs:
           New-Item -ItemType Directory -Force "$asiOnly/scripts" | Out-Null
           Copy-Item "artifact/FreeRoamRivals.asi" "$asiOnly/scripts/FreeRoamRivals.asi"
           @"
-          Free Roam Rivals v0.0.59-dev - ASI ONLY
+          Free Roam Rivals v0.0.60-dev - ASI ONLY
           Close the game and back up scripts\FreeRoamRivals.asi.
           Extract to the game root beside speed.exe.
           Replace ONLY scripts\FreeRoamRivals.asi.
           Nothing else is changed. WidescreenFix FixHUD=1 is preserved.
           Your existing FRR INI, save history and metric are untouched.
           "@ | Set-Content "$asiOnly/INSTALAR-ASI-SOMENTE.txt" -Encoding UTF8
-          Compress-Archive -Path "$asiOnly/*" -DestinationPath "release/FreeRoamRivals-v0.0.59-dev-asi-only.zip" -Force
+          Compress-Archive -Path "$asiOnly/*" -DestinationPath "release/FreeRoamRivals-v0.0.60-dev-asi-only.zip" -Force
 
       - name: Verify ready-to-install package
         shell: pwsh
         run: |
-          $path = "release/FreeRoamRivals-v0.0.59-dev.zip"
+          $path = "release/FreeRoamRivals-v0.0.60-dev.zip"
           if (!(Test-Path $path)) { throw "Install ZIP is missing" }
           Add-Type -AssemblyName System.IO.Compression
           $zip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $path).Path)
@@ -290,7 +290,7 @@ jobs:
             if (!$ini.Contains($setting)) { throw "Play INI missing $setting" }
           }
           if ($ini.Contains("RetireRivalKey=0" + [char]10)) { throw "Manual retirement was silently disabled" }
-          $upgradePath = "release/FreeRoamRivals-v0.0.59-dev-upgrade.zip"
+          $upgradePath = "release/FreeRoamRivals-v0.0.60-dev-upgrade.zip"
           if (!(Test-Path $upgradePath)) { throw "Upgrade ZIP is missing" }
           $upgradeZip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $upgradePath).Path)
           try {
@@ -310,7 +310,7 @@ jobs:
           # Explicitly block bundled third-party fixes, the base executable
           # and non-FRR textures/shaders in all archive variants.
           $deny = '(?i)(^|/)(speed\.exe|dinput8\.dll|[^/]*widescreenfix[^/]*|[^/]*x360stuff[^/]*|[^/]*xtendedinput[^/]*|[^/]*\.tpk|[^/]*\.dds|[^/]*\.hlsl)$'
-          foreach ($candidate in @("release/FreeRoamRivals-v0.0.59-dev.zip","release/FreeRoamRivals-v0.0.59-dev-upgrade.zip","release/FreeRoamRivals-v0.0.59-dev-asi-only.zip")) {
+          foreach ($candidate in @("release/FreeRoamRivals-v0.0.60-dev.zip","release/FreeRoamRivals-v0.0.60-dev-upgrade.zip","release/FreeRoamRivals-v0.0.60-dev-asi-only.zip")) {
             $z = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $candidate).Path)
             try {
               foreach ($entry in $z.Entries) {
@@ -319,7 +319,7 @@ jobs:
               }
             } finally { $z.Dispose() }
           }
-          $only = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path "release/FreeRoamRivals-v0.0.59-dev-asi-only.zip").Path)
+          $only = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path "release/FreeRoamRivals-v0.0.60-dev-asi-only.zip").Path)
           try {
             $items = @($only.Entries | ForEach-Object { $_.FullName.Replace([char]92,"/") } | Where-Object { -not $_.EndsWith("/") })
             $expected = @("scripts/FreeRoamRivals.asi","INSTALAR-ASI-SOMENTE.txt")
@@ -332,25 +332,25 @@ jobs:
       - name: Upload ready-to-install ZIP artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FreeRoamRivals-ReadyToInstall-v59
+          name: FreeRoamRivals-ReadyToInstall-v60
           path: |
-            release/FreeRoamRivals-v0.0.59-dev.zip
-            release/FreeRoamRivals-v0.0.59-dev-upgrade.zip
-            release/FreeRoamRivals-v0.0.59-dev-asi-only.zip
+            release/FreeRoamRivals-v0.0.60-dev.zip
+            release/FreeRoamRivals-v0.0.60-dev-upgrade.zip
+            release/FreeRoamRivals-v0.0.60-dev-asi-only.zip
           if-no-files-found: error
 
-      - name: Publish v0.0.59-dev GitHub Release
+      - name: Publish v0.0.60-dev GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "v0.0.59-dev"
+          $tag = "v0.0.60-dev"
 
           $files = @(
-            "release/FreeRoamRivals-v0.0.59-dev.zip",
-            "release/FreeRoamRivals-v0.0.59-dev-upgrade.zip",
-            "release/FreeRoamRivals-v0.0.59-dev-asi-only.zip"
+            "release/FreeRoamRivals-v0.0.60-dev.zip",
+            "release/FreeRoamRivals-v0.0.60-dev-upgrade.zip",
+            "release/FreeRoamRivals-v0.0.60-dev-asi-only.zip"
           )
           $published = $false
           for ($attempt = 1; $attempt -le 3; $attempt++) {
@@ -372,9 +372,9 @@ jobs:
             } else {
               gh release create $tag $files `
                 --target "${{ github.sha }}" `
-                --title "Free Roam Rivals v0.0.59-dev" `
+                --title "Free Roam Rivals v0.0.60-dev" `
                 --prerelease `
-                --notes "v0.0.59-dev: CORRECAO DE CRIACAO DO RICO. ResetToRoad pode devolver centro fisico diferente do ponto WRoadNav; v59 valida diferenca na direcao/largura/comprimento do carro e so autoriza ativacao apos reinspecao real de solo (footprint inteiro), trafego/colisao, distancia e mundo. Rejeita saltos grandes e orientacao incoerente. Apos falha pequena de posicao e retirada NATIVA confirmada nas duas listas em dois frames, F8 pode ser pedido de novo (ate duas recuperacoes por processo); falhas de construtor/ABI/identidade/SEH continuam bloqueadas. Sprint/Outrun v58 preservados. Ainda precisa de teste no jogo; o sumico ao ultrapassar segue sem correcao garantida. ASI-only preserva INIs, saves, FixHUD/WidescreenFix."
+                --notes "v0.0.60-dev: Jogabilidade de Outrun aprimorada. Carros reais vencem somente ao abrir distancia FISICA de 300m confirmada, e desvio de trajetoria de Rockport nao cancela disputa em 3s nem cria vitoria por atalhos virtuais. Guia amarelo apenas da rota realmente observada. Curta falha simable_handle em AMBAS as listas nativas pode suspender a contagem ate 1.25s; se mesmo owner voltar, reinicia trilha/hold sem teleporte ou premio durante gap, caso contrario interrompe sem duplicar. Ctrl+Shift+G agora alterna Sprint/Outrun mesmo antes de F8; HUD distingue V,D,AB. Preserva v59 road projection, sem mudar saves/INI/WidescreenFix. Nao cura definitivamente desaparecimento fisico e nao e Sprint nativo. Testar com backup; ASI-only recomendado."
             }
             if ($LASTEXITCODE -eq 0) { $published = $true; break }
             if ($attempt -lt 3) { Start-Sleep -Seconds 5 }
