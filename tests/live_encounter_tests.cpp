@@ -36,12 +36,31 @@ int main() {
     require(v.outcome==OutrunOutcome::PlayerWon,"verified nearby overtake then player trail wins");
     LiveEncounter wrongRoad;in=input();in.acceptPressed=true;wrongRoad.tick(in);in.acceptPressed=false;
     for(int n=1;n<=16;++n) {in.player.position.x=std::min(n*5.0f,35.0f);in.player.position.z=n*2.5f;in.rival.position.z=20+n*2.5f;v=wrongRoad.tick(in);if(v.justFinished)break;}
-    require(v.outcome==OutrunOutcome::Aborted,"different street cannot award a win");
+    require(v.running && !v.routeMatched,
+        "different street pauses breadcrumbs, but does not abort a real physical Outrun");
     require(!v.observedTrailCueValid,
-        "route abort removes potentially misleading trail guidance");
+        "different street removes misleading navigation instructions");
+    require(std::abs(v.signedLeadMeters)<300,
+        "different street cannot manufacture the 300m physical separation");
     LiveEncounter bridge;in=input();in.acceptPressed=true;bridge.tick(in);in.acceptPressed=false;
     for(int n=1;n<=20;++n) {in.player.position.y=std::min(n*3.0f,15.0f);in.player.position.z=n*2.5f;in.rival.position.z=20+n*2.5f;v=bridge.tick(in);if(v.justFinished)break;}
-    require(v.outcome==OutrunOutcome::Aborted,"overpass cannot score from horizontal proximity");
+    require(v.running && std::abs(v.signedLeadMeters)<300,
+        "overpass cannot award score based on mismatched route progress");
+    // Even when the leader trail is unmatched for >3s, a VERIFIED physical
+    // 300m gap counts as the UG2-style Outrun objective.
+    LiveEncounter separated({65,0.5f,300,5});
+    auto far=input();far.acceptPressed=true;far.player.speed=far.rival.speed=65;
+    separated.tick(far);far.acceptPressed=false;
+    for(int n=1;n<=16;++n) {
+        far.player.position.x=std::min(25.0f,n*5.0f);
+        far.player.position.z=n*5.0f;
+        far.rival.position.z=20+n*17.0f;
+        v=separated.tick(far);
+        if(v.justFinished) break;
+    }
+    require(v.justFinished && v.outcome==OutrunOutcome::RivalWon,
+        "real physical separation scores the trusted leader despite losing the route");
+
     LiveEncounter teleport;in=input();in.acceptPressed=true;teleport.tick(in);in.player.position.z=1000;
     require(teleport.tick(in).outcome==OutrunOutcome::Aborted,"teleport cancels");
     LiveEncounter transition;in=input();in.acceptPressed=true;transition.tick(in);in.worldSafe=false;
