@@ -35,7 +35,8 @@ bool continuous(const EncounterCar& old,const EncounterCar& next,float dt) {
 }
 }
 LiveEncounter::LiveEncounter(OutrunTuning tuning,float challengeDistance):
-    challengeDistance_(std::isfinite(challengeDistance)?std::clamp(challengeDistance,10.0f,60.0f):60),race_(tuning) {}
+    challengeDistance_(std::isfinite(challengeDistance)?std::clamp(challengeDistance,10.0f,60.0f):60),
+    tuning_(tuning),race_(tuning) {}
 const LiveEncounter::TrailPoint& LiveEncounter::point(std::size_t index) const {return trail_[(head_+index)%capacity];}
 void LiveEncounter::append(EncounterPoint p,float progress) {
     if(count_==capacity) {head_=(head_+1)%capacity;--count_;}
@@ -56,6 +57,16 @@ LiveEncounterView LiveEncounter::interrupt(const char* reason) {
     view_.observedTrailCueValid=false;view_.observedTrailCueDistance=0;
     if(race_.running()) {race_.abort();return finish(OutrunOutcome::Aborted);}
     return view_;
+}
+void LiveEncounter::rebaseAfterTelemetryGap(const EncounterCar& player,const EncounterCar& rival) {
+    if(!race_.running()||!valid(player)||!valid(rival)) return;
+    previousPlayer_=player;previousRival_=rival;
+    if(leader_==OutrunLeader::Player) startTrail(rival,player);
+    else startTrail(player,rival);
+    race_.tick({0,0,true,true,false,false}); // reset threshold hold only
+    view_.routeMatched=false;view_.reason="rival_reacquired_new_trail";
+    view_.observedTrailCueValid=false;view_.observedTrailCueDistance=0;
+    view_.signedLeadMeters=0;view_.holdProgress=0;
 }
 LiveEncounterView LiveEncounter::tick(const LiveEncounterInput& in) {
     view_.justStarted=view_.justFinished=view_.leaderChanged=false;
@@ -122,9 +133,13 @@ LiveEncounterView LiveEncounter::tick(const LiveEncounterInput& in) {
     }
     view_.routeMatched=bestDistance<=12;
     if(view_.routeMatched) {followerProgress_=bestProgress;unmatchedSeconds_=0;}
-    else unmatchedSeconds_+=dt;
+    else { unmatchedSeconds_+=dt;view_.reason="off_trail_physical_distance_only"; }
     previousPlayer_=in.player;previousRival_=in.rival;
-    if(unmatchedSeconds_>=3) return interrupt("route_unmatched");
+    // Rockport's real streets bend, split and rejoin: a temporary loss of
+    // the OBSERVED bread-crumb trail is not a defeat or a destroyed race.
+    // Keep the last independently verified close leader, suppress route
+    // hints while unmatched, and score only on actual physical separation.
+    // Never manufacture a route match or an overtake by nearest geometry.
     view_.leader=leader_;
     // Route hints derive ONLY from a leader trail actually observed during
     // this run. Do not draw a hint on an unmatched street or when the player
@@ -152,15 +167,27 @@ LiveEncounterView LiveEncounter::tick(const LiveEncounterInput& in) {
                 std::abs(last.position.y-in.player.position.y)<=7;
         }
     }
-    view_.signedLeadMeters=(leader_==OutrunLeader::Player?1.0f:-1.0f)*std::max(0.0f,leaderProgress_-followerProgress_);
-    // An unmatched route resets the hold timer, rather than awarding a win for
-    // lateral separation. Uncertainty for three seconds cancels the battle.
-    const auto result=race_.tick({dt,view_.routeMatched?view_.signedLeadMeters:0,true,true,false,false});
+    // UG2-style Outrun ends when the two VERIFIED PHYSICAL cars separate
+    // by the configured 300m; do not confuse a near hairpin's accumulated
+    // route length with car-to-car distance. The last close verified
+    // leader/overtake remains authoritative; simply turning on another
+    // road never swaps the leader or invents a checkpoint.
+    const float physicalSeparation=distance(in.player.position,in.rival.position);
+    const bool sameWorldElevation=std::abs(in.player.position.y-in.rival.position.y)<=30.0f;
+    const float scoreGap=sameWorldElevation?physicalSeparation:0.0f;
+    view_.signedLeadMeters=(leader_==OutrunLeader::Player?1.0f:-1.0f)*scoreGap;
+    const auto result=race_.tick({dt,view_.signedLeadMeters,true,true,false,false});
     view_.holdProgress=race_.holdProgress01();view_.elapsedSeconds=race_.elapsedSeconds();
     if(result!=OutrunOutcome::InProgress) {
         // A timeout while the cars cannot be matched to one observed route
         // must not manufacture a draw or award a result from uncertain data.
-        if(!view_.routeMatched) {view_.reason="timeout_route_unverified";race_.abort();return finish(OutrunOutcome::Aborted);}
+        // Actual 300m physical separation with a previously verified close
+        // leader is a genuine Outrun win even without breadcrumb matching.
+        // Only a TIMEOUT with an unmatched route is too ambiguous to score.
+        const bool timeoutUnverified=!view_.routeMatched &&
+            tuning_.maxDurationSeconds>0 &&
+            race_.elapsedSeconds()>=tuning_.maxDurationSeconds;
+        if(timeoutUnverified) {view_.reason="timeout_route_unverified";race_.abort();return finish(OutrunOutcome::Aborted);}
         return finish(result);
     }
     return view_;

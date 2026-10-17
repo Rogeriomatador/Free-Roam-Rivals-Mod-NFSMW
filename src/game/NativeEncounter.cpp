@@ -46,6 +46,7 @@ std::uint64_t duelPilotCueUntil=0;
 const char* duelPilotCue="none";
 domain::EncounterCar duelStartPlayer{},duelStartRival{};
 std::uint64_t lastSprintResultAt=0, modeToggleAt=0;
+bool outrunTelemetrySuspended=false;
 domain::OutrunOutcome lastSprintOutcome=domain::OutrunOutcome::InProgress;
 void clearDuelPilot(const char* reason) {
     if(NativeVehicleFactory::duelStopHeld()) NativeVehicleFactory::releaseDuelStop();
@@ -115,6 +116,7 @@ const char* resultText(domain::OutrunOutcome r) {
 }
 void configureNativeEncounter(const NativeEncounterConfig& value) {
     config=value;encounter=domain::LiveEncounter(value.tuning,value.challengeDistanceMeters);
+    outrunTelemetrySuspended=false;
     streetSprint=domain::StreetSprint({value.streetSprintLengthMeters,16.0f,45.0f});
     lastSprintResultAt=0;
     reactionMonitor.reset();stationaryMonitor.reset();lastOvertakeAt=0;
@@ -127,37 +129,29 @@ void configureNativeEncounter(const NativeEncounterConfig& value) {
     const auto size=GetModuleFileNameW(nullptr,executable,32768);
     if(size&&size<32768) store.emplace(std::filesystem::path(executable).parent_path()/L"scripts"/L"FreeRoamRivals"/L"saves");
 }
+bool suspendNativeOutrunForTransientIdentityLoss() {
+    // No moving or dereferencing a suspect native pointer. Native hold and
+    // Sprint must restore/abort immediately on identity loss.
+    if(!encounter.running() || streetSprint.running() ||
+       duelPilotPhase!=DuelPilotPhase::Idle || NativeVehicleFactory::duelStopHeld())
+        return false;
+    outrunTelemetrySuspended=true;
+    return true;
+}
 bool nativeEncounterRunning() {
     return encounter.running() || streetSprint.running() ||
         duelPilotPhase!=DuelPilotPhase::Idle || NativeVehicleFactory::duelStopHeld();
 }
 void interruptNativeEncounter(const char* reason) {
+    outrunTelemetrySuspended=false;
     if(streetSprint.running()) recordSprint(streetSprint.abort(reason));
     if(duelPilotPhase!=DuelPilotPhase::Idle || NativeVehicleFactory::duelStopHeld())
         clearDuelPilot("INTERROMPIDO - RESTAURANDO CONTROLE");
     record(encounter.interrupt(reason));reactionMonitor.reset();stationaryMonitor.reset();lastOvertakeAt=0;
 }
-void showNativeRivalStatus(const char* message,const char* detail) {
-    auto view=panel();line(view.lines[1],"%s",message);line(view.lines[2],"%s",detail);
-    line(view.lines[4],"%s",nativeRivalRetirementHint());
-    line(view.lines[5],"VITORIAS %llu / DERROTAS %llu",static_cast<unsigned long long>(history.wins),
-        static_cast<unsigned long long>(history.losses));
-    publishNativeRivalHud(view);
-}
-void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot& rival,
-    const domain::WorldMetricCalibration& metric,float dt,bool pressed) {
-    if(!world.career.profileKeyAvailable||!world.career.profileKey) {interruptNativeEncounter("profile_unavailable");showNativeRivalStatus("AGUARDANDO PERFIL");return;}
-    if(loadedProfile!=world.career.profileKey) {
-        interruptNativeEncounter("profile_changed");loadedProfile=world.career.profileKey;
-        lastResultAt=0;lastSprintResultAt=0;lastOvertakeAt=0;lastPlayerForward={0,0,1};reactionMonitor.reset();stationaryMonitor.reset();
-        history={loadedProfile};historyWritable=false;
-        if(store) {
-            const auto loaded=store->load(loadedProfile);
-            if(loaded.ok) {history=loaded.record;historyWritable=config.persistHistory;}
-            else Log::instance().warn("Live rival history load failed; original preserved: "+loaded.error);
-        }
-    }
-    if(ChallengeInputProbe::consumeModeToggle()) {
+void pollNativeEncounterModeToggle() {
+    if(!ChallengeInputProbe::consumeModeToggle()) return;
+    {
         // Do not switch into legacy Outrun while native ForceStop is still
         // owned: retry releasing the player first, without losing the lease.
         if(duelPilotPhase!=DuelPilotPhase::Idle || NativeVehicleFactory::duelStopHeld())
@@ -179,6 +173,34 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
             " INI_and_saves_unchanged=1");
         }
     }
+}
+void showNativeRivalStatus(const char* message,const char* detail) {
+    auto view=panel();line(view.lines[1],"%s",message);line(view.lines[2],"%s",detail);
+    if(modeToggleAt&&GetTickCount64()-modeToggleAt<4000) {
+        line(view.lines[1],"MODO %s ATIVADO",config.nativeStreetDuelPilotEnabled?"SPRINT":"OUTRUN");
+        line(view.lines[2],"F8: CRIAR RICO - DEPOIS G PARA CORRER");
+    }
+    line(view.lines[4],"CTRL+SHIFT+G: ALTERNA CORRIDA");
+    line(view.lines[5],"V %llu / D %llu / AB %llu",
+        static_cast<unsigned long long>(history.wins),
+        static_cast<unsigned long long>(history.losses),
+        static_cast<unsigned long long>(history.aborts));
+    publishNativeRivalHud(view);
+}
+void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot& rival,
+    const domain::WorldMetricCalibration& metric,float dt,bool pressed) {
+    if(!world.career.profileKeyAvailable||!world.career.profileKey) {interruptNativeEncounter("profile_unavailable");showNativeRivalStatus("AGUARDANDO PERFIL");return;}
+    if(loadedProfile!=world.career.profileKey) {
+        interruptNativeEncounter("profile_changed");loadedProfile=world.career.profileKey;
+        lastResultAt=0;lastSprintResultAt=0;lastOvertakeAt=0;lastPlayerForward={0,0,1};reactionMonitor.reset();stationaryMonitor.reset();
+        history={loadedProfile};historyWritable=false;
+        if(store) {
+            const auto loaded=store->load(loadedProfile);
+            if(loaded.ok) {history=loaded.record;historyWritable=config.persistHistory;}
+            else Log::instance().warn("Live rival history load failed; original preserved: "+loaded.error);
+        }
+    }
+    pollNativeEncounterModeToggle();
     if(encounter.running()&&(racePlayer!=world.vehicles.playerIVehicle||raceRoad!=world.roadNetwork||raceStatus!=world.raceStatus))
         interruptNativeEncounter("world_identity_changed");
     const bool valid=world.mode==WorldProbeMode::FreeRoamCandidate&&!world.fadeScreen&&!world.inNIS&&
@@ -205,6 +227,13 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
     input.deltaSeconds=dt;
     input.acceptPressed=pressed&&config.enabled&&!config.nativeStreetDuelPilotEnabled&&ChallengeInputProbe::fallbackVirtualKey()!=0;
     domain::LiveEncounterView result{};
+    if(outrunTelemetrySuspended) {
+        outrunTelemetrySuspended=false;
+        if(encounter.running()) {
+            encounter.rebaseAfterTelemetryGap(input.player,input.rival);
+            Log::instance().info("LiveEncounter short native telemetry gap recovered; physical trail rebased, leader kept, hold reset, no score credited");
+        }
+    }
     if(config.enabled) result=encounter.tick(input);
     if(result.justStarted) {
         racePlayer=world.vehicles.playerIVehicle;raceRoad=world.roadNetwork;raceStatus=world.raceStatus;
@@ -393,19 +422,21 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
             }
         }
     }
-    line(view.lines[5],"VITORIAS %llu / DERROTAS %llu",static_cast<unsigned long long>(history.wins),
-        static_cast<unsigned long long>(history.losses));
+    line(view.lines[5],"V %llu / D %llu / AB %llu",
+        static_cast<unsigned long long>(history.wins),
+        static_cast<unsigned long long>(history.losses),
+        static_cast<unsigned long long>(history.aborts));
     if(result.running) {
         if(lastOvertakeAt && now-lastOvertakeAt<2500)
             line(view.lines[1],"%s",lastOvertakeLeader==domain::OutrunLeader::Player?
                 "VOCE ULTRAPASSOU RICO":"RICO ULTRAPASSOU VOCE");
         else line(view.lines[1],"OUTRUN LIVRE - %s",result.leader==domain::OutrunLeader::Player?"VOCE LIDERA":"RICO LIDERA");
-        line(view.lines[2],"VANTAGEM %.0f / %.0f METROS",std::abs(result.signedLeadMeters),config.tuning.winLeadMeters);
+        line(view.lines[2],"DISTANCIA %.0f / %.0f METROS",std::abs(result.signedLeadMeters),config.tuning.winLeadMeters);
         line(view.lines[3],"%s",
-            !result.routeMatched?"TRILHA DIFERENTE - REENCONTRE A ROTA":
+            !result.routeMatched?"TRILHA PERDIDA - VALE DISTANCIA FISICA":
             result.observedTrailCueValid?"SETA AMARELA = TRILHA REAL DO RICO":
             "MESMA TRAJETORIA - MANTENHA A VANTAGEM");
-        line(view.lines[4],"TEMPO %.0f S - RIVAL CONTINUA APOS CORRIDA",result.elapsedSeconds);
+        line(view.lines[4],"TEMPO %.0f S - GANHA AO ABRIR %.0f M",result.elapsedSeconds,config.tuning.winLeadMeters);
         view.playerLeading=result.leader==domain::OutrunLeader::Player;view.holdProgress=result.holdProgress;
     } else {
         if(modeToggleAt&&now-modeToggleAt<4000&&!config.nativeStreetDuelPilotEnabled)

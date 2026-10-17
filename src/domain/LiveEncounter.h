@@ -34,6 +34,10 @@ public:
     explicit LiveEncounter(OutrunTuning tuning={},float challengeDistance=60);
     LiveEncounterView tick(const LiveEncounterInput& input);
     LiveEncounterView interrupt(const char* reason="world_unsafe");
+    // Recover ONLY after a brief identity-verified telemetry gap. The prior
+    // leader is retained, but trail and score holds are reset so the missing
+    // interval cannot generate an overtake, checkpoint, or win.
+    void rebaseAfterTelemetryGap(const EncounterCar& player,const EncounterCar& rival);
     bool running() const { return race_.running(); }
 private:
     struct TrailPoint { EncounterPoint position{};float progress=0; };
@@ -43,6 +47,7 @@ private:
     float leaderProgress_=0,followerProgress_=0,unmatchedSeconds_=0,cooldown_=0,challengeDistance_=60;
     OutrunLeader leader_=OutrunLeader::Rival;
     EncounterCar previousPlayer_{},previousRival_{};
+    OutrunTuning tuning_{};
     OutrunRace race_;
     LiveEncounterView view_{};
     const TrailPoint& point(std::size_t index) const;
