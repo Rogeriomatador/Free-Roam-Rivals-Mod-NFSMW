@@ -61,6 +61,21 @@ int main() {
     require(v.justFinished && v.outcome==OutrunOutcome::RivalWon,
         "real physical separation scores the trusted leader despite losing the route");
 
+    // Brief native handle observations can skip frames. Once the SAME
+    // identity reappears, rebase the path without inventing movement.
+    LiveEncounter recovering({300,3,300,5});
+    auto recovered=input();recovered.acceptPressed=true;
+    require(recovering.tick(recovered).running,"outRun begins before transient identity gap");
+    recovered.acceptPressed=false;
+    recovered.player.position={1000,0,1000};
+    recovered.rival.position={1000,0,1020};
+    recovering.rebaseAfterTelemetryGap(recovered.player,recovered.rival);
+    auto afterGap=recovering.tick(recovered);
+    require(afterGap.running&&!afterGap.justFinished&&afterGap.holdProgress==0,
+        "native identity resample must neither abort nor invent winner");
+    recovered.player.position.z+=2.5f;recovered.rival.position.z+=2.5f;
+    require(recovering.tick(recovered).running,"same registered owner resumes a real physical race");
+
     LiveEncounter teleport;in=input();in.acceptPressed=true;teleport.tick(in);in.player.position.z=1000;
     require(teleport.tick(in).outcome==OutrunOutcome::Aborted,"teleport cancels");
     LiveEncounter transition;in=input();in.acceptPressed=true;transition.tick(in);in.worldSafe=false;
