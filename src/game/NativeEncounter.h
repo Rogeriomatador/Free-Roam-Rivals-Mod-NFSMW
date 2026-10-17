@@ -21,5 +21,8 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
     const domain::WorldMetricCalibration& metric,float deltaSeconds,bool challengePressed);
 void interruptNativeEncounter(const char* reason="world_unsafe");
 bool nativeEncounterRunning();
+// Short read-only lease for an Outrun when a physical native identity
+// temporarily cannot be sampled. Never suspends active ForceStop or Sprint.
+bool suspendNativeOutrunForTransientIdentityLoss();
 void showNativeRivalStatus(const char* message,const char* detail="");
 }
