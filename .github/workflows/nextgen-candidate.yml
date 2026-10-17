@@ -1,0 +1,72 @@
+name: NextGen independent-native-racers candidate
+
+# This pipeline NEVER modifies the stable FreeRoamRivals v0.0.61 ASI or release.
+# It builds a standalone artifact from the official, checksummed MIT release.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'tools/prepare_nextgen.py'
+      - 'tests/test_prepare_nextgen.py'
+      - 'nextgen/**'
+      - '.github/workflows/nextgen-candidate.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-offline-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exercise 10 fail-closed packaging and INI cases
+        run: python3 -m unittest discover -s tests -p test_prepare_nextgen.py -v
+
+  official-upstream-standalone-artifact:
+    needs: deterministic-offline-validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch two public, upstream v0.1.2 release artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p upstream
+          gh release download v0.1.2 --repo Zakkey250/MW-NativeFreeRoamRacer --pattern MW-NativeFreeRoamRacer-v0.1.2.zip --dir upstream
+          gh release download v0.1.2 --repo Zakkey250/MW-NativeFreeRoamRacer --pattern SHA256SUMS.txt --dir upstream
+
+      - name: Independently audit SHA256 and construct isolated runtime stage
+        run: |
+          python3 tools/prepare_nextgen.py \
+            --upstream-zip upstream/MW-NativeFreeRoamRacer-v0.1.2.zip \
+            --checksums upstream/SHA256SUMS.txt \
+            --license nextgen/LICENSE-NFRR-MIT.txt \
+            --output-dir candidate-stage
+
+      - name: Verify exclusive vehicle-manager packaging, hash report and license
+        run: |
+          test ! -f candidate-stage/NEXT-Standalone/scripts/FreeRoamRivals.asi
+          test -f candidate-stage/NEXT-Standalone/scripts/NFSMWNativeFreeRoamRacers.asi
+          test -f candidate-stage/NEXT-Standalone/scripts/NFSMWNativeFreeRoamRacers.ini
+          test -f candidate-stage/NEXT-Standalone/scripts/NFSMWNativeFreeRoamRacers.tpk
+          test -f candidate-stage/NEXT-Standalone/LICENCA-NFRR-MIT.txt
+          test -f candidate-stage/NEXT-Standalone/HASHES-SHA256.txt
+          (cd candidate-stage/NEXT-Standalone && sha256sum -c HASHES-SHA256.txt)
+
+      - name: Create a RESEARCH candidate ZIP — not a new official release
+        run: |
+          cd candidate-stage
+          zip -q -r ../FreeRoamRivals-NEXT-Standalone-EXPERIMENTAL.zip NEXT-Standalone
+          cd ..
+          unzip -Z1 FreeRoamRivals-NEXT-Standalone-EXPERIMENTAL.zip > candidate-contents.txt
+          if grep -i 'scripts/FreeRoamRivals.asi' candidate-contents.txt; then
+            echo "ERROR: cannot ship both rival manager ASIs"
+            exit 1
+          fi
+
+      - name: Upload optional, safely isolated candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: NEXT-Standalone-EXPERIMENTAL-v012
+          path: FreeRoamRivals-NEXT-Standalone-EXPERIMENTAL.zip
+          if-no-files-found: error
