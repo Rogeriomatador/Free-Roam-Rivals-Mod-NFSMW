@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.0.60-dev — corridas Outrun mais jogáveis e tolerância curta a perda de leitura
+
+- Logs reais v59 em 17/10: Rico foi ativado e dirigiu por mais de três minutos; três Outruns terminaram em `route_unmatched`, `world_identity_changed` e `simable_handle`. Corrige-se o primeiro sintoma, mantendo proteção para os outros.
+- **Vitória no Outrun por distância física entre os dois carros**, mantendo só o líder verificado numa ultrapassagem próxima; nunca ganhar por distância acumulada em curvas ou rotas arbitrárias. Uma mudança de rua deixa de abortar após três segundos; instruções de rota falsa ficam ocultas. A condição de 300m/hold configurada funciona inclusive quando a trilha de navegação não está disponível.
+- Em perda transitória `simable_handle`, aceita no máximo 1,25 segundo de pausa **só no Outrun e somente com ambos os registros nativos provando membership**; se o MESMO handle original reaparecer, zera hold/continuidade e continua, senão aborta sem duplicar/reutilizar ponteiros incertos.
+- Ctrl+Shift+G agora pode selecionar Sprint/Outrun antes de F8, e o HUD mostra V, D, AB. Corrige a falta de feedback sobre modalidade ativa e a contagem de tentativas abortadas.
+- A execução real de Rico com deslocamento radial >2.600m refuta a hipótese de teto fixo de 1.024m. Causa de invalidade `simable_handle` segue aberta. Sprint com largada automática, buzina, direção de IA e persistência nativa de longo prazo não estão comprovados/finalizados.
+- Regressões de colisão/teleport, percurso divergente, vitória por distância física e rebase após interrupção de telemetria. Veja `docs/PLAYABLE_OUTRUN_RECOVERY_V60.md`.
+
+
 ## v0.0.59-dev — criação do Rico: projeção nativa e recuperação segura
 
 - Corrige bloqueio reproduzido duas vezes no jogo do usuário: `ResetToRoad` teve sucesso, mas deslocamento entre `WRoadNav::fPosition` e centro rígido (3.91031 / 1.87706 unidades do mundo) foi tratado incorretamente como falha fatal por uma comparação de 1 unidade.
