@@ -57,6 +57,16 @@ LiveEncounterView LiveEncounter::interrupt(const char* reason) {
     if(race_.running()) {race_.abort();return finish(OutrunOutcome::Aborted);}
     return view_;
 }
+void LiveEncounter::rebaseAfterTelemetryGap(const EncounterCar& player,const EncounterCar& rival) {
+    if(!race_.running()||!valid(player)||!valid(rival)) return;
+    previousPlayer_=player;previousRival_=rival;
+    if(leader_==OutrunLeader::Player) startTrail(rival,player);
+    else startTrail(player,rival);
+    race_.tick({0,0,true,true,false,false}); // reset threshold hold only
+    view_.routeMatched=false;view_.reason="rival_reacquired_new_trail";
+    view_.observedTrailCueValid=false;view_.observedTrailCueDistance=0;
+    view_.signedLeadMeters=0;view_.holdProgress=0;
+}
 LiveEncounterView LiveEncounter::tick(const LiveEncounterInput& in) {
     view_.justStarted=view_.justFinished=view_.leaderChanged=false;
     view_.observedTrailCueValid=false;view_.observedTrailCueDistance=0;
