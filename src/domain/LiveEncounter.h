@@ -47,6 +47,7 @@ private:
     float leaderProgress_=0,followerProgress_=0,unmatchedSeconds_=0,cooldown_=0,challengeDistance_=60;
     OutrunLeader leader_=OutrunLeader::Rival;
     EncounterCar previousPlayer_{},previousRival_{};
+    OutrunTuning tuning_{};
     OutrunRace race_;
     LiveEncounterView view_{};
     const TrailPoint& point(std::size_t index) const;
