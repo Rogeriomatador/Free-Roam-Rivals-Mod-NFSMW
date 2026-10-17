@@ -23,6 +23,7 @@
 #include <sstream>
 #include <string>
 #include <cstdio>
+#include <cstring>
 
 namespace frr::game {
 namespace {
