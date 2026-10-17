@@ -103,18 +103,20 @@ def customize_ini(text: str) -> str:
     changed: set[tuple[str, str]] = set()
     output = []
     for line in text.splitlines(keepends=True):
-        header = re.match(r"^\s*\[([^\]]+)\]\s*(?:[;#].*)?$", line.strip())
+        ending = "\r\n" if line.endswith("\r\n") else ("\n" if line.endswith("\n") else "")
+        body = line[:-len(ending)] if ending else line
+        header = re.match(r"^\s*\[([^\]]+)\]\s*(?:[;#].*)?$", body.strip())
         if header:
             section = header.group(1)
             output.append(line)
             continue
-        match = re.match(r"^(\s*)([A-Za-z_][A-Za-z_0-9]*)(\s*=\s*)([^;#\r\n]*)(.*)$", line)
+        match = re.match(r"^(\s*)([A-Za-z_][A-Za-z_0-9]*)(\s*=\s*)([^;#\r\n]*)(.*)$", body)
         key = (section, match.group(2)) if match else None
         if match and key in PRESET:
             if key in changed:
                 raise NextError(f"ambiguous duplicate INI setting {key}")
             changed.add(key)
-            line = match.group(1) + match.group(2) + match.group(3) + PRESET[key] + match.group(5)
+            line = match.group(1) + match.group(2) + match.group(3) + PRESET[key] + match.group(5) + ending
         output.append(line)
     missing = set(PRESET) - changed
     if missing:
