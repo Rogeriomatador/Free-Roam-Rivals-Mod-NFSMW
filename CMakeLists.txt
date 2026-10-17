@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
+# Enable MSVC_RUNTIME_LIBRARY selection before any MSVC language is enabled.
+cmake_policy(SET CMP0091 NEW)
 
 project(FreeRoamRivals
-    VERSION 0.0.60
+    VERSION 0.0.61
     LANGUAGES C CXX
 )
 
@@ -12,6 +14,11 @@ endif()
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     message(FATAL_ERROR "NFSMW is 32-bit. Configure with -A Win32.")
 endif()
+
+enable_language(RC)
+# The resource and binary version are derived from project(), never updated by hand.
+configure_file(src/core/FreeRoamRivals.rc.in
+    "${CMAKE_CURRENT_BINARY_DIR}/FreeRoamRivals.rc" @ONLY)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -128,6 +135,9 @@ nfsmw_add_plugin(FreeRoamRivals
         ${FRR_DOMAIN_SOURCES}
 )
 
+# Include the Win32 VERSIONINFO generated from PROJECT_VERSION.
+target_sources(FreeRoamRivals PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/FreeRoamRivals.rc")
+
 set_target_properties(FreeRoamRivals PROPERTIES
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED YES
@@ -147,6 +157,20 @@ target_compile_definitions(FreeRoamRivals PRIVATE
 target_link_libraries(FreeRoamRivals PRIVATE advapi32 d3d9)
 
 if(MSVC)
+    # Ship an ASI that does not rely on separate MSVCP140[_2] or
+    # VCRUNTIME140 DLLs. All sources linked into THIS ASI use /MT.
+    set_property(TARGET FreeRoamRivals PROPERTY
+        MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    # Keep PDB+MAP out of the user's tiny ASI-only ZIP, but emit both in
+    # CI so raw NativeExceptions addresses can be resolved to code.
+    target_compile_options(FreeRoamRivals PRIVATE "$<$<CONFIG:Release>:/Zi>")
+    target_link_options(FreeRoamRivals PRIVATE
+        "$<$<CONFIG:Release>:/DEBUG:FULL>"
+        "$<$<CONFIG:Release>:/OPT:REF>"
+        "$<$<CONFIG:Release>:/OPT:ICF>"
+        "$<$<CONFIG:Release>:/MAP:${CMAKE_CURRENT_BINARY_DIR}/FreeRoamRivals.map>"
+        "$<$<CONFIG:Release>:/PDB:${CMAKE_CURRENT_BINARY_DIR}/FreeRoamRivals.pdb>"
+    )
     target_compile_options(FreeRoamRivals PRIVATE /W4)
 else()
     target_compile_options(FreeRoamRivals PRIVATE -Wall -Wextra -Wpedantic)
