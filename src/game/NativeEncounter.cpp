@@ -137,27 +137,9 @@ void interruptNativeEncounter(const char* reason) {
         clearDuelPilot("INTERROMPIDO - RESTAURANDO CONTROLE");
     record(encounter.interrupt(reason));reactionMonitor.reset();stationaryMonitor.reset();lastOvertakeAt=0;
 }
-void showNativeRivalStatus(const char* message,const char* detail) {
-    auto view=panel();line(view.lines[1],"%s",message);line(view.lines[2],"%s",detail);
-    line(view.lines[4],"%s",nativeRivalRetirementHint());
-    line(view.lines[5],"VITORIAS %llu / DERROTAS %llu",static_cast<unsigned long long>(history.wins),
-        static_cast<unsigned long long>(history.losses));
-    publishNativeRivalHud(view);
-}
-void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot& rival,
-    const domain::WorldMetricCalibration& metric,float dt,bool pressed) {
-    if(!world.career.profileKeyAvailable||!world.career.profileKey) {interruptNativeEncounter("profile_unavailable");showNativeRivalStatus("AGUARDANDO PERFIL");return;}
-    if(loadedProfile!=world.career.profileKey) {
-        interruptNativeEncounter("profile_changed");loadedProfile=world.career.profileKey;
-        lastResultAt=0;lastSprintResultAt=0;lastOvertakeAt=0;lastPlayerForward={0,0,1};reactionMonitor.reset();stationaryMonitor.reset();
-        history={loadedProfile};historyWritable=false;
-        if(store) {
-            const auto loaded=store->load(loadedProfile);
-            if(loaded.ok) {history=loaded.record;historyWritable=config.persistHistory;}
-            else Log::instance().warn("Live rival history load failed; original preserved: "+loaded.error);
-        }
-    }
-    if(ChallengeInputProbe::consumeModeToggle()) {
+void pollNativeEncounterModeToggle() {
+    if(!ChallengeInputProbe::consumeModeToggle()) return;
+    {
         // Do not switch into legacy Outrun while native ForceStop is still
         // owned: retry releasing the player first, without losing the lease.
         if(duelPilotPhase!=DuelPilotPhase::Idle || NativeVehicleFactory::duelStopHeld())
@@ -179,6 +161,34 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
             " INI_and_saves_unchanged=1");
         }
     }
+}
+void showNativeRivalStatus(const char* message,const char* detail) {
+    auto view=panel();line(view.lines[1],"%s",message);line(view.lines[2],"%s",detail);
+    if(modeToggleAt&&GetTickCount64()-modeToggleAt<4000) {
+        line(view.lines[1],"MODO %s ATIVADO",config.nativeStreetDuelPilotEnabled?"SPRINT":"OUTRUN");
+        line(view.lines[2],"F8: CRIAR RICO - DEPOIS G PARA CORRER");
+    }
+    line(view.lines[4],"CTRL+SHIFT+G: ALTERNA CORRIDA");
+    line(view.lines[5],"V %llu / D %llu / AB %llu",
+        static_cast<unsigned long long>(history.wins),
+        static_cast<unsigned long long>(history.losses),
+        static_cast<unsigned long long>(history.aborts));
+    publishNativeRivalHud(view);
+}
+void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot& rival,
+    const domain::WorldMetricCalibration& metric,float dt,bool pressed) {
+    if(!world.career.profileKeyAvailable||!world.career.profileKey) {interruptNativeEncounter("profile_unavailable");showNativeRivalStatus("AGUARDANDO PERFIL");return;}
+    if(loadedProfile!=world.career.profileKey) {
+        interruptNativeEncounter("profile_changed");loadedProfile=world.career.profileKey;
+        lastResultAt=0;lastSprintResultAt=0;lastOvertakeAt=0;lastPlayerForward={0,0,1};reactionMonitor.reset();stationaryMonitor.reset();
+        history={loadedProfile};historyWritable=false;
+        if(store) {
+            const auto loaded=store->load(loadedProfile);
+            if(loaded.ok) {history=loaded.record;historyWritable=config.persistHistory;}
+            else Log::instance().warn("Live rival history load failed; original preserved: "+loaded.error);
+        }
+    }
+    pollNativeEncounterModeToggle();
     if(encounter.running()&&(racePlayer!=world.vehicles.playerIVehicle||raceRoad!=world.roadNetwork||raceStatus!=world.raceStatus))
         interruptNativeEncounter("world_identity_changed");
     const bool valid=world.mode==WorldProbeMode::FreeRoamCandidate&&!world.fadeScreen&&!world.inNIS&&
@@ -393,8 +403,10 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
             }
         }
     }
-    line(view.lines[5],"VITORIAS %llu / DERROTAS %llu",static_cast<unsigned long long>(history.wins),
-        static_cast<unsigned long long>(history.losses));
+    line(view.lines[5],"V %llu / D %llu / AB %llu",
+        static_cast<unsigned long long>(history.wins),
+        static_cast<unsigned long long>(history.losses),
+        static_cast<unsigned long long>(history.aborts));
     if(result.running) {
         if(lastOvertakeAt && now-lastOvertakeAt<2500)
             line(view.lines[1],"%s",lastOvertakeLeader==domain::OutrunLeader::Player?
