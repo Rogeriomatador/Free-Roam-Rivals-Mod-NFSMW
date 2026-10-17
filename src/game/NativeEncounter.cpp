@@ -46,6 +46,7 @@ std::uint64_t duelPilotCueUntil=0;
 const char* duelPilotCue="none";
 domain::EncounterCar duelStartPlayer{},duelStartRival{};
 std::uint64_t lastSprintResultAt=0, modeToggleAt=0;
+bool outrunTelemetrySuspended=false;
 domain::OutrunOutcome lastSprintOutcome=domain::OutrunOutcome::InProgress;
 void clearDuelPilot(const char* reason) {
     if(NativeVehicleFactory::duelStopHeld()) NativeVehicleFactory::releaseDuelStop();
@@ -115,6 +116,7 @@ const char* resultText(domain::OutrunOutcome r) {
 }
 void configureNativeEncounter(const NativeEncounterConfig& value) {
     config=value;encounter=domain::LiveEncounter(value.tuning,value.challengeDistanceMeters);
+    outrunTelemetrySuspended=false;
     streetSprint=domain::StreetSprint({value.streetSprintLengthMeters,16.0f,45.0f});
     lastSprintResultAt=0;
     reactionMonitor.reset();stationaryMonitor.reset();lastOvertakeAt=0;
@@ -127,11 +129,21 @@ void configureNativeEncounter(const NativeEncounterConfig& value) {
     const auto size=GetModuleFileNameW(nullptr,executable,32768);
     if(size&&size<32768) store.emplace(std::filesystem::path(executable).parent_path()/L"scripts"/L"FreeRoamRivals"/L"saves");
 }
+bool suspendNativeOutrunForTransientIdentityLoss() {
+    // No moving or dereferencing a suspect native pointer. Native hold and
+    // Sprint must restore/abort immediately on identity loss.
+    if(!encounter.running() || streetSprint.running() ||
+       duelPilotPhase!=DuelPilotPhase::Idle || NativeVehicleFactory::duelStopHeld())
+        return false;
+    outrunTelemetrySuspended=true;
+    return true;
+}
 bool nativeEncounterRunning() {
     return encounter.running() || streetSprint.running() ||
         duelPilotPhase!=DuelPilotPhase::Idle || NativeVehicleFactory::duelStopHeld();
 }
 void interruptNativeEncounter(const char* reason) {
+    outrunTelemetrySuspended=false;
     if(streetSprint.running()) recordSprint(streetSprint.abort(reason));
     if(duelPilotPhase!=DuelPilotPhase::Idle || NativeVehicleFactory::duelStopHeld())
         clearDuelPilot("INTERROMPIDO - RESTAURANDO CONTROLE");
@@ -215,6 +227,13 @@ void tickNativeEncounter(const RuntimeSnapshot& world,const NativeOwnedSnapshot&
     input.deltaSeconds=dt;
     input.acceptPressed=pressed&&config.enabled&&!config.nativeStreetDuelPilotEnabled&&ChallengeInputProbe::fallbackVirtualKey()!=0;
     domain::LiveEncounterView result{};
+    if(outrunTelemetrySuspended) {
+        outrunTelemetrySuspended=false;
+        if(encounter.running()) {
+            encounter.rebaseAfterTelemetryGap(input.player,input.rival);
+            Log::instance().info("LiveEncounter short native telemetry gap recovered; physical trail rebased, leader kept, hold reset, no score credited");
+        }
+    }
     if(config.enabled) result=encounter.tick(input);
     if(result.justStarted) {
         racePlayer=world.vehicles.playerIVehicle;raceRoad=world.roadNetwork;raceStatus=world.raceStatus;
