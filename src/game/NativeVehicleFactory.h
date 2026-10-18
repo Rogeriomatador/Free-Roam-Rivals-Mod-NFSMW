@@ -34,6 +34,12 @@ struct NativeOwnedSnapshot {
     // Purely read-only diagnostics; these do NOT prove why the game retired
     // or unspooled the car. Only queried after fresh registry + identity gates.
     const char* availabilityReason = "not_sampled";
+    // Filled only when fresh world + BOTH registries + same simable pointer
+    // were verified, then the already-read handle differs. Diagnostics only:
+    // NEVER treat this as permission to update ownership or mutate a car.
+    bool simableHandleMismatchObserved = false;
+    std::uint32_t expectedSimableHandle = 0;
+    std::uint32_t observedSimableHandle = 0;
     bool driverClassObserved = false, spooledObserved = false, nativeSpooled = false;
     int nativeDriverClass = -1;
     domain::PursuitSafetyState pursuit = domain::PursuitSafetyState::Unknown;

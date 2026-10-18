@@ -34,6 +34,9 @@ jobs:
       - name: Diagnostic bundle collector tests
         run: python -m unittest discover -s tests -p test_diagnostic_bundle.py
 
+      - name: Native presence incident analysis tests
+        run: python -m unittest discover -s tests -p test_analyze_native_presence.py
+
       - name: Verify ASI imports and embedded Win32 version
         shell: pwsh
         run: |
