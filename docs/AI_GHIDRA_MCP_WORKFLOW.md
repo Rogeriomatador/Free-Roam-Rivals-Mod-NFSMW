@@ -178,21 +178,33 @@ Um handle diferente não prova qual subsistema provocou a mudança.
 O ASI continua experimental e **não deve ser distribuído como fix
 comprovado** sem testes no PC alvo.
 
+**Resultado recebido:** a captura de 12 endereços mostrou
+**6 endereços não reconhecidos como funções pelo analisador do Ghidra**,
+mas todos os 12 com 32 bytes legíveis. O endereço `0x43D388`
+foi localizado **dentro** de `FUN_0043D330`
+(`0x43D330–0x43D3FD`), não é uma entrada válida independente.
+O relatório da evidência está em
+[GHIDRA_NATIVE_BOUNDARIES_2026-10-18.md](GHIDRA_NATIVE_BOUNDARIES_2026-10-18.md).
+O coletor foi atualizado para separar endereços não reconhecidos,
+endereços interiores e leituras de memória concluídas sem autorizar
+nenhuma chamada nativa. **Não é preciso repetir este ZIP.**
+
 ## Primeiros alvos de investigação (pistas, não chamadas autorizadas)
 
 | VA | Hipótese | Próxima evidência |
 | --- | --- | --- |
 | 0x0043EF70 | Criação de host Racer | Xrefs, parâmetros, ownership, vtable e ABI |
-| 0x0043D388 | Possível criação de AIGoalRacer | Confirmar limite de função (conflito entre pesquisas) |
+| 0x0043D388 | **Instrução interior comprovada** em FUN_0043D330 | **NÃO CHAMAR** como factory/função independente |
 | 0x00422480 | Mudança de objetivo AI | Xrefs e condições de Free Roam |
 | 0x0042AA80 | Update Racer | Chamadores e dependência de corrida ativa |
 | 0x00689820 | Construção física | Pool, cleanup e lifetime |
 
-**Divergência importante:** nfsmw-re chama 0x43D388 de entrada
-CreateAIGoalRacerInstance; nosso docs/ENGINE_INTEGRATION_MAP.md
-e tools/dump_exe_functions.py tratam esse VA como interior de função,
-não entrada segura. Não usar/hookar esse VA até confirmar xrefs,
-prólogo e limites na versão MD5 suportada.
+**Divergência agora resolvida no Ghidra do proprietário:**
+nfsmw-re chama `0x43D388` de entry-point, mas a função identificada pelo
+Ghidra é `FUN_0043D330`, de `0x43D330` a `0x43D3FD`.
+`0x43D388` é uma **instrução interior** sem xrefs de entrada.
+Não chamar/hookar esse VA. A assinatura e o ownership de
+`FUN_0043D330` permanecem sujeitos a verificação dinâmica.
 
 No último teste do Rico, ambas as listas ainda registravam seu carro,
 mas ISimable::_mHandle deixou de corresponder ao valor guardado. O
