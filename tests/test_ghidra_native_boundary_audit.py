@@ -34,6 +34,8 @@ class NativeBoundaryTests(unittest.TestCase):
         self.assertEqual(manifest["targets"], len(audit.TARGETS))
         self.assertFalse(manifest["ghidra_program_bytes_verified"])
         self.assertEqual(len(manifest["errors"]), 0)
+        self.assertEqual(manifest["ghidra_reported_notes"], 0)
+        self.assertEqual(manifest["failed_requests"], 0)
         self.assertEqual(len(results), len(audit.TARGETS))
         self.assertEqual(len(seen), 2 + 4 * len(audit.TARGETS))
         reads = [(name, params) for name, params in seen if name == "/read_memory"]
@@ -70,6 +72,8 @@ class NativeBoundaryTests(unittest.TestCase):
                                                requester=fake_request,
                                                progress=lambda _: None)
         self.assertEqual(len(manifest["errors"]), 2 * len(audit.TARGETS))
+        self.assertEqual(manifest["ghidra_reported_notes"], len(audit.TARGETS))
+        self.assertEqual(manifest["failed_requests"], len(audit.TARGETS))
         self.assertEqual(reports["0x00689820"]["observations"]["memory"]["error"],
                          "HTTP 404")
 
