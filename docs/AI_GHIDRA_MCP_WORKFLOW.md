@@ -58,6 +58,26 @@ consultar Ghidra. Ela só faz GET aos endpoints locais de leitura:
 mcp/health, get_metadata, get_xrefs_to e get_xrefs_from, com program=speed.exe.
 
 Para gerar também pseudocódigo local, use --decompile (opcional).
+Para consultar todas as chamadas da **função inteira** (e não somente
+os xrefs da instrução de entrada), use --callgraph. A opção faz apenas
+GET /get_function_callers e GET /get_function_callees; se sua versão
+GhidraMCP não fornecer os endpoints, interrompa e envie o erro. Não
+substitua automaticamente por uma chamada mutante.
+
+Exemplo baseado na captura do proprietário: a função 0x0043EF70 tem
+uma chamada em seu corpo a 0x0043D330, apesar do retorno "No references
+found" do get_xrefs_from sobre a instrução inicial. Para a próxima
+coleta, depois de atualizar a branch de pesquisa:
+
+~~~powershell
+cd "E:\\Downloads\\FRR-Ghidra-Novo"
+git pull --ff-only
+py -3 .\\tools\\ghidra_research_bridge.py snapshot --exe "D:\\Need For Speed Most Wanted Black Edition\\speed.exe" --address 0x0043F040 --callgraph --decompile
+~~~
+
+Documentação da primeira evidência:
+[GHIDRA_EVIDENCE_0043EF70_2026-10-18.md](GHIDRA_EVIDENCE_0043EF70_2026-10-18.md).
+
 O arquivo de saída fica em research/local/, ignorado pelo Git.
 Não publicar ou redistribuir executáveis/pseudocódigo do jogo.
 Relatórios não são enviados a servidor nenhum por esse script,
