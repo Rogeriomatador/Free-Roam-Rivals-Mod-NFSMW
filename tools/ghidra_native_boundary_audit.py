@@ -84,11 +84,13 @@ def capture(exe, requester=None, progress=print):
                 observations[key] = response
                 msg = embedded_error(response)
                 if msg:
-                    errors.append({"address": addr, "route": route, "error": msg})
+                    errors.append({"address": addr, "route": route,
+                                   "kind": "reported_by_ghidra", "error": msg})
             except (bridge.ResearchError, OSError, ValueError) as exc:
                 msg = str(exc)
                 observations[key] = {"error": msg}
-                errors.append({"address": addr, "route": route, "error": msg})
+                errors.append({"address": addr, "route": route,
+                               "kind": "request_failed", "error": msg})
         # A Ghidra auto-analysis miss is *not* an invalid code address.
         # Treat valid byte reads as distinct evidence, never ABI proof.
         memory = observations.get("memory")
@@ -138,6 +140,8 @@ def capture(exe, requester=None, progress=print):
         "ghidra_unresolved_entries": unresolved_entries,
         "ghidra_interior_addresses": interior_addresses,
         "memory_windows_read": memory_windows_read,
+        "ghidra_reported_notes": sum(e["kind"] == "reported_by_ghidra" for e in errors),
+        "failed_requests": sum(e["kind"] == "request_failed" for e in errors),
         "errors": errors,
         "gating": "NO game hooks or native calls approved by this audit",
     }
@@ -171,10 +175,12 @@ def main(argv=None):
         parser.error(str(exc))
     print("\nDONE: " + str(out))
     print("Addresses=%d; Ghidra unresolved=%d; interior=%d; "
-          "32-byte windows=%d; endpoint notes/errors=%d; native ABI NOT verified." %
+          "32-byte windows=%d; Ghidra notes=%d; failed requests=%d; "
+          "native ABI NOT verified." %
           (manifest["targets"], len(manifest["ghidra_unresolved_entries"]),
            len(manifest["ghidra_interior_addresses"]),
-           manifest["memory_windows_read"], len(manifest["errors"])))
+           manifest["memory_windows_read"], manifest["ghidra_reported_notes"],
+           manifest["failed_requests"]))
     return 0
 
 
