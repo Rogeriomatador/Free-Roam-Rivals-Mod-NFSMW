@@ -32,7 +32,7 @@ TARGETS = {
     "AIVehicleRacer initializer": (0x43EF70, "owner Ghidra 2026-10-18: installs 0x892AD0; calls 0x43D330"),
     "AIVehicleRacer allocation wrapper": (0x43F040, "owner Ghidra 2026-10-18: allocates 0x7EC and calls 0x43EF70"),
     "AIGoalRacer-related initializer": (0x43D330, "owner Ghidra 2026-10-18: installs vtable 0x892720; hashes AIGoalRacer; calls 0x422480; ABI unverified"),
-    "Goal initializer interior lead (do not call)": (0x43D388, "address lies within Ghidra-discovered 0x43D330 initializer; independently callable ABI not verified"),
+    "Goal initializer CONFIRMED interior (DO NOT CALL)": (0x43D388, "owner Ghidra 2026-10-18: FUN_0043D330 body 0x43D330..0x43D3FD contains instruction at 0x43D388, zero target xrefs"),
     "AIGoalRacer allocation wrapper lead": (0x43D400, "owner Ghidra 2026-10-18: calls 0x43D330; allocator/ownership pending investigation"),
     "Object creation callee of 0x689820": (0x4E4EA0, "dump v1: call at 0x6898BC"),
     'Activate vehicle': (0x6693A0, "NFRR public Runtime.cpp at c8e728809bdc77bfd11e31d975bb2bc7e0cce2bd; foreign-target lead only, not verified for FRR"),
