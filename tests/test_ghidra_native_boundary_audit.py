@@ -82,11 +82,11 @@ class NativeBoundaryTests(unittest.TestCase):
                         "data": [0x90] * 32}
             if route == "/get_function_by_address":
                 if params["address"] == "0x0043D388":
-                    return {"text": "Function: FUN_0043d330 at 0043d330\\n"
-                            "Entry: 0043d330\\nBody: 0043d330 - 0043d3fd"}
+                    return {"text": "Function: FUN_0043d330 at 0043d330\n"
+                            "Entry: 0043d330\nBody: 0043d330 - 0043d3fd"}
                 if params["address"] == "0x0043D330":
-                    return {"text": "Function: FUN_0043d330 at 0043d330\\n"
-                            "Entry: 0043d330\\nBody: 0043d330 - 0043d3fd"}
+                    return {"text": "Function: FUN_0043d330 at 0043d330\n"
+                            "Entry: 0043d330\nBody: 0043d330 - 0043d3fd"}
                 return {"text": "No function found for " + params["address"]}
             return {"text": "ok"}
         with patch.object(audit.bridge, "check_executable",
