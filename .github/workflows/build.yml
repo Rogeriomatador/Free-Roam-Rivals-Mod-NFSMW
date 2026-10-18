@@ -37,6 +37,9 @@ jobs:
       - name: Ghidra MCP research bridge (offline) tests
         run: python -m unittest discover -s tests -p test_ghidra_research_bridge.py
 
+      - name: Ghidra MCP bulk archive (offline) tests
+        run: python -m unittest discover -s tests -p test_ghidra_bulk_research.py
+
       - name: Verify ASI imports and embedded Win32 version
         shell: pwsh
         run: |
