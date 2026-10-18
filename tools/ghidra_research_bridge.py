@@ -20,6 +20,8 @@ LOCAL_GHIDRA = "http://127.0.0.1:8089"
 READ_ONLY_ROUTES = frozenset(("/mcp/health", "/get_metadata",
                               "/get_xrefs_to", "/get_xrefs_from",
                               "/get_function_callers", "/get_function_callees",
+                              "/get_function_by_address",
+                              "/disassemble_function", "/read_memory",
                               "/decompile_function"))
 MAX_HTTP_BYTES = 2 * 1024 * 1024
 MAX_CSV_BYTES = 8 * 1024 * 1024
