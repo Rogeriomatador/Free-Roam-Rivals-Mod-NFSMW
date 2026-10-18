@@ -109,8 +109,11 @@ py -3 .\\tools\\ghidra_bulk_research.py --exe "D:\\Need For Speed Most Wanted Bl
 O script valida o hash do EXE local e que o Ghidra informa speed.exe,
 consulta 23 endereços de pesquisa prioritários (AI host, Racer goal,
 PVehicle, ciclo de vida do carro e callbacks), descobre
-chamadores/chamadas por até 1 salto e coleta até **60 funções** e
-**28 descompilações**. O limite explícito impede varrer
+chamadores/chamadas por até 1 salto e coleta até **60 endereços de função pesquisados** e
+até **28 descompilações bem-sucedidas**. Algumas funções do SDK podem
+não ser reconhecidas pelo Ghidra: estas são anotadas como entradas
+não resolvidas (não como descompilações válidas). O limite explícito
+impede varrer
 indiscriminadamente as 26.067 funções detectadas pelo Ghidra.
 A coleta é sequencial, pode levar alguns minutos, e tenta
 seguir após falha isolada de endpoint, registrando-a no manifest.
@@ -133,6 +136,7 @@ Não há upload direto deste ChatGPT à porta local 8089; o arquivo ZIP
 Notas dos relatórios já recebidos:
 [0x43EF70/0x43D330](GHIDRA_EVIDENCE_0043EF70_2026-10-18.md) e
 [0x422480/0x43D400](GHIDRA_EVIDENCE_00422480_0043D400_2026-10-18.md).
+[Resultado do ZIP de 60 endereços (22 decompilações válidas)](GHIDRA_BULK_60_FUNCTIONS_2026-10-18.md).
 
 ## Primeiros alvos de investigação (pistas, não chamadas autorizadas)
 
