@@ -53,16 +53,58 @@ conflitante nas referências históricas. Não assumir que esse segundo
 VA é entrada segura de função. Não criar hook ou chamar qualquer uma
 dessas funções com base apenas nas notas.
 
+## Segunda captura: 0x0043F040 e 0x0043D330 (proprietário, mesma instalação)
+
+**0x0043F040**:
+- Decompilação sugere wrapper de alocação: chama a rotina em **0x005D29D0**
+  solicitando **0x7EC (2.028)** bytes, verifica a alocação e então
+  inicializa via **0x0043EF70**. É a cadeia de criação do host, **não** a
+  API completa para instanciar um rival persistente em Free Roam.
+- O Ghidra reporta um xref **DATA** vindo de **0x00884237** e nenhum
+  chamador direto identificado. Isso sugere uso por ponteiro/tabela; o
+  conteúdo, tipo e consumidores da tabela ainda **não foram provados**.
+- Grafo de chamadas inclui **0x005D29D0** e **0x0043EF70**.
+
+**0x0043D330**:
+- Confirma instalação da **vtable 0x00892720** e das sub-vtables
+  **0x00892718, 0x00892640, 0x00892638, 0x008925D8,
+  0x008925CC, 0x008925C4, 0x008925B4**.
+- O código recuperado usa explicitamente a string **AIGoalRacer**,
+  encaminha o resultado de **0x005CC240** a **0x00422480**, e
+  faz chamadas para **0x0043CFF0** e **0x005D7930**.
+- O grafo informa chamadores **0x0043EF70** (xrefs em 0x0043EF94)
+  e **0x0043D400** (xrefs em 0x0043D43D).
+- Isso **contradiz a classificação anterior** de 0x0043D330
+  como **AIVehicleRacecar constructor; NOT AIGoalRacer**.
+  A interpretação responsável agora é **rotina de inicialização
+  relacionada ao AIGoalRacer**, não callable ABI confirmado.
+- O candidato 0x0043D388 continua NÃO autorizado para chamadas:
+  sua posição sugerida dentro de 0x0043D330 não prova que seja uma
+  entrada de função independente.
+
+A cadeia observada é: **0x43F040 aloca -> 0x43EF70 inicializa
+host -> 0x43D330 inicializa goal associado -> 0x422480 manipula
+um identificador de goal**. A ordem de chamadas e o fluxo do
+objeto sugeridos pelo descompilador são evidência estática, não
+prova de que a IA esteja corretamente anexada a um PVehicle ou
+que vá sobreviver ao streaming.
+
+**A origem registrada no Ghidra é o mesmo caminho do EXE suportado;
+a ponte ainda não comprova a igualdade de todos os bytes importados.**
+Conferir ABI real, objeto-alvo, ctor/dtor e lifecycle antes de uso.
+
 ## Próximas capturas Ghidra MCP necessárias
 
-1. **0x0043F040** (origem da chamada), com pseudocódigo e grafo
-   de chamadores/chamadas — descobrir alocação e contexto de construção.
-2. **0x0043D330** (função chamada), com xrefs/pseudocódigo
-   para verificar inicialização do subcomponente e limite real de função.
-3. Só depois examinar **0x0043D388**, por disassembly/limite de função
-   verificado, para resolver a divergência.
-4. Em paralelo, localizar writers de **ISimable::_mHandle** para o problema
-   do Rico: **não** inferir causa do desaparecimento da IA host sozinha.
+1. **0x0043D400**: investigar wrapper de alocação do goal
+   (se aloca 0x7CC, guarda de NULL, destruição e ownership).
+2. **0x00422480**: conferir o tratamento do identificador/objetivo
+   AIGoalRacer, assinatura e mudanças de estado.
+3. **0x00884237**: verificar a tabela de ponteiros que referencia
+   0x0043F040, e como a fábrica é chamada por dispatch indireto.
+4. **0x0043D388**: usar listing/instruction boundaries Ghidra;
+   NÃO chamar como função separada baseado apenas em notas externas.
+5. Em paralelo, localizar writers de **ISimable::_mHandle** para o problema
+   do Rico; **não** inferir causa do desaparecimento da IA host sozinha.
 
 O bridge passa a aceitar **--callgraph** opcional, usando as leituras
 get_function_callers/get_function_callees. É separado de --decompile,
