@@ -93,6 +93,33 @@ class BridgeTests(unittest.TestCase):
             "/decompile_function"])
         self.assertEqual(seen[-1][1]["program"], "speed.exe")
 
+    def test_callgraph_flag_queries_function_level_xrefs_only_when_requested(self):
+        seen = []
+        def requester(route, params=None):
+            seen.append((route, params))
+            if route == "/get_metadata":
+                return {"programName": "speed.exe"}
+            return {"text": "ok"}
+        with mock.patch.object(bridge, "check_executable",
+                               return_value={"supported": True, "md5": bridge.EXPECTED_EXE_MD5}):
+            result = bridge.take_snapshot(Path("speed.exe"), "0x0043EF70",
+                                          callgraph=True, requester=requester)
+        self.assertEqual([route for route, params in seen], [
+            "/mcp/health", "/get_metadata", "/get_xrefs_to", "/get_xrefs_from",
+            "/get_function_callers", "/get_function_callees"])
+        self.assertEqual(seen[-1][1], {"address": "0x0043EF70",
+                                       "limit": 60, "program": "speed.exe"})
+        self.assertIn("function_callers", result["observations"])
+        self.assertIn("function_callees", result["observations"])
+        self.assertNotIn("decompilation", result["observations"])
+
+    def test_all_callgraph_routes_are_read_only_get(self):
+        opener = FakeOpener()
+        for route in ("/get_function_callers", "/get_function_callees"):
+            bridge.local_get(route, {"address": "0x0043EF70"}, opener=opener)
+        self.assertEqual([method for _, method, _ in opener.requests], ["GET", "GET"])
+        self.assertEqual(len(opener.requests), 2)
+
     def test_report_never_overwrites_and_stays_under_ignored_directory(self):
         with tempfile.TemporaryDirectory() as d:
             with mock.patch.object(bridge, "LOCAL_REPORTS", Path(d)):
