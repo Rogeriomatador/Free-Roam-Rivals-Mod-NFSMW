@@ -30,7 +30,7 @@ def summarize(text):
                   if 'NativePrototype sudden native presence loss:' in line]
     handle_events = []
     for line in loss_lines[-64:]:
-        pairs = dict(re.findall(r'([A-Za-z][A-Za-z0-9]*)=([^\\s]+)', line))
+        pairs = dict(re.findall(r'([A-Za-z][A-Za-z0-9]*)=([^\s]+)', line))
         if pairs.get('simableHandleObserved') != '1':
             continue
         expected = pairs.get('expectedSimableHandle', '')
