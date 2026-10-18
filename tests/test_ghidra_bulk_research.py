@@ -60,6 +60,59 @@ class BulkTests(unittest.TestCase):
                              for route, _ in observed))
         self.assertEqual(reports["0x00407E10"]["graph_depth"], 1)
 
+    def test_plugin_semantic_errors_are_counted_not_false_success(self):
+        """Matches actual owner report: a successful HTTP response can contain an error."""
+        missing = {"0x00689820", "0x006851D0", "0x00688120",
+                   "0x006693A0", "0x006693C0", "0x006876E0"}
+        decompiled = []
+        def fake_request(route, params=None):
+            if route == "/get_metadata":
+                return {"text": "Program Name: speed.exe"}
+            if route == "/mcp/health":
+                return {"status": "ok"}
+            address = (params or {}).get("address")
+            if address in missing and route in (
+                    "/get_function_callers", "/get_function_callees"):
+                return {"text": "Function not found: null"}
+            if route == "/decompile_function":
+                decompiled.append(address)
+                return {"text": "void FUN_" + address[2:] + "(){}"}
+            return {"text": "ok"}
+        with mock.patch.object(bulk.bridge, "check_executable",
+                               return_value={"supported": True}):
+            manifest, reports = bulk.collect(
+                Path("speed.exe"), max_functions=len(bulk.SEEDS),
+                depth=0, max_decompile=18,
+                requester=fake_request, progress=lambda _: None)
+        self.assertEqual(manifest["decompiled"], 17)
+        self.assertEqual(manifest["decompile_attempted"], 17)
+        self.assertEqual(set(manifest["unresolved_function_entries"]), missing)
+        self.assertEqual(len(manifest["errors"]), 2 * len(missing))
+        self.assertTrue(missing.isdisjoint(decompiled))
+        for addr in missing:
+            self.assertNotIn("decompilation", reports[addr]["observations"])
+
+    def test_semantic_decomp_error_does_not_increment_successes(self):
+        attempts = []
+        def fake_request(route, params=None):
+            if route == "/get_metadata":
+                return {"text": "Program Name: speed.exe"}
+            if route == "/decompile_function":
+                attempts.append(params["address"])
+                if len(attempts) == 1:
+                    return {"error": "No function found for 0x0043F040"}
+                return {"text": "void function() {}"}
+            return {"text": "ok"}
+        with mock.patch.object(bulk.bridge, "check_executable",
+                               return_value={"supported": True}):
+            manifest, _ = bulk.collect(
+                Path("speed.exe"), max_functions=len(bulk.SEEDS),
+                depth=0, max_decompile=3,
+                requester=fake_request, progress=lambda _: None)
+        self.assertEqual(manifest["decompiled"], 3)
+        self.assertEqual(manifest["decompile_attempted"], 4)
+        self.assertEqual(len(manifest["errors"]), 1)
+
     def test_guard_rejects_excessive_limits_without_any_queries(self):
         with mock.patch.object(bulk.bridge, "check_executable") as checker:
             for count, depth, decomp in (
