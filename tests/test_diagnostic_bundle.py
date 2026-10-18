@@ -60,11 +60,11 @@ class BundleTests(unittest.TestCase):
             "NativePrototype sudden native presence loss: "
             "ownerReadReason=simable_handle simableHandleObserved=1 "
             "expectedSimableHandle=34 observedSimableHandle=52 "
-            "liveRegistryContainsOwner=1 physicalRegistryContainsOwner=1\\n"
+            "liveRegistryContainsOwner=1 physicalRegistryContainsOwner=1\n"
             "NativePrototype sudden native presence loss: "
             "ownerReadReason=world_not_safe_for_owner_read simableHandleObserved=0 "
             "expectedSimableHandle=34 observedSimableHandle=0 "
-            "liveRegistryContainsOwner=0 physicalRegistryContainsOwner=0\\n"
+            "liveRegistryContainsOwner=0 physicalRegistryContainsOwner=0\n"
         )
         report=m.summarize(logs)
         self.assertEqual(report['native_presence_loss_records'], 2)
