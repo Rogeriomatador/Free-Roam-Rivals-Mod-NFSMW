@@ -19,6 +19,7 @@ EXPECTED_EXE_MD5 = "C0516B485065FABDD69579816B5DF763"
 LOCAL_GHIDRA = "http://127.0.0.1:8089"
 READ_ONLY_ROUTES = frozenset(("/mcp/health", "/get_metadata",
                               "/get_xrefs_to", "/get_xrefs_from",
+                              "/get_function_callers", "/get_function_callees",
                               "/decompile_function"))
 MAX_HTTP_BYTES = 2 * 1024 * 1024
 MAX_CSV_BYTES = 8 * 1024 * 1024
@@ -111,7 +112,7 @@ def expected_program_metadata(metadata):
     return "speed.exe" in encoded
 
 
-def take_snapshot(exe, address, *, decompile=False, requester=local_get):
+def take_snapshot(exe, address, *, decompile=False, callgraph=False, requester=local_get):
     """Collect a limited read-only report. Call only with owner-supplied exe."""
     verified = check_executable(exe)
     address = validate_address(address)
@@ -124,6 +125,13 @@ def take_snapshot(exe, address, *, decompile=False, requester=local_get):
         "xrefs_to": requester("/get_xrefs_to", params),
         "xrefs_from": requester("/get_xrefs_from", params),
     }
+    # get_xrefs_from inspects just the EXACT entry instruction. An empty
+    # result does NOT mean the rest of the function makes no calls.
+    # Function-level caller/callee queries avoid that false inference.
+    if callgraph:
+        fn_params = {"address": address, "limit": 60, "program": "speed.exe"}
+        reads["function_callers"] = requester("/get_function_callers", fn_params)
+        reads["function_callees"] = requester("/get_function_callees", fn_params)
     if decompile:
         reads["decompilation"] = requester(
             "/decompile_function", {"address": address, "program": "speed.exe", "timeout": 30})
@@ -168,6 +176,8 @@ def main(argv=None):
     snap.add_argument("--address", required=True)
     snap.add_argument("--decompile", action="store_true",
                       help="also store proprietary pseudocode LOCALLY; never commit report")
+    snap.add_argument("--callgraph", action="store_true",
+                      help="also query read-only, function-level callers and callees")
     snap.add_argument("--report", help="new filename under research/local (never overwrite)")
     args = parser.parse_args(argv)
     try:
@@ -180,7 +190,8 @@ def main(argv=None):
                       "results": parse_reference_csv(args.csv, args.text, args.limit)}
         else:
             addr = validate_address(args.address)
-            result = take_snapshot(args.exe, addr, decompile=args.decompile)
+            result = take_snapshot(args.exe, addr, decompile=args.decompile,
+                                   callgraph=args.callgraph)
             filename = args.report or ("ghidra_" + addr[2:] + ".json")
             dest = new_local_report(filename, result)
             print("Local-only report: " + str(dest))
