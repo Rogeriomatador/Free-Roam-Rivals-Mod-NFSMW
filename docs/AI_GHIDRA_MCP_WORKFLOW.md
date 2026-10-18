@@ -54,8 +54,10 @@ py -3 tools\ghidra_research_bridge.py snapshot --exe "D:\Games\Need for Speed Mo
 
 Substitua D:\Games\... pelo caminho real. A ferramenta verifica
 size=6029312 e MD5=C0516B485065FABDD69579816B5DF763 ANTES de
-consultar Ghidra. Ela só faz GET aos endpoints locais de leitura:
-mcp/health, get_metadata, get_xrefs_to e get_xrefs_from, com program=speed.exe.
+consultar Ghidra. O bridge só faz GET aos endpoints locais permitidos:
+mcp/health, get_metadata, get_xrefs_to, get_xrefs_from,
+get_function_callers, get_function_callees e decompile_function,
+sempre com program=speed.exe nas consultas de função.
 
 Para gerar também pseudocódigo local, use --decompile (opcional).
 Para consultar todas as chamadas da **função inteira** (e não somente
@@ -92,6 +94,45 @@ O HTTP utilizado foi documentado pela versão Ghidra MCP 5.7.1
 de nfsmw-re. Se a release instalada alterar endpoints, manter
 fail-closed e adaptar após ler a documentação da release (não contornar
 os checks de identidade).
+
+## Uma coleta automatizada, um único ZIP (recomendado)
+
+Em vez de pedir JSONs de função em função, o proprietário pode rodar
+**uma vez** o coletor em lote, com o Ghidra aberto e speed.exe analisado:
+
+~~~powershell
+cd "E:\\Downloads\\FRR-Ghidra-Novo"
+git pull --ff-only
+py -3 .\\tools\\ghidra_bulk_research.py --exe "D:\\Need For Speed Most Wanted Black Edition\\speed.exe"
+~~~
+
+O script valida o hash do EXE local e que o Ghidra informa speed.exe,
+consulta 23 endereços de pesquisa prioritários (AI host, Racer goal,
+PVehicle, ciclo de vida do carro e callbacks), descobre
+chamadores/chamadas por até 1 salto e coleta até **60 funções** e
+**28 descompilações**. O limite explícito impede varrer
+indiscriminadamente as 26.067 funções detectadas pelo Ghidra.
+A coleta é sequencial, pode levar alguns minutos, e tenta
+seguir após falha isolada de endpoint, registrando-a no manifest.
+
+O resultado aparece em `research/local/ghidra_bulk_*.zip`. **Envie
+somente o ZIP** para o chat, não o speed.exe nem 60 arquivos separados.
+Ele contém `manifest.json`, `functions/*.json` e `LEIA-ME.txt`.
+A pasta continua ignorada no Git; não publique os ZIPs nem o código
+descompilado do jogo em commits, issues ou pull requests.
+
+Para uma investigação mais extensa, caso o primeiro ZIP não cubra a
+função suspeita, opcionalmente usar
+`--max-functions 100 --depth 2 --max-decompile 50`.
+Limites rígidos: máximo 120 funções, 2 saltos e 80 descompilações.
+Não há upload direto deste ChatGPT à porta local 8089; o arquivo ZIP
+é a forma de transferir a evidência. Todas as requisições são
+**GET** na própria máquina (127.0.0.1). Nenhum jogo, save ou ASI
+é modificado. O Ghidra deve ficar aberto com MCP ativo até o final.
+
+Notas dos relatórios já recebidos:
+[0x43EF70/0x43D330](GHIDRA_EVIDENCE_0043EF70_2026-10-18.md) e
+[0x422480/0x43D400](GHIDRA_EVIDENCE_00422480_0043D400_2026-10-18.md).
 
 ## Primeiros alvos de investigação (pistas, não chamadas autorizadas)
 
