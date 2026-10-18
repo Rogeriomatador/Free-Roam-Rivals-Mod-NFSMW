@@ -168,8 +168,8 @@ AIVehicleRacer initializer     @ 0x43EF70 (installs 0x892AD0)
 Racer allocation wrapper       @ 0x43F040 (allocates 0x7EC bytes)
 AIGoalRacer vtable              @ 0x892720
 AIVehicleRacer vtable           @ 0x892AD0
-0x43D388: possible INTERIOR of the function at 0x43D330, not an
-           independently verified callable entry point
+0x43D388: CONFIRMED INTERIOR instruction in FUN_0043D330 (Ghidra
+           body 0x43D330..0x43D3FD), NOT independently callable
 ```
 
 Owner-provided Ghidra evidence (supported game path and disk MD5) is recorded in
@@ -179,6 +179,14 @@ uses the "AIGoalRacer" string, and calls 0x422480. The older description
 "AIVehicleRacecar constructor, NOT AIGoalRacer" was contradicted by this
 specific evidence and must not be used to authorize any native call. The
 `__thiscall` signatures, ownership and safe standalone entry remain unverified.
+
+The owner's 2026-10-18 native boundary ZIP also shows six `get_function_by_address`
+misses with valid x86 code bytes and DATA incoming references.
+These are *incomplete Ghidra auto-analysis*, not proof the pointers
+are invalid. See
+[GHIDRA_NATIVE_BOUNDARIES_2026-10-18.md](GHIDRA_NATIVE_BOUNDARIES_2026-10-18.md).
+The byte windows do not prove fully correct ABI/ownership/cleanup,
+so keep all existing compatibility gates and native-call safeguards.
 
 NFSPluginSDK also exposes AI operations such as:
 
