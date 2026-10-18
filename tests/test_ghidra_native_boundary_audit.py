@@ -73,6 +73,39 @@ class NativeBoundaryTests(unittest.TestCase):
         self.assertEqual(reports["0x00689820"]["observations"]["memory"]["error"],
                          "HTTP 404")
 
+    def test_missing_ghidra_function_and_interior_va_are_distinguished(self):
+        def fake_request(route, params=None):
+            if route == "/get_metadata":
+                return {"text": "Program Name: speed.exe"}
+            if route == "/read_memory":
+                return {"address": params["address"], "length": 32,
+                        "data": [0x90] * 32}
+            if route == "/get_function_by_address":
+                if params["address"] == "0x0043D388":
+                    return {"text": "Function: FUN_0043d330 at 0043d330\\n"
+                            "Entry: 0043d330\\nBody: 0043d330 - 0043d3fd"}
+                if params["address"] == "0x0043D330":
+                    return {"text": "Function: FUN_0043d330 at 0043d330\\n"
+                            "Entry: 0043d330\\nBody: 0043d330 - 0043d3fd"}
+                return {"text": "No function found for " + params["address"]}
+            return {"text": "ok"}
+        with patch.object(audit.bridge, "check_executable",
+                          return_value={"supported": True}):
+            manifest, reports = audit.capture(Path("speed.exe"),
+                                              requester=fake_request,
+                                              progress=lambda _: None)
+        self.assertEqual(reports["0x0043D388"]["ghidra_recognition"],
+                         "ghidra_interior_address")
+        self.assertEqual(reports["0x0043D330"]["ghidra_recognition"],
+                         "ghidra_recognized_entry")
+        self.assertEqual(reports["0x00689820"]["ghidra_recognition"],
+                         "unresolved_in_ghidra_analysis")
+        self.assertIn("0x0043D388", manifest["ghidra_interior_addresses"])
+        self.assertEqual(manifest["memory_windows_read"], len(audit.TARGETS))
+        self.assertEqual(len(manifest["ghidra_unresolved_entries"]),
+                         len(audit.TARGETS)-2)
+        self.assertFalse(manifest["ghidra_program_bytes_verified"])
+
     def test_archive_is_new_only_and_contains_no_game_executable(self):
         manifest = {"schema": "test"}
         reports = {"0x0043D388": {"address": "0x0043D388"}}
