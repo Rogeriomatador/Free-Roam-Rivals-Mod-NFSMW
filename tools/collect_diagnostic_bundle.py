@@ -25,6 +25,29 @@ def summarize(text):
             mismatches.append(line.split('NativeFactory ', 1)[-1])
     blocks = Counter(re.findall(r'NativePrototype blocked=([^\s]+)', text))
     versions = re.findall(r'NFSMW Free Roam Rivals v([^\s]+) loaded', text)
+    # Keep a bounded, evidence-only summary of Rico's first native losses.
+    loss_lines = [line for line in text.splitlines()
+                  if 'NativePrototype sudden native presence loss:' in line]
+    handle_events = []
+    for line in loss_lines[-64:]:
+        pairs = dict(re.findall(r'([A-Za-z][A-Za-z0-9]*)=([^\\s]+)', line))
+        if pairs.get('simableHandleObserved') != '1':
+            continue
+        expected = pairs.get('expectedSimableHandle', '')
+        observed = pairs.get('observedSimableHandle', '')
+        if not expected.isdecimal() or not observed.isdecimal():
+            continue
+        if len(expected) > 10 or len(observed) > 10:
+            continue
+        a, b = int(expected), int(observed)
+        if a > 0xffffffff or b > 0xffffffff:
+            continue
+        handle_events.append({
+            'expected': a, 'observed': b, 'mismatch': a != b,
+            'live_registry_contains_owner': pairs.get('liveRegistryContainsOwner') == '1',
+            'physical_registry_contains_owner': pairs.get('physicalRegistryContainsOwner') == '1',
+            'reason': pairs.get('ownerReadReason', 'unknown'),
+        })
     advice = []
     if mismatches or 'compatibility blocked address=' in text:
         advice.append('Criação bloqueada por compatibilidade: analisar janelas/destinos e inventário antes de alterar assinaturas.')
@@ -36,9 +59,14 @@ def summarize(text):
         advice.append('Ativação nativa registrada; presença visual, direção pela IA e duração ainda exigem observação no jogo.')
     if 'drive_to_obtain_metric_calibration' in text:
         advice.append('Obter calibração dirigindo de forma estável; não assumir escala de distância.')
+    if any(event['mismatch'] for event in handle_events):
+        advice.append('Handle divergente: preservar token e verificar writers e streaming, sem forçar respawn.')
     return dict(versions=versions[-3:], compatibility_mismatches=mismatches,
                 blockers=dict(blocks), constructor_invocations=text.count('NativeFactory constructor invoke'),
                 activation_records=text.count('NativePrototype stage=active'),
+                native_presence_loss_records=len(loss_lines),
+                handle_mismatch_records=sum(event['mismatch'] for event in handle_events),
+                handle_observations=handle_events[-8:],
                 f9_records=text.count('DiagnosticBundle F9 begin'), next_checks=advice,
                 scope='Somente trecho coletado; ausência no trecho não prova ausência na sessão completa.')
 
