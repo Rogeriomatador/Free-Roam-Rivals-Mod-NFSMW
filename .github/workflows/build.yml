@@ -40,6 +40,9 @@ jobs:
       - name: Ghidra MCP bulk archive (offline) tests
         run: python -m unittest discover -s tests -p test_ghidra_bulk_research.py
 
+      - name: Ghidra MCP native address boundary tests (offline)
+        run: python -m unittest discover -s tests -p test_ghidra_native_boundary_audit.py
+
       - name: Verify ASI imports and embedded Win32 version
         shell: pwsh
         run: |
