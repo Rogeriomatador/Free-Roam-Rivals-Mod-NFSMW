@@ -138,6 +138,46 @@ Notas dos relatórios já recebidos:
 [0x422480/0x43D400](GHIDRA_EVIDENCE_00422480_0043D400_2026-10-18.md).
 [Resultado do ZIP de 60 endereços (22 decompilações válidas)](GHIDRA_BULK_60_FUNCTIONS_2026-10-18.md).
 
+## Auditoria dos 6 endereços nativos ainda não resolvidos
+
+O ZIP inicial verificou 60 endereços, mas o MCP não encontrou entrada de
+função para 0x689820, 0x6851D0, 0x688120, 0x6693A0, 0x6693C0
+e 0x6876E0. **Isso não os confirma nem os invalida**: antes de usar
+esses endereços como entradas de chamadas/hook, precisamos dos bytes
+e limites das instruções reais no executável do proprietário.
+
+O script `tools/ghidra_native_boundary_audit.py` faz as consultas
+GET documentadas pela API GhidraMCP da mesma versão: `get_function_by_address`,
+`disassemble_function`, `get_xrefs_to` e `read_memory`
+(apenas **32 bytes** por endereço); inclui 6 suspeitos,
+o VA interior conflituoso `0x43D388` e controles conhecidos.
+Nenhum POST e nenhuma invocação do executável:
+
+~~~powershell
+cd "E:\\Downloads\\FRR-Ghidra-Novo"
+git pull --ff-only
+py -3 .\\tools\\ghidra_native_boundary_audit.py --exe "D:\\Need For Speed Most Wanted Black Edition\\speed.exe"
+~~~
+
+Com Ghidra e MCP ativos, o comando cria
+`research/local/ghidra_native_boundaries_*.zip`, **um ZIP local**
+para enviar ao chat. Se a release MCP não suportar algum endpoint,
+o manifesto registra o erro e **não considera o VA validado**.
+Não subir desassemblies, memória ou pseudocódigo do jogo ao GitHub.
+
+### Handle do Rico: nova captura escalar sem intervenção
+
+A branch de investigação registra na primeira perda de presença
+`simableHandleObserved`, `expectedSimableHandle`,
+`observedSimableHandle` e `simableHandleMismatch`. A leitura
+só ocorre depois de confirmar os dois registros nativos, a vtable
+e o ponteiro do `ISimable`. Os dados são de **diagnóstico**:
+o mod não atualiza `owned.handle`, não fabrica identidade nova,
+não mata o rival nem permite respawn em decorrência de mismatch.
+Um handle diferente não prova qual subsistema provocou a mudança.
+O ASI continua experimental e **não deve ser distribuído como fix
+comprovado** sem testes no PC alvo.
+
 ## Primeiros alvos de investigação (pistas, não chamadas autorizadas)
 
 | VA | Hipótese | Próxima evidência |
