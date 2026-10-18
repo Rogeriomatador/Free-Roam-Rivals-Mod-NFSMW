@@ -69,6 +69,7 @@ def capture(exe, requester=None, progress=print):
         raise bridge.ResearchError("Ghidra did not report speed.exe")
     health = requester("/mcp/health")
     results, errors = {}, []
+    unresolved_entries, interior_addresses, memory_windows_read = [], [], 0
     for index, (addr, label) in enumerate(TARGETS, 1):
         progress("[%d/%d] %s: %s" % (index, len(TARGETS), addr, label))
         observations = {}
@@ -88,10 +89,38 @@ def capture(exe, requester=None, progress=print):
                 msg = str(exc)
                 observations[key] = {"error": msg}
                 errors.append({"address": addr, "route": route, "error": msg})
+        # A Ghidra auto-analysis miss is *not* an invalid code address.
+        # Treat valid byte reads as distinct evidence, never ABI proof.
+        memory = observations.get("memory")
+        if (isinstance(memory, dict) and
+                isinstance(memory.get("data"), list) and
+                len(memory["data"]) == 32 and
+                all(type(v) is int and 0 <= v <= 255 for v in memory["data"])):
+            memory_windows_read += 1
+        info = observations.get("function_info")
+        desc = info.get("text", "") if isinstance(info, dict) else ""
+        if isinstance(desc, str) and desc.startswith("No function found for "):
+            classification = "unresolved_in_ghidra_analysis"
+            unresolved_entries.append(addr)
+        else:
+            entry = None
+            if isinstance(desc, str):
+                for line in desc.splitlines():
+                    if line.startswith("Entry: "):
+                        entry = line.removeprefix("Entry: ").strip().lower()
+                        break
+            if entry and entry == addr[2:].lower():
+                classification = "ghidra_recognized_entry"
+            elif entry and entry != addr[2:].lower():
+                classification = "ghidra_interior_address"
+                interior_addresses.append(addr)
+            else:
+                classification = "unclassified"
         results[addr] = {
             "address": addr,
             "lead": label,
             "research_only": True,
+            "ghidra_recognition": classification,
             "observations": observations,
         }
     manifest = {
@@ -106,6 +135,9 @@ def capture(exe, requester=None, progress=print):
                  "Neither Ghidra-imported bytes nor native ABI are proven. "
                  "Read responses (including disassembly) are research leads."),
         "targets": len(TARGETS),
+        "ghidra_unresolved_entries": unresolved_entries,
+        "ghidra_interior_addresses": interior_addresses,
+        "memory_windows_read": memory_windows_read,
         "errors": errors,
         "gating": "NO game hooks or native calls approved by this audit",
     }
@@ -138,8 +170,11 @@ def main(argv=None):
     except (OSError, FileExistsError, ValueError, bridge.ResearchError) as exc:
         parser.error(str(exc))
     print("\nDONE: " + str(out))
-    print("Addresses=%d, endpoint errors=%d; no native ABI verified." %
-          (manifest["targets"], len(manifest["errors"])))
+    print("Addresses=%d; Ghidra unresolved=%d; interior=%d; "
+          "32-byte windows=%d; endpoint notes/errors=%d; native ABI NOT verified." %
+          (manifest["targets"], len(manifest["ghidra_unresolved_entries"]),
+           len(manifest["ghidra_interior_addresses"]),
+           manifest["memory_windows_read"], len(manifest["errors"])))
     return 0
 
 
