@@ -60,7 +60,8 @@ bool pendingFleetChangeLogged=false;
 DWORD lastNativeException=0;
 std::uintptr_t lastExceptionInstruction=0,lastExceptionMemory=0;
 std::uintptr_t identityVtable=0,identitySim=0;
-std::uint32_t identityKey=0;
+std::uint32_t identityKey=0, identityObservedHandle=0;
+bool identityHandleObserved=false;
 const char* nativePhase="none";
 const char* roadResetReason="not_attempted";
 const char* identityReason="not_checked";
@@ -340,6 +341,7 @@ bool pursuitClear(const Context& context, const Registry& list) {
 }
 bool identity(const Registry& list, const Owned& token, bool checkHandle) {
     identityReason="registry_membership"; identityVtable=0; identitySim=0; identityKey=0;
+    identityHandleObserved=false; identityObservedHandle=0;
 #if defined(_MSC_VER)
     __try {
 #endif
@@ -357,7 +359,11 @@ bool identity(const Registry& list, const Owned& token, bool checkHandle) {
         identitySim=reinterpret_cast<std::uintptr_t>(sim);
         if (!sim || reinterpret_cast<std::uintptr_t>(sim)!=token.sim) return false;
         identityReason="simable_handle";
-        if (checkHandle && sim->_mHandle!=token.handle) return false;
+        // Same existing guarded access, now retained as scalar diagnostics
+        // only. A mismatch NEVER rewrites token.handle or grants ownership.
+        identityObservedHandle=sim->_mHandle;
+        identityHandleObserved=true;
+        if (checkHandle && identityObservedHandle!=token.handle) return false;
         identityReason="player_or_player_owned";
         if (sim->IsPlayer() || sim->IsOwnedByPlayer()) return false;
         identityReason="vehicle_key";
@@ -757,7 +763,15 @@ NativeOwnedSnapshot NativeVehicleFactory::snapshot() {
     if (!same(context,owned.context)) {out.availabilityReason="world_identity_changed"; return out;}
     if (!registry(list)) {out.availabilityReason="native_registries_unavailable"; return out;}
     out.contextMatches = true;
-    if (!identity(list,owned,true)) {out.availabilityReason=identityReason; return out;}
+    out.expectedSimableHandle = owned.handle;
+    if (!identity(list,owned,true)) {
+        out.availabilityReason=identityReason;
+        out.simableHandleObserved=identityHandleObserved;
+        if (identityHandleObserved) out.observedSimableHandle=identityObservedHandle;
+        return out;
+    }
+    out.simableHandleObserved=identityHandleObserved;
+    if (identityHandleObserved) out.observedSimableHandle=identityObservedHandle;
     out.pursuit = readPursuit(context, list);
     out.ownedPursuitClear = vehiclePursuitClear(owned.iv);
     ownedRead(out);
