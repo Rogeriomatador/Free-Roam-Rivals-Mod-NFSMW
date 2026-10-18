@@ -54,13 +54,17 @@ def extract_neighbors(observation):
     return tuple(found)
 
 
-def safe_read(route, params, errors, address):
-    """The underlying bridge allows only explicit GET routes on loopback."""
-    try:
-        return bridge.local_get(route, params)
-    except bridge.ResearchError as exc:
-        errors.append({"address": address, "route": route, "error": str(exc)})
-        return {"error": str(exc)}
+def response_error(value):
+    """MCP may signal a semantic error in a successful HTTP/JSON response."""
+    if not isinstance(value, dict):
+        return None
+    err = value.get("error")
+    if err:
+        return str(err)
+    text = value.get("text")
+    if isinstance(text, str) and text.startswith("Function not found:"):
+        return text
+    return None
 
 
 def collect(exe, max_functions=60, depth=1, max_decompile=28,
@@ -94,6 +98,8 @@ def collect(exe, max_functions=60, depth=1, max_decompile=28,
     reports = {}
     errors = []
     decompiled = 0
+    decompile_attempted = 0
+    unresolved = []
 
     while pending and len(reports) < max_functions:
         address, distance = pending.popleft()
@@ -108,17 +114,39 @@ def collect(exe, max_functions=60, depth=1, max_decompile=28,
         ):
             try:
                 observations[name] = requester(route, params)
+                semantic_error = response_error(observations[name])
+                if semantic_error:
+                    errors.append({"address": address, "route": route,
+                                   "error": semantic_error})
             except (bridge.ResearchError, OSError, ValueError) as exc:
                 msg = str(exc)
                 errors.append({"address": address, "route": route, "error": msg})
                 observations[name] = {"error": msg}
 
-        if decompiled < max_decompile:
+        # MCP can report "Function not found" for a VA that is not a
+        # function entry. Never pretend such a seed was decompiled.
+        missing_entry = all(
+            (response_error(observations.get(k, {})) or "").startswith(
+                "Function not found:")
+            for k in ("function_callers", "function_callees"))
+        if missing_entry:
+            unresolved.append(address)
+        if not missing_entry and decompiled < max_decompile:
             route = "/decompile_function"
+            decompile_attempted += 1
             try:
-                observations["decompilation"] = requester(
+                value = requester(
                     route, {"address": address, "program": "speed.exe", "timeout": 30})
-                decompiled += 1
+                observations["decompilation"] = value
+                semantic_error = response_error(value)
+                if semantic_error:
+                    errors.append({"address": address, "route": route,
+                                   "error": semantic_error})
+                elif isinstance(value, dict) and isinstance(value.get("text"), str) and value["text"].strip():
+                    decompiled += 1
+                else:
+                    errors.append({"address": address, "route": route,
+                                   "error": "empty or malformed decompilation response"})
             except (bridge.ResearchError, OSError, ValueError) as exc:
                 msg = str(exc)
                 errors.append({"address": address, "route": route, "error": msg})
@@ -155,6 +183,8 @@ def collect(exe, max_functions=60, depth=1, max_decompile=28,
         },
         "count": len(reports),
         "decompiled": decompiled,
+        "decompile_attempted": decompile_attempted,
+        "unresolved_function_entries": unresolved,
         "errors": errors,
         "seed_addresses": SEEDS,
         "unvisited_pending": len(pending),
@@ -201,8 +231,12 @@ def main(argv=None):
     except (bridge.ResearchError, FileExistsError, OSError, ValueError) as exc:
         parser.error(str(exc))
     print("\nDONE: " + str(path))
-    print("Functions: %d; decompiled: %d; errors: %d" %
-          (manifest["count"], manifest["decompiled"], len(manifest["errors"])))
+    print("Addresses: %d; successful decompilations: %d/%d; "
+          "unresolved entries: %d; reported errors: %d" %
+          (manifest["count"], manifest["decompiled"],
+           manifest["decompile_attempted"],
+           len(manifest["unresolved_function_entries"]),
+           len(manifest["errors"])))
     print("Share just this ZIP here. Ghidra, game EXE and ASI were not changed.")
     return 0
 
