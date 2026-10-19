@@ -28,7 +28,7 @@ MAX_PAGE_SIZE = 1000
 MAX_PAGES = 100
 MAX_CATALOG_BYTES = 12 * 1024 * 1024
 NAMED_AUTO = re.compile(r"^(?:FUN_|LAB_|DAT_|thunk_FUN_|sub_)[0-9a-fA-F]+$")
-REPORTED_COUNT = re.compile(r"Function Count:\\s*(\\d+)", re.I)
+REPORTED_COUNT = re.compile(r"Function Count:\s*(\d+)", re.I)
 HEX_ADDR = re.compile(r"^(?:0x)?([0-9a-fA-F]{6,8})$")
 
 
