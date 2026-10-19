@@ -138,6 +138,65 @@ Notas dos relatórios já recebidos:
 [0x422480/0x43D400](GHIDRA_EVIDENCE_00422480_0043D400_2026-10-18.md).
 [Resultado do ZIP de 60 endereços (22 decompilações válidas)](GHIDRA_BULK_60_FUNCTIONS_2026-10-18.md).
 
+## Atlas de TODAS as funções reconhecidas no speed.exe
+
+Para a meta de conhecer a engenharia do jogo inteiro, e não somente as
+23 funções iniciais, a ferramenta
+`tools/ghidra_game_atlas.py` percorre **todas as funções que
+o Ghidra atualmente reconhece**. No binário suportado do proprietário,
+o último `get_metadata` mostrou **26.067** entradas. O catálogo usa
+`GET /list_functions_enhanced` (GhidraMCP v6.0.0, endpoint
+de paginação `offset/limit`) de 500 em 500, compara a quantidade final
+com a metadata e recusa duplicações ou paginação inconsistente.
+Por padrão, o script não descompila 26 mil rotinas, evitando travar a UI.
+
+Com o Ghidra aberto, `speed.exe` analisado e o MCP conectado:
+
+~~~powershell
+cd "E:\\Downloads\\FRR-Ghidra-Novo"
+git pull --ff-only
+py -3 .\\tools\\ghidra_game_atlas.py build --exe "D:\\Need For Speed Most Wanted Black Edition\\speed.exe"
+~~~
+
+Ao concluir, cria
+`research/local/ghidra_game_atlas_YYYYMMDD-HHMMSS-*.zip`, contendo:
+- `manifest.json`: hash do EXE *em disco*, contagem, metadados e avisos;
+- `functions.jsonl`: endereço e nome de **cada entrada reconhecida**,
+  flags de thunk e símbolo externo, endereço virtual e address-space;
+- `LEIA-ME.txt`: instruções de uso e limitações.
+
+Sem Ghidra aberto, também é possível pesquisar os resultados localmente:
+
+~~~powershell
+py -3 .\\tools\\ghidra_game_atlas.py search --zip "research\\local\\SEU_ZIP_DO_ATLAS.zip" --text "Racer"
+py -3 .\\tools\\ghidra_game_atlas.py search --zip "research\\local\\SEU_ZIP_DO_ATLAS.zip" --address 0x0043EF70
+~~~
+
+**Não incluir o ZIP em commits ou issues públicas.** Enviar
+somente o ZIP para esta conversa. Contém **metadados**, não o EXE
+nem pseudocódigo copiado em massa; é uma base para selecionar consultas
+Ghidra MCP específicas e entender arquitetura e dependências reais.
+
+**Limites fundamentais:**
+- `26.067` é a quantidade *reconhecida pelo analisador*, não prova de
+  que cada trecho de código do jogo foi recuperado.
+- Muitos nomes são `FUN_00...`, portanto o catálogo por si só
+  não revela a semântica de uma função. Ainda precisaremos investigar
+  chamadas, tabelas virtuais, estruturas, strings e disassembly de
+  clusters relevantes.
+- O atlas não contém assets, scripts de carros, pista, dados de
+  garagem, DLL/ASI de mods ou código de serviços externos.
+- O MD5 local do disco não verifica byte a byte o projeto importado
+  no Ghidra; offsets, argumentos e convenções seguem em pesquisa.
+- O índice pode ser atualizado se a análise/nomeação do Ghidra mudar.
+  Nunca tratar um endereço indexado como seguro para hook ou chamada
+  nativa sem verificar ABI/ownership e os testes no jogo.
+
+Uma visão abrangente é construível por camadas: **funções -> referências
+e chamadas -> variáveis/estruturas e estados -> verificação dinâmica**.
+Não é possível deduzir todo comportamento do jogo de uma única
+descompilação ou de somente nomes de funções.
+
 ## Auditoria dos 6 endereços nativos ainda não resolvidos
 
 O ZIP inicial verificou 60 endereços, mas o MCP não encontrou entrada de
