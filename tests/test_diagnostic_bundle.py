@@ -55,6 +55,35 @@ class BundleTests(unittest.TestCase):
         self.assertEqual(len(summary['compatibility_mismatches']),1)
         self.assertEqual(summary['activation_records'],1)
         self.assertTrue(any('presença visual' in x for x in summary['next_checks']))
+    def test_native_handle_mismatch_requires_actual_observation(self):
+        logs = (
+            "NativePrototype sudden native presence loss: "
+            "ownerReadReason=simable_handle simableHandleObserved=1 "
+            "expectedSimableHandle=34 observedSimableHandle=52 "
+            "liveRegistryContainsOwner=1 physicalRegistryContainsOwner=1\n"
+            "NativePrototype sudden native presence loss: "
+            "ownerReadReason=world_not_safe_for_owner_read simableHandleObserved=0 "
+            "expectedSimableHandle=34 observedSimableHandle=0 "
+            "liveRegistryContainsOwner=0 physicalRegistryContainsOwner=0\n"
+        )
+        report=m.summarize(logs)
+        self.assertEqual(report['native_presence_loss_records'], 2)
+        self.assertEqual(report['handle_mismatch_records'], 1)
+        self.assertEqual(len(report['handle_observations']), 1)
+        event=report['handle_observations'][0]
+        self.assertEqual((event['expected'],event['observed']),(34,52))
+        self.assertEqual(event['reason'],'simable_handle')
+        self.assertTrue(event['live_registry_contains_owner'])
+        self.assertTrue(event['physical_registry_contains_owner'])
+        self.assertTrue(any('sem forçar respawn' in t for t in report['next_checks']))
+
+    def test_handle_diagnostics_fail_closed_on_corrupt_log_values(self):
+        invalid='NativePrototype sudden native presence loss: simableHandleObserved=1 '
+        report=m.summarize(invalid+'expectedSimableHandle=not_a_number observedSimableHandle=52')
+        self.assertEqual(report['handle_mismatch_records'],0)
+        report=m.summarize(invalid+'expectedSimableHandle=4294967296 observedSimableHandle=52')
+        self.assertEqual(report['handle_mismatch_records'],0)
+
     def test_hash_read_is_bounded(self):
         with tempfile.TemporaryDirectory() as tmp:
             p=Path(tmp)/"growing.dll";p.write_bytes(b"abcdef")

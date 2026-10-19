@@ -370,6 +370,11 @@ void tickNativeRivalPrototype(const WorldMetricCalibration& metric, float update
                     << " nativeAvailable=" << owned.available
                     << " nativeDestroyed=" << owned.destroyed
                     << " ownerReadReason=" << (owned.availabilityReason ? owned.availabilityReason : "unavailable")
+                    << " simableHandleObserved=" << owned.simableHandleObserved
+                    << " expectedSimableHandle=" << owned.expectedSimableHandle
+                    << " observedSimableHandle=" << (owned.simableHandleObserved ? owned.observedSimableHandle : 0)
+                    << " simableHandleMismatch=" << (owned.simableHandleObserved &&
+                         owned.observedSimableHandle != owned.expectedSimableHandle)
                     << " driverClassObserved=" << owned.driverClassObserved
                     << " nativeDriverClass=" << owned.nativeDriverClass
                     << " spooledObserved=" << owned.spooledObserved

@@ -36,3 +36,6 @@ Thumbs.db
 
 __pycache__/
 *.pyc
+
+# Local reverse-engineering reports and owner-only artifacts (never publish)
+research/local/
