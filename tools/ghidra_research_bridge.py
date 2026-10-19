@@ -22,6 +22,7 @@ READ_ONLY_ROUTES = frozenset(("/mcp/health", "/get_metadata",
                               "/get_function_callers", "/get_function_callees",
                               "/get_function_by_address",
                               "/disassemble_function", "/read_memory",
+                              "/list_functions_enhanced",
                               "/decompile_function"))
 MAX_HTTP_BYTES = 2 * 1024 * 1024
 MAX_CSV_BYTES = 8 * 1024 * 1024
