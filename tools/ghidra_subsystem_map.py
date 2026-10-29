@@ -153,20 +153,33 @@ def read_atlas(path):
     raw = entries.get("functions.jsonl")
     if raw is None:
         raise AtlasError("function atlas has no functions.jsonl")
+    if not bridge.expected_program_metadata(manifest.get("ghidra_metadata")):
+        raise AtlasError("function atlas metadata does not identify speed.exe")
     names = {}
+    seen = set()
+    count = 0
     for line in raw.splitlines():
         row = _json(line)
         if not isinstance(row, dict):
             raise AtlasError("function entry is not an object")
         address, name = row.get("address"), row.get("name")
-        if (not isinstance(address, str) or not ADDRESS.fullmatch(address)
+        if (not isinstance(address, str) or not address
                 or not isinstance(name, str) or not 0 < len(name) <= 256
                 or type(row.get("is_external")) is not bool):
             raise AtlasError("invalid function atlas entry")
-        if address in names:
-            raise AtlasError("duplicate address in function atlas")
+        key = (row.get("address_space"), row.get("address_full"))
+        if key in seen:
+            raise AtlasError("duplicate address-space entry in function atlas")
+        seen.add(key)
+        count += 1
+        # Ghidra EXTERNAL functions can live in non-image address spaces.
+        # Keep the catalog count, but never treat those as game call nodes.
+        if row["is_external"]:
+            continue
+        if not ADDRESS.fullmatch(address) or address in names:
+            raise AtlasError("invalid/duplicate internal function address")
         names[address] = name
-    if len(names) != manifest.get("function_count"):
+    if count != manifest.get("function_count"):
         raise AtlasError("function atlas count mismatch")
     return manifest, names
 
