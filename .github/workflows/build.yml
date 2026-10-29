@@ -45,6 +45,8 @@ jobs:
 
       - name: Whole-game Ghidra function atlas tests (offline)
         run: python -m unittest discover -s tests -p test_ghidra_game_atlas.py
+      - name: Ghidra subsystem dependency graph tests (offline)
+        run: python -m unittest discover -s tests -p test_ghidra_subsystem_map.py
 
       - name: Verify ASI imports and embedded Win32 version
         shell: pwsh
